@@ -46,12 +46,12 @@ The implementation is structured in phases, each building on the previous. All h
 
   ### Foundation (build first - used by many panels)
 
-  - [ ] React fiber traversal utility (`getReactComponentName`, `getReactFiberPath`)
+  - [x] React fiber traversal utility (`getReactComponentName`, `getReactFiberPath`)
     - Used by nearly every panel for component name resolution
     - Build once, all panels benefit
-  - [ ] Element highlight overlay utility (`highlightElement`, `removeHighlight`)
+  - [x] Element highlight overlay utility (`highlightElement`, `removeHighlight`)
     - Shared by Focus Tracker, Contrast Checker, Focus Loss, overlays
-  - [ ] Focus event stream (`focusin` listener with sidebar self-exclusion)
+  - [x] Focus event stream (`focusin` listener with sidebar self-exclusion)
     - Shared by Live Focus Tracker, Focus Trap Detector, Focus Loss Detector, Focus History Log, Focus Order Recorder
 
   ### Tier 1: Quick wins - simple DOM queries or pure CSS, immediate value

@@ -7,11 +7,15 @@
   "engines": {
     "node": ">=18"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "bin": {
     "cc-a11y-tools": "./dist/cli/cc-a11y-tools.js"
   },
-  "sideEffects": ["*.css"],
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",
@@ -33,9 +37,15 @@
   },
   "typesVersions": {
     "*": {
-      "hooks": ["dist/hooks/index.d.ts"],
-      "debug": ["dist/debug/index.d.ts"],
-      "audit": ["dist/audit/index.d.ts"]
+      "hooks": [
+        "dist/hooks/index.d.ts"
+      ],
+      "debug": [
+        "dist/debug/index.d.ts"
+      ],
+      "audit": [
+        "dist/audit/index.d.ts"
+      ]
     }
   },
   "peerDependencies": {
@@ -48,6 +58,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "@vitejs/plugin-react": "^4",
+    "jsdom": "^29.0.1",
     "lefthook": "^2.1.4",
     "react": "^18",
     "react-dom": "^18",

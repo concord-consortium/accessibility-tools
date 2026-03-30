@@ -7,6 +7,7 @@ import {
   overlayToggles,
 } from "./sidebar-data";
 import { injectStyles } from "./styles";
+import { setSidebarRoot } from "./utils";
 
 export interface AccessibilityDebugSidebarProps {
   theme?: "light" | "dark";
@@ -30,11 +31,17 @@ export function AccessibilityDebugSidebar({
   );
   const [activeOverlays, setActiveOverlays] = useState<Set<string>>(new Set());
 
+  const sidebarRef = useRef<HTMLDivElement>(null);
   const categoryTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const iconTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   useEffect(() => {
     injectStyles();
+  }, []);
+
+  useEffect(() => {
+    setSidebarRoot(sidebarRef.current);
+    return () => setSidebarRoot(null);
   }, []);
 
   const currentCategory = categories.find((c) => c.id === activeCategory);
@@ -103,7 +110,7 @@ export function AccessibilityDebugSidebar({
   }, []);
 
   return (
-    <div className="a11y-debug-sidebar" data-theme={theme}>
+    <div ref={sidebarRef} className="a11y-debug-sidebar" data-theme={theme}>
       {/* Header */}
       <div className="a11y-sidebar-header">
         <span className="a11y-sidebar-title">cc-a11y-tools</span>
