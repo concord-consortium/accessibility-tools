@@ -22,45 +22,135 @@ The implementation is structured in phases, each building on the previous. All h
           - [x] Panel Content Container (tied to panel+icon selected with "TBD" rendered)
     - [x] Overlay Toggle Container (with "TBD" rendered)
     - [x] Persistent Footer Container (with "TBD" rendered)
-- [ ] Implement DOM-based sidebar panels (no hook integration needed, use demo to exercise every panel):
-  - [ ] 1. Live Focus Tracker
-  - [ ] 2. Keyboard Event Log
-  - [ ] 3. Announcements Log
-  - [ ] 4. Tab Order Overlay
-  - [ ] 5. Element Inspector
-  - [ ] 6. ARIA Tree View
-  - [ ] 7. Focus Trap Detector
-  - [ ] 8. Color Contrast Checker
+
+- [ ] Convert wireframe elements to real code
+
+  Ordered for quick wins first, with shared code dependencies respected.
+  Panel numbers (e.g., "9. Heading Hierarchy") are identifiers from design.md, not sequence.
+  Unit tests for each panel should be written alongside the panel, not deferred.
+
+  Each panel renders inside the existing sidebar wireframe's panel content area.
+  The sidebar-data.ts file maps panel IDs to categories/icons - new panels register
+  there and provide a component that receives the panel content container.
+
+  Foundation utilities (fiber traversal, element highlight, focus stream) are shared
+  modules in src/debug/utils/ imported by multiple panels. Build and test these first
+  since nearly every panel depends on at least one.
+
+  Overlay toggles inject/remove DOM into the app content area (not the sidebar).
+  The sidebar self-exclusion filter (checking if target is inside the sidebar root)
+  must be applied in every panel that observes the page DOM.
+
+  See design.md "Sidebar panels" section for the full specification of each panel.
+  Each panel description there is the authoritative spec for what to build.
+
+  ### Foundation (build first - used by many panels)
+
+  - [ ] React fiber traversal utility (`getReactComponentName`, `getReactFiberPath`)
+    - Used by nearly every panel for component name resolution
+    - Build once, all panels benefit
+  - [ ] Element highlight overlay utility (`highlightElement`, `removeHighlight`)
+    - Shared by Focus Tracker, Contrast Checker, Focus Loss, overlays
+  - [ ] Focus event stream (`focusin` listener with sidebar self-exclusion)
+    - Shared by Live Focus Tracker, Focus Trap Detector, Focus Loss Detector, Focus History Log, Focus Order Recorder
+
+  ### Tier 1: Quick wins - simple DOM queries or pure CSS, immediate value
+
+  - [ ] Text Spacing Override overlay toggle (WCAG 1.4.12)
+    - Pure CSS injection - simplest possible item: inject/remove a `<style>` tag
+  - [ ] Reflow Test overlay toggle (WCAG 1.4.10)
+    - Pure CSS width constraint on app content
+  - [ ] Forced Colors Mode overlay toggle (WCAG 1.4.11)
+    - Pure CSS override for high contrast simulation
   - [ ] 9. Heading Hierarchy Validator
-  - [ ] 10. ARIA Validation
-  - [ ] 11. Touch Target Size Checker
-  - [ ] 12. Form Label Checker
-  - [ ] 13. Focus Order Recorder
-  - [ ] 14. Screen Reader Text Preview
-  - [ ] 15. Focus Loss Detector
-  - [ ] 16. Duplicate ID Detector
-  - [ ] 17. Reduced Motion Indicator
-  - [ ] 18. Focus History Log
-  - [ ] 19. Contrast Overlay Mode
+    - Query `h1`-`h6`, validate nesting, render tree
+    - No event listeners, no MutationObserver
   - [ ] 20. Landmark Summary
-  - [ ] 21. Live Region Inventory + Overlay
-  - [ ] 22. Image Audit
+    - Query landmark elements, check labels, render outline
+    - Same pattern as Heading Hierarchy
+  - [ ] 16. Duplicate ID Detector
+    - `querySelectorAll('[id]')`, group by id, flag duplicates
+    - MutationObserver for live updates
+  - [ ] 12. Form Label Checker
+    - Query form controls, check label associations
+    - Static scan + MutationObserver
+  - [ ] 17. Reduced Motion Indicator
+    - `matchMedia` check + stylesheet scan
+
+  ### Tier 2: Focus panels (share the focus event stream)
+
+  - [ ] 1. Live Focus Tracker
+    - Uses focus event stream + fiber traversal + highlight utility
+    - Foundation for all other focus panels
+  - [ ] 5. Element Inspector
+    - Click-to-inspect from Focus Tracker
+    - Full ARIA attribute dump + fiber path
+    - Build early: other panels link to it (Focus History, Contrast Overlay, etc.)
+  - [ ] 15. Focus Loss Detector
+    - Watches for `document.body` focus after a specific element was focused
+  - [ ] 18. Focus History Log
+    - Passive log of all focus events, renders as `role="log"`
+    - Click any row to open in Element Inspector
+  - [ ] 7. Focus Trap Detector (heuristic)
+    - Cycle detection on focus event stream
+  - [ ] 13. Focus Order Recorder
+    - Record/stop/compare/export workflow
+    - Most complex in this tier
+
+  ### Tier 3: Keyboard, announcements, and live regions
+
+  - [ ] 2. Keyboard Event Log
+    - Capture-phase keydown listener + preventDefault/stopPropagation detection
+    - Log panel
+  - [ ] 3. Announcements Log
+    - MutationObserver on `[aria-live]` elements for text changes
+    - Log panel
+  - [ ] 21. Live Region Inventory + overlay toggle
+    - Lists all `[aria-live]` elements (complements Announcements Log)
+    - Shares MutationObserver pattern from Announcements Log
+    - Overlay: colored borders with flash on change
+
+  ### Tier 4: Accessible name computation + audits + overlays
+
+  - [ ] 14. Screen Reader Text Preview
+    - Build the accessible name computation utility (WAI-ARIA spec)
+    - Reused by Link & Button Audit and WCAG Audit Report
   - [ ] 23. Link & Button Text Audit
+    - Reuses accessible name computation from Screen Reader Preview
+    - Scan, group duplicates, flag issues
+  - [ ] 22. Image Audit
+    - Scan images/SVG/canvas, categorize by alt text status
+  - [ ] 8. Color Contrast Checker + 19. Contrast Overlay toggle
+    - Build contrast ratio utility + panel
+    - Contrast Overlay reuses the same calculation, build together
+  - [ ] 11. Touch Target Size Checker + Touch Targets overlay toggle
+    - Build size checking utility + panel
+    - Touch Targets overlay reuses the same logic, build together
+  - [ ] 4. Tab Order Overlay (panel + overlay toggle)
+    - Query tabbable elements, sort by tab order, render numbered badges
+    - Same overlay pattern as Contrast and Touch Targets
+  - [ ] 10. ARIA Validation
+    - Complex rule set (many individual checks)
+    - No dependencies on other panels, but benefits from all prior utilities
+
+  ### Tier 5: Complex panel
+
+  - [ ] 6. ARIA Tree View
+    - Full DOM tree walk with collapsible UI
+    - Most complex panel UI (tree rendering, expand/collapse, filtering)
+    - No other panel depends on this
+
+  ### Tier 6: Capstone
+
   - [ ] 24. WCAG Audit Report Generator
-- [ ] Implement overlay toggles (in strip above footer):
-  - [ ] Tab Order
-  - [ ] Contrast Ratios
-  - [ ] Touch Targets
-  - [ ] Live Regions
-  - [ ] Text Spacing Override (WCAG 1.4.12)
-  - [ ] Reflow Test (WCAG 1.4.10)
-  - [ ] Forced Colors Mode (WCAG 1.4.11)
-- [ ] React fiber traversal for component name resolution in all panels
+    - Runs checks from Heading Hierarchy, Form Labels, ARIA Validation, Contrast, Touch Targets, Image Audit, accessible name computation
+    - Produces scoped markdown report with copy-to-clipboard
+    - Last panel - depends on all audit utilities being built
+
 - [ ] Standalone injection mode (standalone.js entry point):
   - [ ] Self-contained bundle with React included
   - [ ] Bookmarklet generation
   - [ ] Shadow DOM style isolation
-- [ ] Unit tests for all panels using jsdom + mock DOM
 
 ## Phase 2: CLI + Test Framework Integration
 
