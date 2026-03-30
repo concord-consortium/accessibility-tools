@@ -11,15 +11,19 @@ See [docs/roadmap.md](docs/roadmap.md) for the full implementation plan.
 ## Development
 
 ```bash
-npm install
-npm run demo        # Start the kitchen sink demo (Vite dev server)
-npm run build       # Build the library (tsup)
-npm test            # Run unit tests (Vitest)
-npm run test:smoke  # Build + run smoke tests against dist/
-npm run check       # Lint + format + typecheck
-npm run lint        # Biome linting only
-npm run format      # Biome formatting only
+npm install             # Install deps + set up git hooks (via lefthook)
+npm run demo            # Start the kitchen sink demo (Vite dev server)
+npm run build           # Build the library (tsup)
+npm test                # Run unit tests (Vitest)
+npm run test:smoke      # Build + run smoke tests against dist/
+npm run check           # Lint + format + typecheck
+npm run lint            # Biome linting only
+npm run format          # Biome formatting only
 ```
+
+### Git hooks
+
+Git hooks are managed by [lefthook](https://github.com/evilmartians/lefthook) and install automatically on `npm install` via the `prepare` script. The pre-commit hook runs `npm run check` (Biome lint + format + TypeScript typecheck) before each commit.
 
 ## Package Entry Points
 

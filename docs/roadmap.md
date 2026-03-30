@@ -13,15 +13,15 @@ The implementation is structured in phases, each building on the previous. All h
   - [x] demo/index.html + demo/main.tsx (excluded from npm build)
   - [x] Styles injected at runtime (no CSS loader dependency)
 - [x] AccessibilityProvider context
-- [ ] AccessibilityDebugSidebar component wireframe
-  - [ ] Sidebar Container
-    - [ ] Tab Container
-      - [ ] Tabs (Focus │ Structure │ Validate │ Tools)
-        - [ ] Panel Container (in each tab)
-          - [ ] Vertical Icons Container (with final Heroicons per tab)
-          - [ ] Panel Content Container (tied to panel+icon selected with "TBD" rendered)
-    - [ ] Overlay Toggle Container (with "TBD" rendered)
-    - [ ] Persistent Footer Container (with "TBD" rendered)
+- [x] AccessibilityDebugSidebar component wireframe
+  - [x] Sidebar Container
+    - [x] Tab Container
+      - [x] Tabs (Focus | Structure | Validate | Tools)
+        - [x] Panel Container (in each tab)
+          - [x] Vertical Icons Container (with final Heroicons per tab)
+          - [x] Panel Content Container (tied to panel+icon selected with "TBD" rendered)
+    - [x] Overlay Toggle Container (with "TBD" rendered)
+    - [x] Persistent Footer Container (with "TBD" rendered)
 - [ ] Implement DOM-based sidebar panels (no hook integration needed, use demo to exercise every panel):
   - [ ] 1. Live Focus Tracker
   - [ ] 2. Keyboard Event Log
