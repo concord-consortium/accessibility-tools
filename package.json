@@ -1,0 +1,68 @@
+{
+  "name": "@concord-consortium/accessibility-tools",
+  "version": "0.0.1",
+  "author": "Doug Martin",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": ["dist"],
+  "bin": {
+    "cc-a11y-tools": "./dist/cli/cc-a11y-tools.js"
+  },
+  "sideEffects": ["*.css"],
+  "exports": {
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js",
+      "require": "./dist/hooks/index.cjs"
+    },
+    "./debug": {
+      "types": "./dist/debug/index.d.ts",
+      "import": "./dist/debug/index.js",
+      "require": "./dist/debug/index.cjs"
+    },
+    "./audit": {
+      "types": "./dist/audit/index.d.ts",
+      "import": "./dist/audit/index.js",
+      "require": "./dist/audit/index.cjs"
+    },
+    "./styles": "./dist/styles/index.css",
+    "./styles/mixins": "./dist/styles/_mixins.scss"
+  },
+  "typesVersions": {
+    "*": {
+      "hooks": ["dist/hooks/index.d.ts"],
+      "debug": ["dist/debug/index.d.ts"],
+      "audit": ["dist/audit/index.d.ts"]
+    }
+  },
+  "peerDependencies": {
+    "react": ">=17",
+    "react-dom": ">=17"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1",
+    "@types/node": "^25.5.0",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@vitejs/plugin-react": "^4",
+    "react": "^18",
+    "react-dom": "^18",
+    "sass": "^1",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vite": "^6",
+    "vitest": "^3"
+  },
+  "scripts": {
+    "build": "tsup && node scripts/copy-styles.mjs",
+    "demo": "vite serve demo",
+    "test": "vitest run",
+    "test:smoke": "npm run build && vitest run --config vitest.smoke.config.ts",
+    "lint": "biome lint .",
+    "format": "biome format .",
+    "check": "biome check . && tsc --noEmit"
+  }
+}

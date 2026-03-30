@@ -1,0 +1,23 @@
+{
+  "files": {
+    "ignore": ["dist/**", "node_modules/**"]
+  },
+  "linter": { "enabled": true },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  },
+  "overrides": [
+    {
+      "include": ["demo/sections/**"],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "recommended": false
+          }
+        }
+      }
+    }
+  ]
+}

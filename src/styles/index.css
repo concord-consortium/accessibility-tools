@@ -1,0 +1,9 @@
+/* @concord-consortium/accessibility-tools - CSS custom properties placeholder */
+/* Full focus ring styles will be added in Phase 3 */
+
+:root {
+  --a11y-focus-ring-color: #2563eb;
+  --a11y-focus-ring-width: 2px;
+  --a11y-focus-ring-offset: 2px;
+  --a11y-focus-ring-style: solid;
+}

@@ -1,0 +1,12 @@
+// @concord-consortium/accessibility-tools - SCSS mixin placeholder
+// Full focus ring mixin will be added in Phase 3
+
+@mixin a11y-focus-ring(
+  $color: var(--a11y-focus-ring-color),
+  $width: var(--a11y-focus-ring-width),
+  $offset: var(--a11y-focus-ring-offset),
+  $style: var(--a11y-focus-ring-style)
+) {
+  outline: $width $style $color;
+  outline-offset: $offset;
+}
