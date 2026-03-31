@@ -213,10 +213,12 @@ The implementation is structured in phases, each building on the previous. All h
 
   ### Tier 5: Complex panel
 
-  - [ ] 6. ARIA Tree View
-    - Full DOM tree walk with collapsible UI
-    - Most complex panel UI (tree rendering, expand/collapse, filtering)
-    - No other panel depends on this
+  - [x] 6. ARIA Tree View
+    - Full DOM tree walk with collapsible UI, role="tree"/role="treeitem"
+    - Filter: all elements or roles-only, expand/collapse all buttons
+    - Role-bearing elements highlighted, non-role elements dimmed
+    - Inline ARIA attribute display on expanded nodes
+    - Click to scroll-to-highlight any element
 
   ### Tier 6: Capstone
 

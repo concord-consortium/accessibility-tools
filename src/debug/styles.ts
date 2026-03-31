@@ -1128,6 +1128,78 @@ const CSS = `
   white-space: nowrap;
   flex-shrink: 0;
 }
+
+/* ARIA Tree View */
+.a11y-tree-container {
+  font-size: 11px;
+}
+.a11y-tree-node {
+  line-height: 1.2;
+}
+.a11y-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+  cursor: pointer;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.a11y-tree-row:hover {
+  background: var(--a11y-sidebar-icon-hover-bg);
+}
+.a11y-tree-row:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.a11y-tree-row-no-role {
+  opacity: 0.5;
+}
+.a11y-tree-row-role {
+  opacity: 1;
+}
+.a11y-tree-toggle {
+  font-size: 8px;
+  width: 12px;
+  text-align: center;
+  flex-shrink: 0;
+  color: var(--a11y-sidebar-text-muted);
+}
+.a11y-tree-toggle-spacer {
+  width: 12px;
+  flex-shrink: 0;
+}
+.a11y-tree-tag {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+}
+.a11y-tree-role {
+  color: #2563eb;
+  font-size: 10px;
+  font-weight: 600;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-tree-role {
+  color: #60a5fa;
+}
+.a11y-tree-label {
+  color: #16a34a;
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-tree-label {
+  color: #4ade80;
+}
+.a11y-tree-attrs {
+  padding: 2px 0;
+}
 `;
 
 const injectedTargets = new WeakSet<Document | ShadowRoot>();

@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import { AnnouncementsLogPanel } from "./announcements-log";
+import { AriaTreePanel } from "./aria-tree";
 import { AriaValidationPanel } from "./aria-validation";
 import { ColorContrastPanel } from "./color-contrast";
 import { DuplicateIdPanel } from "./duplicate-ids";
@@ -56,4 +57,5 @@ export const panelComponents: Record<
   "screen-reader": ScreenReaderPreviewPanel,
   contrast: ColorContrastPanel,
   "links-buttons": LinksButtonsPanel,
+  "aria-tree": AriaTreePanel,
 };

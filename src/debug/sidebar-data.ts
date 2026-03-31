@@ -22,6 +22,7 @@ import {
   MagnifyingGlassIcon,
   MapIcon,
   MegaphoneIcon,
+  NumberedListIcon,
   PaintBrushIcon,
   PhotoIcon,
   PlayPauseIcon,
@@ -113,7 +114,7 @@ export const categories: CategoryDef[] = [
         label: "Screen Reader Text Preview",
         icon: ChatBubbleLeftIcon,
       },
-      { id: "aria-tree", label: "ARIA Tree View", icon: Bars3Icon },
+      { id: "aria-tree", label: "ARIA Tree View", icon: NumberedListIcon },
       { id: "tab-order", label: "Tab Order Overlay", icon: HashtagIcon },
       {
         id: "announcements",
