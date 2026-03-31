@@ -16,12 +16,21 @@ The implementation is structured in phases, each building on the previous. All h
 - [x] AccessibilityDebugSidebar component wireframe
   - [x] Sidebar Container
     - [x] Tab Container
-      - [x] Tabs (Focus | Structure | Validate | Tools)
+      - [x] Tabs (Checks | Tools | Hooks)
         - [x] Panel Container (in each tab)
           - [x] Vertical Icons Container (with final Heroicons per tab)
           - [x] Panel Content Container (tied to panel+icon selected with "TBD" rendered)
     - [x] Overlay Toggle Container (with "TBD" rendered)
-    - [x] Persistent Footer Container (with "TBD" rendered)
+    - [x] Persistent Footer Container (removed - audit buttons moved to Overview panel)
+- [x] Tab reorganization: 5 tabs (Focus, Structure, Validate, Tools, Hook State) -> 3 tabs (Checks, Tools, Hooks)
+- [x] Overview panel (Checks tab landing page):
+  - [x] 0-100 accessibility score with weighted scoring system
+  - [x] Per-check score cards with click-to-navigate
+  - [x] Explain button showing score calculation breakdown
+  - [x] Export button generating markdown audit report to clipboard
+  - [x] Audit Page / Audit Sidebar buttons (moved from footer, disabled until Tier 6)
+- [x] Scoring module (src/debug/checks/scoring.ts)
+- [x] Stub check modules for unimplemented checks (color-contrast, images, links-buttons, aria-validation, touch-targets)
 
 - [ ] Convert wireframe elements to real code
 
@@ -199,7 +208,9 @@ The implementation is structured in phases, each building on the previous. All h
 
   - [ ] 24. WCAG Audit Report Generator
     - Runs checks from Heading Hierarchy, Form Labels, ARIA Validation, Contrast, Touch Targets, Image Audit, accessible name computation
-    - Produces scoped markdown report with copy-to-clipboard
+    - Produces scoped markdown report organized by WCAG success criterion with copy-to-clipboard
+    - Wire up Overview panel "Audit Page" button (runs audit against document root)
+    - Wire up Overview panel "Audit Sidebar" button (temporarily disables self-exclusion, audits sidebar DOM subtree)
     - Last panel - depends on all audit utilities being built
 
 - [ ] Standalone injection mode (standalone.js entry point):

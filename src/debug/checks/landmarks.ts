@@ -82,12 +82,15 @@ export function scanLandmarks(
     const role = explicitRole || LANDMARK_ROLES[el.tagName] || tag;
     const label = getLabel(el);
 
+    const component = getReactComponentName(el);
+    const inComponent = component ? ` (in ${component})` : "";
+
     if (tag === "main" && mainCount > 1) {
-      issueMap.set(el, "Multiple <main> elements");
+      issueMap.set(el, `Multiple <main> elements${inComponent}`);
     }
 
     if ((tag === "nav" || tag === "aside" || tag === "form") && !label) {
-      const reason = `<${tag}> without accessible label`;
+      const reason = `<${tag}> without accessible label${inComponent}`;
       issueMap.set(el, reason);
       issues.push({
         type: "no-label",
@@ -101,7 +104,7 @@ export function scanLandmarks(
     if (tag === "section") {
       const heading = el.querySelector("h1, h2, h3, h4, h5, h6");
       if (!heading && !label) {
-        const reason = "<section> without a heading or label";
+        const reason = `<section> without a heading or label${inComponent}`;
         issueMap.set(el, reason);
         issues.push({
           type: "section-no-heading",

@@ -405,57 +405,63 @@ The sidebar uses a two-level navigation: horizontal category tabs across the top
 
 ```
 ┌─────────────────────────────────────┐
-│ cc-a11y-tools          v1.0.0-pre.0 │  ← header
+│ cc-a11y-tools                v0.0.1 │  ← header
 ├─────────────────────────────────────┤
-│ Focus │ Structure │ Validate │ Tools │  ← horizontal category tabs
+│  Checks  │  Tools  │  Hooks        │  ← horizontal category tabs (3 tabs)
 ├──┬──────────────────────────────────┤
-│🔍│                                  │
-│📋│  Panel content fills this area   │  ← vertical icons (3-5 per category)
-│⚡│  (~270px wide)                   │     select panel within category
 │📊│                                  │
-│  │                                  │
+│📋│  Panel content fills this area   │  ← vertical icons (scrollable for
+│🏷│  (~270px wide)                   │     10+ panels in Checks tab)
+│🎨│                                  │
+│📷│                                  │
+│🔗│  Overview panel (landing) shows  │
+│🛡│  0-100 score + check cards       │
+│🗺│                                  │
+│📄│                                  │
+│👆│                                  │
+│⏸│                                  │
 ├──┴──────────────────────────────────┤
-│  🔢  🎨  🎯  📡                     │  ← overlay toggles: outline=off,
-│                                     │    filled/colored=active. Tooltips
-│                                     │    on hover. Affect the app page.
-├─────────────────────────────────────┤
-│ [Audit Page]  [Audit Sidebar]       │  ← persistent footer
+│  🔢  🎨  🎯  📡  ≡  📱  💧  ?  ✕  │  ← overlay toggles + help + clear
 └─────────────────────────────────────┘
 ```
 
-The layout has three zones:
+The layout has two zones:
 - **Top:** category tabs + icon strip + panel content (the main workspace)
-- **Overlay strip:** toggle buttons for page overlays, always visible above the footer
-- **Footer:** audit action buttons, always pinned to the bottom
+- **Overlay strip:** toggle buttons for page overlays, info help (?), and clear highlight (X)
 
-Each category has 3-5 panels, so the icon strip is short and doesn't scroll. Icons use [Heroicons](https://heroicons.com/) (outline style) with hover tooltips for labels.
+The Checks tab has 11 panels (Overview + 10 checks) so the icon strip scrolls with `overflow-y: auto`. The Tools tab has 13 panels. The Hooks tab has 3. Icons use [Heroicons](https://heroicons.com/) (outline style) with hover tooltips for labels.
+
+The "Audit Page" and "Audit Sidebar" buttons live in the Overview panel (not in a footer). The footer has been removed.
 
 **Category → panel → icon mapping:**
 
 | Category | Panel | Heroicon |
 |---|---|---|
-| **Focus** | Live Focus Tracker | `eye` |
-| | Focus Trap Detector | `lock-closed` |
-| | Focus Loss Detector | `exclamation-triangle` |
-| | Focus History Log | `clock` |
-| | Focus Order Recorder | `list-bullet` |
-| **Structure** | Element Inspector | `magnifying-glass` |
-| | ARIA Tree View | `bars-3` |
+| **Checks** | Overview (landing - score dashboard) | `chart-bar` |
 | | Heading Hierarchy | `bars-arrow-down` |
-| | Duplicate ID Detector | `document-duplicate` |
-| | Tab Order Overlay | `hashtag` |
-| **Validate** | ARIA Validation | `shield-check` |
-| | Color Contrast Checker | `swatch` |
 | | Form Label Checker | `tag` |
+| | Color Contrast Checker | `swatch` |
 | | Image Audit | `photo` |
-| | Link & Button Text Audit | `link` |
+| | Link & Button Audit | `link` |
+| | ARIA Validation | `shield-check` |
+| | Landmark Summary | `map` |
+| | Duplicate ID Detector | `document-duplicate` |
+| | Touch Target Size | `cursor-arrow-rays` |
 | | Reduced Motion | `play-pause` |
-| **Tools** | Keyboard Event Log | `command-line` |
+| **Tools** | Element Inspector | `magnifying-glass` |
+| | Live Focus Tracker | `eye` |
+| | Keyboard Event Log | `command-line` |
+| | Screen Reader Text Preview | `chat-bubble-left` |
+| | ARIA Tree View | `bars-3` |
+| | Tab Order Overlay | `hashtag` |
 | | Announcements Log | `megaphone` |
 | | Live Region Inventory | `signal` |
-| | Screen Reader Text Preview | `chat-bubble-left` |
-| | Landmark Summary | `map` |
-| **Hook State** | Focus Trap State | `arrows-right-left` |
+| | Focus History Log | `clock` |
+| | Focus Loss Detector | `exclamation-triangle` |
+| | Focus Trap Detector | `lock-closed` |
+| | Focus Order Recorder | `list-bullet` |
+| | WCAG Audit Report | `clipboard-document-check` |
+| **Hooks** | Focus Trap State | `arrows-right-left` |
 | | Navigation State | `arrows-up-down` |
 | | Custom App Log | `code-bracket` |
 
@@ -466,15 +472,29 @@ Each category has 3-5 panels, so the icon strip is short and doesn't scroll. Ico
 | | Touch Targets | `cursor-arrow-rays` |
 | | Live Regions | `signal` |
 | | Text Spacing | `bars-3` (horizontal) |
-| | Reflow Test | `device-phone-mobile` |
+| | Reflow Test (disabled - standalone only) | `device-phone-mobile` |
 | | Forced Colors | `eye-dropper` |
 
-| **Footer** | | |
+| **Overlay Strip Utility Buttons** | | |
 |---|---|---|
-| | Audit Page | `clipboard-document-check` |
-| | Audit Sidebar | `clipboard-document-check` (outline) |
+| | Help (?) - toggles overlay descriptions | text "?" |
+| | Clear highlight (X) | `x-mark` |
 
-The Hook State tab is grayed out until hooks are adopted (Phase 0b+). It shows "No hooks registered" when selected, and its icon strip panels activate automatically as hooks report state.
+The Hooks tab is grayed out until hooks are adopted (Phase 3). It shows "No hooks registered" when selected, and its icon strip panels activate automatically as hooks report state.
+
+**Overview panel (Checks tab landing page):**
+
+The Overview panel is the default view when the sidebar opens. It displays:
+- A large 0-100 accessibility score (colored green/yellow/red)
+- Rescan, Explain, and Export buttons
+- A list of check cards, one per check module, each showing its own score, error/warning counts
+- Clicking a check card navigates to that check's panel
+- "Audit Page" and "Audit Sidebar" buttons at the bottom
+- The Explain button toggles a breakdown of how each score was calculated
+
+The scoring system weights issues by severity (errors=10, warnings=3) and WCAG level (A=3x, AA=2x, AAA=1x), normalized by item count. The overall score is the average of all check scores. The scoring logic lives in `src/debug/checks/scoring.ts` for reuse by the CLI audit command.
+
+The "Export" button copies a markdown audit report to the clipboard with per-check tables showing issues, severity, WCAG criteria, and fix instructions.
 
 **Sidebar accessibility (the sidebar itself must be fully WCAG compliant):**
 

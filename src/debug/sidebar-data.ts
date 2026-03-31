@@ -3,6 +3,7 @@ import {
   ArrowsUpDownIcon,
   Bars3Icon,
   BarsArrowDownIcon,
+  ChartBarIcon,
   ChatBubbleLeftIcon,
   ClipboardDocumentCheckIcon,
   ClockIcon,
@@ -47,76 +48,42 @@ export interface CategoryDef {
 
 export const categories: CategoryDef[] = [
   {
-    id: "focus",
-    label: "Focus",
+    id: "checks",
+    label: "Checks",
     panels: [
-      { id: "focus-tracker", label: "Live Focus Tracker", icon: EyeIcon },
-      {
-        id: "focus-trap",
-        label: "Focus Trap Detector",
-        icon: LockClosedIcon,
-      },
-      {
-        id: "focus-loss",
-        label: "Focus Loss Detector",
-        icon: ExclamationTriangleIcon,
-      },
-      {
-        id: "focus-history",
-        label: "Focus History Log",
-        icon: ClockIcon,
-        isLog: true,
-      },
-      {
-        id: "focus-order",
-        label: "Focus Order Recorder",
-        icon: ListBulletIcon,
-      },
-    ],
-  },
-  {
-    id: "structure",
-    label: "Structure",
-    panels: [
-      {
-        id: "inspector",
-        label: "Element Inspector",
-        icon: MagnifyingGlassIcon,
-      },
-      { id: "aria-tree", label: "ARIA Tree View", icon: Bars3Icon },
+      { id: "overview", label: "Overview", icon: ChartBarIcon },
       {
         id: "headings",
         label: "Heading Hierarchy",
         icon: BarsArrowDownIcon,
       },
-      {
-        id: "duplicate-ids",
-        label: "Duplicate ID Detector",
-        icon: DocumentDuplicateIcon,
-      },
-      { id: "tab-order", label: "Tab Order Overlay", icon: HashtagIcon },
-    ],
-  },
-  {
-    id: "validate",
-    label: "Validate",
-    panels: [
-      {
-        id: "aria-validation",
-        label: "ARIA Validation",
-        icon: ShieldCheckIcon,
-      },
+      { id: "form-labels", label: "Form Label Checker", icon: TagIcon },
       {
         id: "contrast",
         label: "Color Contrast Checker",
         icon: SwatchIcon,
       },
-      { id: "form-labels", label: "Form Label Checker", icon: TagIcon },
       { id: "images", label: "Image Audit", icon: PhotoIcon },
       {
         id: "links-buttons",
-        label: "Link & Button Text Audit",
+        label: "Link & Button Audit",
         icon: LinkIcon,
+      },
+      {
+        id: "aria-validation",
+        label: "ARIA Validation",
+        icon: ShieldCheckIcon,
+      },
+      { id: "landmarks", label: "Landmark Summary", icon: MapIcon },
+      {
+        id: "duplicate-ids",
+        label: "Duplicate ID Detector",
+        icon: DocumentDuplicateIcon,
+      },
+      {
+        id: "touch-targets",
+        label: "Touch Target Size",
+        icon: CursorArrowRaysIcon,
       },
       {
         id: "reduced-motion",
@@ -130,11 +97,24 @@ export const categories: CategoryDef[] = [
     label: "Tools",
     panels: [
       {
+        id: "inspector",
+        label: "Element Inspector",
+        icon: MagnifyingGlassIcon,
+      },
+      { id: "focus-tracker", label: "Live Focus Tracker", icon: EyeIcon },
+      {
         id: "keyboard-log",
         label: "Keyboard Event Log",
         icon: CommandLineIcon,
         isLog: true,
       },
+      {
+        id: "screen-reader",
+        label: "Screen Reader Text Preview",
+        icon: ChatBubbleLeftIcon,
+      },
+      { id: "aria-tree", label: "ARIA Tree View", icon: Bars3Icon },
+      { id: "tab-order", label: "Tab Order Overlay", icon: HashtagIcon },
       {
         id: "announcements",
         label: "Announcements Log",
@@ -147,16 +127,36 @@ export const categories: CategoryDef[] = [
         icon: SignalIcon,
       },
       {
-        id: "screen-reader",
-        label: "Screen Reader Text Preview",
-        icon: ChatBubbleLeftIcon,
+        id: "focus-history",
+        label: "Focus History Log",
+        icon: ClockIcon,
+        isLog: true,
       },
-      { id: "landmarks", label: "Landmark Summary", icon: MapIcon },
+      {
+        id: "focus-loss",
+        label: "Focus Loss Detector",
+        icon: ExclamationTriangleIcon,
+      },
+      {
+        id: "focus-trap",
+        label: "Focus Trap Detector",
+        icon: LockClosedIcon,
+      },
+      {
+        id: "focus-order",
+        label: "Focus Order Recorder",
+        icon: ListBulletIcon,
+      },
+      {
+        id: "audit-report",
+        label: "WCAG Audit Report",
+        icon: ClipboardDocumentCheckIcon,
+      },
     ],
   },
   {
     id: "hooks",
-    label: "Hook State",
+    label: "Hooks",
     disabled: true,
     panels: [
       {
@@ -230,27 +230,5 @@ export const overlayToggles: OverlayToggleDef[] = [
     label: "Forced Colors",
     description: "Simulate high contrast / forced colors mode",
     icon: EyeDropperIcon,
-  },
-];
-
-export interface FooterActionDef {
-  id: string;
-  label: string;
-  ariaLabel: string;
-  icon: ComponentType<{ className?: string }>;
-}
-
-export const footerActions: FooterActionDef[] = [
-  {
-    id: "audit-page",
-    label: "Audit Page",
-    ariaLabel: "Run WCAG audit on entire page",
-    icon: ClipboardDocumentCheckIcon,
-  },
-  {
-    id: "audit-sidebar",
-    label: "Audit Sidebar",
-    ariaLabel: "Run WCAG audit on the sidebar itself",
-    icon: ClipboardDocumentCheckIcon,
   },
 ];

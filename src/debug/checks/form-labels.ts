@@ -88,12 +88,15 @@ export function scanFormControls(
     const hasIssue =
       labelMethod === "none" || labelMethod === "placeholder-only";
 
+    const component = getReactComponentName(el);
+    const inComponent = component ? ` (in ${component})` : "";
+
     items.push({
       tag,
       type,
       label,
       labelMethod,
-      component: getReactComponentName(el),
+      component,
       element: el,
       hasIssue,
     });
@@ -103,7 +106,7 @@ export function scanFormControls(
         type: "no-label",
         severity: "error",
         wcag: "3.3.2",
-        message: `<${tag} type="${type}"> has no accessible label`,
+        message: `<${tag} type="${type}"> has no accessible label${inComponent}`,
         fix: `Add a <label> element with for="${el.id || "..."}" or wrap the input in a <label>, or add aria-label`,
         element: el,
       });
@@ -112,7 +115,7 @@ export function scanFormControls(
         type: "placeholder-only",
         severity: "warning",
         wcag: "3.3.2",
-        message: `<${tag} type="${type}"> uses placeholder as only label`,
+        message: `<${tag} type="${type}"> uses placeholder as only label${inComponent}`,
         fix: "Add a proper <label> - placeholder disappears on focus and is not a substitute",
         element: el,
       });

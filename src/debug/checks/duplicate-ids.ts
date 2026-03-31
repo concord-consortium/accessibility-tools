@@ -66,11 +66,18 @@ export function scanDuplicateIds(
         })),
         ariaRefs,
       });
+      const components = elements
+        .map((el) => getReactComponentName(el))
+        .filter(Boolean);
+      const inComponents =
+        components.length > 0
+          ? ` (in ${[...new Set(components)].join(", ")})`
+          : "";
       issues.push({
         type: "duplicate-id",
         severity: "error",
         wcag: "1.3.1",
-        message: `Duplicate id="${id}" - ${elements.length} elements share this ID`,
+        message: `Duplicate id="${id}" - ${elements.length} elements share this ID${inComponents}`,
         fix: `Make each id attribute unique, e.g., "${id}-1", "${id}-2"`,
         element: elements[0],
       });

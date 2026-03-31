@@ -29,7 +29,8 @@ export function scanHeadings(
     if (level === 1) h1Count++;
 
     if (prevLevel > 0 && level > prevLevel + 1) {
-      const msg = `h${level} follows h${prevLevel} - skipped h${prevLevel + 1}`;
+      const component = getReactComponentName(el);
+      const msg = `h${level} follows h${prevLevel} - skipped h${prevLevel + 1}${component ? ` (in ${component})` : ""}`;
       issues.push({
         type: "skipped-level",
         severity: "error",

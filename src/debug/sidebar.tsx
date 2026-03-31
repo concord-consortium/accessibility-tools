@@ -10,7 +10,6 @@ import {
   type CategoryDef,
   type PanelDef,
   categories,
-  footerActions,
   overlayToggles,
 } from "./sidebar-data";
 import { injectStyles } from "./styles";
@@ -227,7 +226,16 @@ export function AccessibilityDebugSidebar({
                 {currentPanel && panelComponents[currentPanel.id] ? (
                   (() => {
                     const PanelComponent = panelComponents[currentPanel.id];
-                    return <PanelComponent />;
+                    return (
+                      <PanelComponent
+                        onNavigateToPanel={(panelId: string) => {
+                          setActivePanels((prev) => ({
+                            ...prev,
+                            [currentCategory.id]: panelId,
+                          }));
+                        }}
+                      />
+                    );
                   })()
                 ) : (
                   <>
@@ -314,24 +322,6 @@ export function AccessibilityDebugSidebar({
         >
           <XMarkIcon className="a11y-icon" />
         </button>
-      </div>
-
-      {/* Footer */}
-      <div className="a11y-sidebar-footer">
-        {footerActions.map((action) => {
-          const Icon = action.icon;
-          return (
-            <button
-              key={action.id}
-              type="button"
-              className="a11y-sidebar-footer-btn"
-              aria-label={action.ariaLabel}
-            >
-              <Icon className="a11y-icon" />
-              {action.label}
-            </button>
-          );
-        })}
       </div>
     </div>
   );
