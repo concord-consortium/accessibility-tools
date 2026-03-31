@@ -44,6 +44,14 @@ export {
   type AccessibleInfo,
 } from "./accname";
 
-export { computeContrast, contrastRatio, formatRatio } from "./contrast";
+export {
+  computeContrast,
+  contrastRatio,
+  formatRatio,
+  rgbaToHex,
+  parseRgbString,
+  suggestFixColor,
+  getPrimaryClass,
+} from "./contrast";
 
 export { pluralize } from "./pluralize";

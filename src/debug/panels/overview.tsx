@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { scanAriaValidation } from "../checks/aria-validation";
+import { generateAuditMarkdown, runAudit } from "../checks/audit";
 import { scanColorContrast } from "../checks/color-contrast";
 import { scanDuplicateIds } from "../checks/duplicate-ids";
 import { scanFormControls } from "../checks/form-labels";
@@ -15,7 +16,7 @@ import {
   generateMarkdownReport,
 } from "../checks/scoring";
 import { scanTouchTargets } from "../checks/touch-targets";
-import { pluralize, showToast } from "../utils";
+import { pluralize, showToast, withSelfExclusionDisabled } from "../utils";
 
 interface OverviewPanelProps {
   onNavigateToPanel?: (panelId: string) => void;
@@ -177,18 +178,45 @@ export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
         <button
           type="button"
           className="a11y-panel-btn"
-          aria-label="Run WCAG audit on entire page (coming soon)"
-          title="Coming soon - requires full audit engine (Tier 6)"
-          disabled
+          aria-label="Run WCAG audit on entire page"
+          onClick={() => {
+            showToast("Running page audit...");
+            requestAnimationFrame(() => {
+              const report = runAudit(document);
+              const md = generateAuditMarkdown(report);
+              navigator.clipboard.writeText(md).then(
+                () =>
+                  showToast(
+                    `Audit complete: ${pluralize(report.totalFailing, "failing criterion", "failing criteria")} - copied to clipboard`,
+                  ),
+                () => showToast("Failed to copy - check clipboard permissions"),
+              );
+            });
+          }}
         >
           Audit Page
         </button>
         <button
           type="button"
           className="a11y-panel-btn"
-          aria-label="Run WCAG audit on the sidebar itself (coming soon)"
-          title="Coming soon - requires full audit engine (Tier 6)"
-          disabled
+          aria-label="Run WCAG audit on the sidebar itself"
+          onClick={() => {
+            showToast("Running sidebar audit...");
+            requestAnimationFrame(() => {
+              const report = withSelfExclusionDisabled(() => {
+                const sidebar = document.querySelector(".a11y-debug-sidebar");
+                return sidebar ? runAudit(sidebar) : runAudit(document);
+              });
+              const md = generateAuditMarkdown(report);
+              navigator.clipboard.writeText(md).then(
+                () =>
+                  showToast(
+                    `Sidebar audit: ${pluralize(report.totalFailing, "failing criterion", "failing criteria")} - copied to clipboard`,
+                  ),
+                () => showToast("Failed to copy - check clipboard permissions"),
+              );
+            });
+          }}
         >
           Audit Sidebar
         </button>

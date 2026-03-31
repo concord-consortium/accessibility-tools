@@ -217,3 +217,99 @@ export function computeContrast(el: Element): ContrastResult {
 export function formatRatio(ratio: number): string {
   return `${ratio.toFixed(1)}:1`;
 }
+
+/**
+ * Convert an RGBA color to hex string.
+ */
+export function rgbaToHex(color: RGBA): string {
+  const r = Math.round(color.r).toString(16).padStart(2, "0");
+  const g = Math.round(color.g).toString(16).padStart(2, "0");
+  const b = Math.round(color.b).toString(16).padStart(2, "0");
+  return `#${r}${g}${b}`;
+}
+
+/**
+ * Parse an rgb/rgba string back to RGBA.
+ */
+export function parseRgbString(str: string): RGBA | null {
+  const m = str.match(
+    /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+))?\s*\)/,
+  );
+  if (!m) return null;
+  return {
+    r: Number(m[1]),
+    g: Number(m[2]),
+    b: Number(m[3]),
+    a: m[4] !== undefined ? Number(m[4]) : 1,
+  };
+}
+
+/**
+ * Find the nearest color to `fg` that passes the target contrast ratio
+ * against `bg`. Adjusts luminance via binary search - darkens if fg is
+ * lighter than bg, lightens if fg is darker.
+ */
+export function suggestFixColor(
+  fg: RGBA,
+  bg: RGBA,
+  targetRatio: number,
+): string {
+  const bgLum = relativeLuminance(bg);
+  const fgLum = relativeLuminance(fg);
+  // Move fg away from bg. If bg is light, darken fg. If bg is dark, lighten fg.
+  // But if fg is already at the extreme we'd move toward, flip direction.
+  let shouldDarken = bgLum > 0.5;
+  if (shouldDarken && fgLum < 0.01) shouldDarken = false;
+  if (!shouldDarken && fgLum > 0.99) shouldDarken = true;
+
+  // Overshoot slightly to account for hex rounding
+  const adjustedTarget = targetRatio + 0.1;
+
+  // Binary search on a 0-1 scale where 0 = original fg, 1 = black or white
+  let lo = 0;
+  let hi = 1;
+  let bestColor = fg;
+
+  for (let i = 0; i < 30; i++) {
+    const t = (lo + hi) / 2;
+    const candidate: RGBA = shouldDarken
+      ? { r: fg.r * (1 - t), g: fg.g * (1 - t), b: fg.b * (1 - t), a: 1 }
+      : {
+          r: fg.r + (255 - fg.r) * t,
+          g: fg.g + (255 - fg.g) * t,
+          b: fg.b + (255 - fg.b) * t,
+          a: 1,
+        };
+
+    const ratio = contrastRatio(candidate, bg);
+    if (ratio >= adjustedTarget) {
+      bestColor = candidate;
+      // Found a passing color - try to stay closer to original
+      hi = t;
+    } else {
+      // Not passing yet - go further from original
+      lo = t;
+    }
+  }
+
+  return rgbaToHex(bestColor);
+}
+
+/**
+ * Get the first meaningful CSS class from an element.
+ */
+export function getPrimaryClass(el: Element): string | null {
+  const classAttr = el.getAttribute("class") || "";
+  const classes = classAttr.split(/\s+/).filter(Boolean);
+  // Skip state/modifier classes that start with common prefixes
+  for (const cls of classes) {
+    if (
+      !cls.startsWith("active") &&
+      !cls.startsWith("disabled") &&
+      !cls.startsWith("hover")
+    ) {
+      return cls;
+    }
+  }
+  return classes[0] || null;
+}

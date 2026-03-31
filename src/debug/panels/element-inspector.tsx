@@ -7,13 +7,16 @@
  */
 
 import { useEffect, useState } from "react";
+import { generateAuditMarkdown, runAudit } from "../checks/audit";
 import {
   describeElement,
   getReactComponentName,
   getReactFiberPath,
   highlightElement,
+  pluralize,
   removeHighlight,
   scrollToAndHighlight,
+  showToast,
 } from "../utils";
 
 const ARIA_ATTRIBUTES = [
@@ -197,6 +200,27 @@ export function ElementInspectorPanel({
           onClick={() => scrollToAndHighlight(element)}
         >
           Locate
+        </button>
+        <button
+          type="button"
+          className="a11y-panel-btn"
+          aria-label="Run WCAG audit on this element's subtree"
+          onClick={() => {
+            showToast("Running audit...");
+            requestAnimationFrame(() => {
+              const report = runAudit(element);
+              const md = generateAuditMarkdown(report);
+              navigator.clipboard.writeText(md).then(
+                () =>
+                  showToast(
+                    `Audit: ${pluralize(report.totalFailing, "failing criterion", "failing criteria")} - copied to clipboard`,
+                  ),
+                () => showToast("Failed to copy - check clipboard permissions"),
+              );
+            });
+          }}
+        >
+          Audit
         </button>
       </div>
 

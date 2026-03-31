@@ -52,7 +52,7 @@ export function AnimationMotionSection() {
         className="anim-reduced"
         style={{
           padding: "4px 8px",
-          background: "#16a34a",
+          background: "#15803d",
           color: "white",
           display: "inline-block",
         }}

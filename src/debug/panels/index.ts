@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { AnnouncementsLogPanel } from "./announcements-log";
 import { AriaTreePanel } from "./aria-tree";
 import { AriaValidationPanel } from "./aria-validation";
+import { AuditReportPanel } from "./audit-report";
 import { ColorContrastPanel } from "./color-contrast";
 import { DuplicateIdPanel } from "./duplicate-ids";
 import { ElementInspectorPanel } from "./element-inspector";
@@ -58,4 +59,5 @@ export const panelComponents: Record<
   contrast: ColorContrastPanel,
   "links-buttons": LinksButtonsPanel,
   "aria-tree": AriaTreePanel,
+  "audit-report": AuditReportPanel,
 };

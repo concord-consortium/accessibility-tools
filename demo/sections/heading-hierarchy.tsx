@@ -6,7 +6,7 @@ export function HeadingHierarchySection() {
       <p className="good">
         <strong>Good: Correct hierarchy</strong>
       </p>
-      <div style={{ paddingLeft: 16, borderLeft: "2px solid #16a34a" }}>
+      <div style={{ paddingLeft: 16, borderLeft: "2px solid #15803d" }}>
         <h3>Level 3 heading</h3>
         <p>Content under h3</p>
         <h4>Level 4 heading</h4>

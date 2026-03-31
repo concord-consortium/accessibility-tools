@@ -222,12 +222,12 @@ The implementation is structured in phases, each building on the previous. All h
 
   ### Tier 6: Capstone
 
-  - [ ] 24. WCAG Audit Report Generator
-    - Runs checks from Heading Hierarchy, Form Labels, ARIA Validation, Contrast, Touch Targets, Image Audit, accessible name computation
-    - Produces scoped markdown report organized by WCAG success criterion with copy-to-clipboard
-    - Wire up Overview panel "Audit Page" button (runs audit against document root)
-    - Wire up Overview panel "Audit Sidebar" button (temporarily disables self-exclusion, audits sidebar DOM subtree)
-    - Last panel - depends on all audit utilities being built
+  - [x] 24. WCAG Audit Report Generator
+    - Runs all 10 check modules against scoped root element
+    - Report organized by WCAG success criterion (passing/failing)
+    - Export as markdown to clipboard
+    - Overview "Audit Page" button wired up (runs against document root)
+    - Overview "Audit Sidebar" button wired up (withSelfExclusionDisabled)
 
 - [ ] Standalone injection mode (standalone.js entry point):
   - [ ] Self-contained bundle with React included

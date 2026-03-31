@@ -1,5 +1,5 @@
 export type { CheckIssue, CheckResult, SerializedCheckIssue } from "./types";
-export { serializeIssue } from "./types";
+export { serializeIssue, describeIssueElement } from "./types";
 export { scanHeadings, type HeadingItem } from "./headings";
 export { scanLandmarks, type LandmarkItem } from "./landmarks";
 export { scanDuplicateIds, type DuplicateIdGroup } from "./duplicate-ids";
@@ -13,6 +13,12 @@ export {
   type AriaIssueItem,
 } from "./aria-validation";
 export { scanTouchTargets, type TouchTargetItem } from "./touch-targets";
+export {
+  runAudit,
+  generateAuditMarkdown,
+  type AuditReport,
+  type AuditCriterion,
+} from "./audit";
 export {
   scoreCheck,
   scoreColor,

@@ -8,7 +8,11 @@
  * Used by the Overview panel and the CLI audit command.
  */
 
-import type { CheckIssue, CheckResult } from "./types";
+import {
+  type CheckIssue,
+  type CheckResult,
+  describeIssueElement,
+} from "./types";
 
 /** Weight multipliers for issue severity */
 const SEVERITY_WEIGHTS = {
@@ -162,32 +166,43 @@ export function calculateOverallScore(
  */
 export function generateMarkdownReport(scores: OverallScore): string {
   const lines: string[] = [];
-  lines.push("## Accessibility Audit Report");
+  lines.push("# Accessibility Audit Report");
   lines.push("");
   if (typeof window !== "undefined") {
     lines.push(`URL: ${window.location.href}`);
     lines.push("");
   }
-  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(
+    `Generated: ${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "medium" }).format(new Date())}`,
+  );
   lines.push("");
   lines.push(`**Overall Score: ${scores.score}/100**`);
   lines.push("");
 
   for (const check of scores.checks) {
-    lines.push(`### ${check.label} - ${check.score}/100`);
+    lines.push(`## ${check.label} - ${check.score}/100`);
     if (check.issues.length === 0) {
       lines.push("No issues found.");
     } else {
       lines.push("");
-      lines.push("| Issue | Severity | WCAG | Fix |");
-      lines.push("|---|---|---|---|");
+      lines.push("| Element | Issue | Severity | WCAG | Fix |");
+      lines.push("|---|---|---|---|---|");
       const esc = (s: string) => s.replace(/\|/g, "\\|");
-      for (const issue of check.issues) {
+      const sortedIssues = [...check.issues].sort((a, b) => {
+        if (a.severity !== b.severity) return a.severity === "error" ? -1 : 1;
+        const aDesc = a.element ? describeIssueElement(a.element) : "";
+        const bDesc = b.element ? describeIssueElement(b.element) : "";
+        return aDesc.localeCompare(bDesc);
+      });
+      for (const issue of sortedIssues) {
         const wcag = issue.wcag
           ? `${issue.wcag}${issue.wcagLevel ? ` (${issue.wcagLevel})` : ""}`
           : "-";
+        const elementDesc = issue.element
+          ? describeIssueElement(issue.element)
+          : "-";
         lines.push(
-          `| ${esc(issue.message)} | ${issue.severity} | ${wcag} | ${esc(issue.fix || "-")} |`,
+          `| ${esc(elementDesc)} | ${esc(issue.message)} | ${issue.severity} | ${wcag} | ${esc(issue.fix || "-")} |`,
         );
       }
     }

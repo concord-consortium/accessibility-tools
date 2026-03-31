@@ -195,7 +195,7 @@ describe("generateMarkdownReport", () => {
       { id: "a", label: "Check A", result: { items: [{}], issues: [] } },
     ]);
     const md = generateMarkdownReport(scores);
-    expect(md).toContain("## Accessibility Audit Report");
+    expect(md).toContain("# Accessibility Audit Report");
     expect(md).toContain(`**Overall Score: ${scores.score}/100**`);
   });
 
@@ -205,8 +205,8 @@ describe("generateMarkdownReport", () => {
       { id: "b", label: "Check B", result: { items: [{}], issues: [] } },
     ]);
     const md = generateMarkdownReport(scores);
-    expect(md).toContain("### Check A");
-    expect(md).toContain("### Check B");
+    expect(md).toContain("## Check A");
+    expect(md).toContain("## Check B");
     expect(md).toContain("No issues found.");
   });
 
@@ -251,7 +251,7 @@ describe("generateMarkdownReport", () => {
     ]);
     const md = generateMarkdownReport(scores);
     // Header, blank, URL, blank, Generated, blank, Score
-    expect(md).toMatch(/## Accessibility Audit Report\n\n/);
+    expect(md).toMatch(/# Accessibility Audit Report\n\n/);
     expect(md).toMatch(/URL:.*\n\n/);
     expect(md).toMatch(/Generated:.*\n\n/);
   });

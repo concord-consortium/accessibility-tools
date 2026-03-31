@@ -102,8 +102,9 @@ body {
 }
 
 .kitchen-sink h3.good,
-.kitchen-sink p.good {
-  color: #16a34a;
+.kitchen-sink p.good,
+.kitchen-sink strong.good {
+  color: #15803d;
 }
 .kitchen-sink h3.bad,
 .kitchen-sink p.bad {

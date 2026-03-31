@@ -58,7 +58,7 @@ export function LandmarksSection() {
       </section>
 
       <h3 className="good">Good: section with heading</h3>
-      <section style={{ border: "1px solid #16a34a", padding: 8 }}>
+      <section style={{ border: "1px solid #15803d", padding: 8 }}>
         <h4>Section with proper heading</h4>
         <p>This section can be identified by its heading.</p>
       </section>

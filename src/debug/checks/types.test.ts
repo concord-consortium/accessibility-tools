@@ -27,7 +27,7 @@ describe("serializeIssue", () => {
       message: "No label",
       element: el,
     });
-    expect(result.element).toBe('<input id="email">');
+    expect(result.element).toContain("<input#email>");
   });
 
   it("serializes element without id", () => {

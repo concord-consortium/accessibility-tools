@@ -49,8 +49,45 @@ export function serializeIssue(issue: CheckIssue): SerializedCheckIssue {
   const { element, ...rest } = issue;
   return {
     ...rest,
-    element: element
-      ? `<${element.tagName?.toLowerCase() ?? "unknown"}${element.id ? ` id="${element.id}"` : ""}>`
-      : undefined,
+    element: element ? describeIssueElement(element) : undefined,
   };
+}
+
+/**
+ * Get visible text from an element, inserting spaces between child nodes
+ * to avoid run-together text like "ChecksToolsHooks".
+ */
+function getVisibleText(el: Element): string {
+  const parts: string[] = [];
+  const walker = el.ownerDocument.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  let node = walker.nextNode();
+  while (node) {
+    const text = node.textContent?.trim();
+    if (text) parts.push(text);
+    node = walker.nextNode();
+  }
+  return parts.join(" ").trim();
+}
+
+/**
+ * Produce a rich element description for audit reports.
+ * Includes tag, id, classes, text snippet, and role.
+ * e.g., `<button.a11y-panel-btn> "Rescan"` or `<span#score> "96"`
+ */
+export function describeIssueElement(el: Element): string {
+  const tag = el.tagName?.toLowerCase() ?? "unknown";
+  const id = el.id ? `#${el.id}` : "";
+  const classAttr = el.getAttribute("class") || "";
+  const classes = classAttr
+    ? `.${classAttr.split(/\s+/).filter(Boolean).slice(0, 2).join(".")}`
+    : "";
+  const role = el.getAttribute("role");
+  const roleStr = role ? `[role="${role}"]` : "";
+
+  // Text snippet: first 30 chars of visible text, with spaces between child nodes
+  const text = getVisibleText(el);
+  const snippet = text.length > 30 ? `${text.slice(0, 30)}...` : text;
+  const textStr = snippet ? ` "${snippet}"` : "";
+
+  return `<${tag}${id}${classes}${roleStr}>${textStr}`;
 }

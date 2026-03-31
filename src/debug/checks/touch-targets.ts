@@ -1,4 +1,5 @@
 import { getReactComponentName, isInsideSidebar } from "../utils";
+import { getPrimaryClass } from "../utils/contrast";
 import type { CheckIssue, CheckResult } from "./types";
 
 export interface TouchTargetItem {
@@ -54,6 +55,8 @@ export function scanTouchTargets(
 
     items.push({ element: el, width, height, meetsAA, meetsAAA, component });
 
+    const cls = getPrimaryClass(el);
+    const selector = cls ? `.${cls}` : el.tagName.toLowerCase();
     if (!meetsAA) {
       issues.push({
         type: "touch-target-small",
@@ -61,7 +64,7 @@ export function scanTouchTargets(
         wcag: "2.5.8",
         wcagLevel: "AA",
         message: `${width}x${height}px target (min ${AA_MIN}x${AA_MIN}px)${inComponent}`,
-        fix: `Increase size to at least ${AA_MIN}x${AA_MIN}px via padding or min-width/min-height`,
+        fix: `Add min-height: ${AA_MIN}px to ${selector}`,
         element: el,
       });
     } else if (!meetsAAA) {
@@ -71,7 +74,7 @@ export function scanTouchTargets(
         wcag: "2.5.8",
         wcagLevel: "AAA",
         message: `${width}x${height}px target (AAA requires ${AAA_MIN}x${AAA_MIN}px)${inComponent}`,
-        fix: `Increase size to ${AAA_MIN}x${AAA_MIN}px for AAA compliance`,
+        fix: `Add min-height: ${AAA_MIN}px to ${selector}`,
         element: el,
       });
     }
