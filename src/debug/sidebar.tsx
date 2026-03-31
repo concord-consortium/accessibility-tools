@@ -38,6 +38,9 @@ export function AccessibilityDebugSidebar({
   );
   const [activeOverlays, setActiveOverlays] = useState<Set<string>>(new Set());
   const [showOverlayHelp, setShowOverlayHelp] = useState(false);
+  const [inspectTarget, setInspectTarget] = useState<Element | undefined>(
+    undefined,
+  );
 
   const sidebarRef = useRef<HTMLDivElement>(null);
   const categoryTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -228,12 +231,38 @@ export function AccessibilityDebugSidebar({
                     const PanelComponent = panelComponents[currentPanel.id];
                     return (
                       <PanelComponent
-                        onNavigateToPanel={(panelId: string) => {
-                          setActivePanels((prev) => ({
-                            ...prev,
-                            [currentCategory.id]: panelId,
-                          }));
+                        onNavigateToPanel={(
+                          panelId: string,
+                          context?: unknown,
+                        ) => {
+                          // Find which category owns the target panel
+                          for (const cat of categories) {
+                            const panel = cat.panels.find(
+                              (p) => p.id === panelId,
+                            );
+                            if (panel) {
+                              setActiveCategory(cat.id);
+                              setActivePanels((prev) => ({
+                                ...prev,
+                                [cat.id]: panelId,
+                              }));
+                              break;
+                            }
+                          }
+                          // Pass element context to inspector
+                          if (panelId === "inspector") {
+                            setInspectTarget(
+                              context instanceof Element ? context : undefined,
+                            );
+                          } else {
+                            setInspectTarget(undefined);
+                          }
                         }}
+                        inspectTarget={
+                          currentPanel.id === "inspector"
+                            ? inspectTarget
+                            : undefined
+                        }
                       />
                     );
                   })()

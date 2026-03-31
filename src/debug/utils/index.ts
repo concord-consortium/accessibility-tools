@@ -24,3 +24,8 @@ export {
 } from "./focus-stream";
 
 export { showToast } from "./toast";
+
+export {
+  useFocusStream,
+  type FocusHistoryEntry,
+} from "./use-focus-stream";

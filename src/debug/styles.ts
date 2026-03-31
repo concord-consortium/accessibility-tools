@@ -621,6 +621,292 @@ const CSS = `
 .a11y-debug-sidebar[data-theme="dark"] .a11y-overview-check-pass {
   color: #4ade80;
 }
+
+/* Focus panels shared */
+.a11y-focus-empty {
+  color: var(--a11y-sidebar-text-muted);
+  font-size: 11px;
+  font-style: italic;
+  padding: 8px 0;
+}
+.a11y-focus-current {
+  margin-bottom: 8px;
+}
+.a11y-focus-element-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.a11y-panel-component-name {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--a11y-sidebar-text);
+}
+.a11y-focus-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.a11y-focus-attr {
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  padding: 1px 0;
+}
+.a11y-focus-attr-key {
+  color: #7c3aed;
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+  min-width: 80px;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-focus-attr-key {
+  color: #a78bfa;
+}
+.a11y-focus-attr-value {
+  color: var(--a11y-sidebar-text);
+  font-family: monospace;
+  font-size: 10px;
+  word-break: break-all;
+}
+
+/* Focus path breadcrumb */
+.a11y-focus-path {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--a11y-sidebar-border);
+}
+.a11y-focus-path-label {
+  color: var(--a11y-sidebar-text-muted);
+  font-size: 10px;
+  display: block;
+  margin-bottom: 2px;
+}
+.a11y-focus-breadcrumb {
+  font-size: 11px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+.a11y-focus-breadcrumb-sep {
+  color: var(--a11y-sidebar-text-muted);
+}
+.a11y-focus-breadcrumb-current {
+  font-weight: 600;
+}
+.a11y-focus-previous {
+  margin-top: 6px;
+  font-size: 11px;
+}
+.a11y-focus-previous-desc {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+/* Element Inspector */
+.a11y-inspector-section {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--a11y-sidebar-border);
+}
+.a11y-inspector-section:last-child {
+  border-bottom: none;
+}
+.a11y-inspector-heading {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--a11y-sidebar-text-muted);
+  margin-bottom: 4px;
+}
+.a11y-inspector-warning {
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 0;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-inspector-warning {
+  color: #f87171;
+}
+
+/* Focus Loss Detector */
+.a11y-focus-loss-time {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.a11y-focus-loss-cause {
+  color: #dc2626;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-focus-loss-cause {
+  color: #f87171;
+}
+
+/* Focus History Log */
+.a11y-focus-history-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.a11y-focus-history-body {
+  opacity: 0.5;
+}
+.a11y-focus-history-name {
+  flex: 1;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.a11y-focus-history-time {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.a11y-focus-history-duration {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* Focus Trap Detector */
+.a11y-trap-card {
+  border: 1px solid var(--a11y-sidebar-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+}
+.a11y-trap-card-active {
+  border-color: #dc2626;
+}
+.a11y-trap-card-intentional {
+  border-left: 3px solid #2563eb;
+}
+.a11y-trap-card-accidental {
+  border-left: 3px solid #dc2626;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-trap-card-active {
+  border-color: #f87171;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-trap-card-intentional {
+  border-left-color: #60a5fa;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-trap-card-accidental {
+  border-left-color: #f87171;
+}
+.a11y-trap-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.a11y-trap-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+.a11y-trap-badge-intentional {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.a11y-trap-badge-accidental {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-trap-badge-intentional {
+  background: #1e3a5f;
+  color: #60a5fa;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-trap-badge-accidental {
+  background: #3b1111;
+  color: #f87171;
+}
+.a11y-trap-cycle-count {
+  color: var(--a11y-sidebar-text-muted);
+  font-size: 10px;
+  flex: 1;
+}
+.a11y-trap-active-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc2626;
+  animation: a11y-trap-pulse 1s ease-in-out infinite;
+}
+@keyframes a11y-trap-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+.a11y-trap-active-badge {
+  color: #dc2626;
+  font-weight: 600;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-trap-active-badge {
+  color: #f87171;
+}
+.a11y-trap-container {
+  color: var(--a11y-sidebar-text-muted);
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+.a11y-trap-elements {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.a11y-trap-order {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  min-width: 16px;
+  text-align: right;
+}
+
+/* Focus Order Recorder */
+.a11y-recorder-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 11px;
+  color: #dc2626;
+  font-weight: 500;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-recorder-status {
+  color: #f87171;
+}
+.a11y-recorder-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dc2626;
+  animation: a11y-trap-pulse 1s ease-in-out infinite;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-recorder-dot {
+  background: #f87171;
+}
+.a11y-recorder-order {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  min-width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
 `;
 
 const injectedTargets = new WeakSet<Document | ShadowRoot>();

@@ -143,23 +143,31 @@ The implementation is structured in phases, each building on the previous. All h
 
   ### Tier 2: Focus panels (share the focus event stream)
 
-  - [ ] 1. Live Focus Tracker
+  - [x] 1. Live Focus Tracker
     - Uses focus event stream + fiber traversal + highlight utility
     - Foundation for all other focus panels
-  - [ ] 5. Element Inspector
-    - Click-to-inspect from Focus Tracker
-    - Full ARIA attribute dump + fiber path
-    - Build early: other panels link to it (Focus History, Contrast Overlay, etc.)
-  - [ ] 15. Focus Loss Detector
+    - Highlight toggle, Inspect button navigates to Element Inspector
+  - [x] 5. Element Inspector
+    - Click-to-pick from page or navigate from Focus Tracker/History
+    - Full ARIA attribute dump + fiber path + tab order info
+    - Missing accessible name warning on interactive elements
+  - [x] 15. Focus Loss Detector
     - Watches for `document.body` focus after a specific element was focused
-  - [ ] 18. Focus History Log
+    - Detects cause: removed from DOM, display:none, visibility:hidden, disabled
+    - Click row to highlight previous element
+  - [x] 18. Focus History Log
     - Passive log of all focus events, renders as `role="log"`
     - Click any row to open in Element Inspector
-  - [ ] 7. Focus Trap Detector (heuristic)
-    - Cycle detection on focus event stream
-  - [ ] 13. Focus Order Recorder
-    - Record/stop/compare/export workflow
-    - Most complex in this tier
+    - Color-coded dots by component, duration tracking
+  - [x] Shared: useFocusStream hook + FocusHistoryEntry with duration
+  - [x] 7. Focus Trap Detector (heuristic)
+    - Cycle detection on focus event stream (2-20 elements, 2+ repetitions)
+    - Distinguishes intentional (dialog/modal) from accidental traps
+    - Pulsing active indicator, container identification
+  - [x] 13. Focus Order Recorder
+    - Record/stop workflow with live event counter
+    - Export as markdown table or JSON to clipboard
+    - Click any step to scroll-to-highlight
 
   ### Tier 3: Keyboard, announcements, and live regions
 
