@@ -15,7 +15,7 @@ import {
   generateMarkdownReport,
 } from "../checks/scoring";
 import { scanTouchTargets } from "../checks/touch-targets";
-import { showToast } from "../utils";
+import { pluralize, showToast } from "../utils";
 
 interface OverviewPanelProps {
   onNavigateToPanel?: (panelId: string) => void;
@@ -63,7 +63,7 @@ export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
       const warnings = result.checks.reduce((n, c) => n + c.warningCount, 0);
       showToast(
         errors + warnings > 0
-          ? `Rescan complete: ${errors} error${errors !== 1 ? "s" : ""}, ${warnings} warning${warnings !== 1 ? "s" : ""}`
+          ? `Rescan complete: ${pluralize(errors, "error")}, ${pluralize(warnings, "warning")}`
           : "Rescan complete: no issues found",
       );
     }
@@ -141,8 +141,8 @@ export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
             type="button"
             key={check.id}
             className={`a11y-overview-check-card ${check.errorCount > 0 ? "a11y-overview-check-error" : ""}`}
-            aria-label={`${check.label}: score ${check.score}, ${check.errorCount} errors, ${check.warningCount} warnings`}
-            title={`${check.label}: ${check.score}/100 - ${check.errorCount} errors, ${check.warningCount} warnings`}
+            aria-label={`${check.label}: score ${check.score}, ${pluralize(check.errorCount, "error")}, ${pluralize(check.warningCount, "warning")}`}
+            title={`${check.label}: ${check.score}/100 - ${pluralize(check.errorCount, "error")}, ${pluralize(check.warningCount, "warning")}`}
             onClick={() => onNavigateToPanel?.(check.id)}
           >
             <div className="a11y-overview-check-header">
@@ -156,13 +156,12 @@ export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
             <div className="a11y-overview-check-summary">
               {check.errorCount > 0 && (
                 <span className="a11y-overview-check-errors">
-                  {check.errorCount} error{check.errorCount !== 1 ? "s" : ""}
+                  {pluralize(check.errorCount, "error")}
                 </span>
               )}
               {check.warningCount > 0 && (
                 <span className="a11y-overview-check-warnings">
-                  {check.warningCount} warning
-                  {check.warningCount !== 1 ? "s" : ""}
+                  {pluralize(check.warningCount, "warning")}
                 </span>
               )}
               {check.errorCount === 0 && check.warningCount === 0 && (

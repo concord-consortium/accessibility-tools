@@ -10,6 +10,7 @@ import { useState } from "react";
 import {
   describeElement,
   getReactComponentName,
+  pluralize,
   scrollToAndHighlight,
 } from "../utils";
 import type { FocusHistoryEntry } from "../utils/use-focus-stream";
@@ -52,7 +53,7 @@ export function FocusHistoryPanel({ onNavigateToPanel }: FocusHistoryProps) {
       <h3 className="a11y-panel-title">Focus History Log</h3>
       <div className="a11y-panel-toolbar">
         <span className="a11y-panel-count">
-          {clearableCount} event{clearableCount !== 1 ? "s" : ""}
+          {pluralize(clearableCount, "event")}
         </span>
       </div>
 

@@ -187,26 +187,29 @@ The implementation is structured in phases, each building on the previous. All h
 
   ### Tier 4: Accessible name computation + audits + overlays
 
-  - [ ] 14. Screen Reader Text Preview
-    - Build the accessible name computation utility (WAI-ARIA spec)
-    - Reused by Link & Button Audit and WCAG Audit Report
-  - [ ] 23. Link & Button Text Audit
-    - Reuses accessible name computation from Screen Reader Preview
-    - Scan, group duplicates, flag issues
-  - [ ] 22. Image Audit
-    - Scan images/SVG/canvas, categorize by alt text status
-  - [ ] 8. Color Contrast Checker + 19. Contrast Overlay toggle
-    - Build contrast ratio utility + panel
-    - Contrast Overlay reuses the same calculation, build together
-  - [ ] 11. Touch Target Size Checker + Touch Targets overlay toggle
-    - Build size checking utility + panel
-    - Touch Targets overlay reuses the same logic, build together
-  - [ ] 4. Tab Order Overlay (panel + overlay toggle)
-    - Query tabbable elements, sort by tab order, render numbered badges
-    - Same overlay pattern as Contrast and Touch Targets
-  - [ ] 10. ARIA Validation
-    - Complex rule set (many individual checks)
-    - No dependencies on other panels, but benefits from all prior utilities
+  - [x] Shared: accname utility (wraps dom-accessibility-api), contrast utility (ancestor walk + compositing)
+  - [x] 14. Screen Reader Text Preview
+    - Wraps dom-accessibility-api for WAI-ARIA accname computation
+    - Shows name, role, states, description for focused element
+  - [x] 23. Link & Button Text Audit
+    - Scans a[href], button, [role=link], [role=button]
+    - Flags empty names, generic names, duplicate link text to different hrefs
+  - [x] 22. Image Audit
+    - Scans img, svg[role=img]; categorizes: has-alt, decorative, missing, generic, long-alt
+  - [x] 8. Color Contrast Checker + 19. Contrast Overlay toggle
+    - Contrast ratio computation with ancestor background walk
+    - Flags AA/AAA failures, large text thresholds, complex backgrounds
+    - Overlay: ratio badges on text elements (green/yellow/red)
+  - [x] 11. Touch Target Size Checker + Touch Targets overlay toggle
+    - Checks interactive elements against 24x24 AA and 44x44 AAA thresholds
+    - Overlay: dashed outlines on interactive elements
+  - [x] 4. Tab Order panel + overlay toggle
+    - Queries tabbable elements, sorts by browser tab order rules
+    - Flags positive tabindex, shows tabindex=-1 elements separately
+    - Overlay: numbered badges on tabbable elements
+  - [x] 10. ARIA Validation
+    - Invalid roles, broken id refs, aria-hidden on focusable, nested interactives,
+      misused aria-checked/selected, aria-label on non-interactive without role
 
   ### Tier 5: Complex panel
 
@@ -236,6 +239,7 @@ The implementation is structured in phases, each building on the previous. All h
   - [ ] `report` command (always exits 0 - informational)
   - [ ] Options: --level, --scope, --max-failures, --output
   - [ ] Uses Playwright internally to load URL and run audit engine
+    NOTE: keep node_modules small and use the playwright-core package. It includes the API but zero browser binaries, allowing the cli to connect to an existing browser instance or a remote browser server manually.
 - [ ] Playwright plugin (@concord-consortium/accessibility-tools/playwright):
   - [ ] toPassA11yAudit matcher (assertion - fails test on violations)
   - [ ] generateA11yReport (report only - returns results, optional outputPath)

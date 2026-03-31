@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
-import { describeElement, getReactComponentName } from "../utils";
+import { describeElement, getReactComponentName, pluralize } from "../utils";
 import { isInsideSidebar } from "../utils/focus-stream";
 
 interface KeyboardLogEntry {
@@ -111,7 +111,7 @@ export function KeyboardLogPanel() {
           Clear
         </button>
         <span className="a11y-panel-count">
-          {entries.length} event{entries.length !== 1 ? "s" : ""}
+          {pluralize(entries.length, "event")}
         </span>
       </div>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { type HeadingItem, scanHeadings } from "../checks";
-import type { CheckIssue } from "../checks";
+import { type LinkButtonItem, scanLinksButtons } from "../checks/links-buttons";
+import type { CheckIssue } from "../checks/types";
 import {
   isHighlighted,
   pluralize,
@@ -8,14 +8,14 @@ import {
   showToast,
 } from "../utils";
 
-export function HeadingHierarchyPanel() {
-  const [headings, setHeadings] = useState<HeadingItem[]>([]);
+export function LinksButtonsPanel() {
+  const [linkItems, setLinkItems] = useState<LinkButtonItem[]>([]);
   const [issues, setIssues] = useState<CheckIssue[]>([]);
   const [, forceUpdate] = useState(0);
 
   const rescan = (notify = true) => {
-    const result = scanHeadings();
-    setHeadings(result.items);
+    const result = scanLinksButtons();
+    setLinkItems(result.items);
     setIssues(result.issues);
     if (notify) {
       const n = result.issues.length;
@@ -32,7 +32,7 @@ export function HeadingHierarchyPanel() {
 
   return (
     <div className="a11y-panel-content">
-      <h3 className="a11y-panel-title">Heading Hierarchy</h3>
+      <h3 className="a11y-panel-title">Link & Button Audit</h3>
       <div className="a11y-panel-toolbar">
         <button
           type="button"
@@ -42,7 +42,7 @@ export function HeadingHierarchyPanel() {
           Rescan
         </button>
         <span className="a11y-panel-count">
-          {headings.length} headings, {issues.length} issues
+          {linkItems.length} elements, {issues.length} issues
         </span>
       </div>
 
@@ -57,23 +57,26 @@ export function HeadingHierarchyPanel() {
       )}
 
       <div className="a11y-panel-list">
-        {headings.map((h, i) => (
+        {linkItems.map((item, i) => (
           <button
             type="button"
-            key={`h-${i}`}
-            className={`a11y-panel-row a11y-panel-row-clickable ${h.hasIssue ? "a11y-panel-row-error" : ""} ${isHighlighted(h.element) ? "a11y-panel-row-active" : ""}`}
-            style={{ marginLeft: (h.level - 1) * 12 }}
-            aria-label={`Go to h${h.level}: ${h.text}`}
-            title={`h${h.level}: ${h.text}${h.component ? ` in ${h.component}` : ""}${h.issueReason ? `: ${h.issueReason}` : ""}`}
+            key={`lb-${i}`}
+            className={`a11y-panel-row a11y-panel-row-clickable ${item.hasIssue ? "a11y-panel-row-error" : ""} ${isHighlighted(item.element) ? "a11y-panel-row-active" : ""}`}
+            aria-label={`${item.tag}: ${item.accessibleName || "(no name)"}`}
+            title={`${item.accessibleName || "(no name)"}\n<${item.tag}>${item.href ? `\nhref: ${item.href}` : ""}${item.component ? `\n${item.component}` : ""}`}
             onClick={() => {
-              scrollToAndHighlight(h.element);
+              scrollToAndHighlight(item.element);
               forceUpdate((n) => n + 1);
             }}
           >
-            <span className="a11y-panel-tag">h{h.level}</span>
-            <span className="a11y-panel-text">{h.text}</span>
-            {h.component && (
-              <span className="a11y-panel-component">{h.component}</span>
+            <span className="a11y-panel-tag">{item.tag}</span>
+            <span className="a11y-panel-text">
+              {item.accessibleName || (
+                <span className="a11y-sr-empty-name">(no name)</span>
+              )}
+            </span>
+            {item.component && (
+              <span className="a11y-panel-component">{item.component}</span>
             )}
           </button>
         ))}

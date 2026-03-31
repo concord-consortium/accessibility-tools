@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { pluralize } from "../utils";
 import type { AnnouncementEvent } from "../utils/live-region-observer";
 import { subscribeAnnouncements } from "../utils/live-region-observer";
 
@@ -43,7 +44,7 @@ export function AnnouncementsLogPanel() {
           Clear
         </button>
         <span className="a11y-panel-count">
-          {entries.length} announcement{entries.length !== 1 ? "s" : ""}
+          {pluralize(entries.length, "announcement")}
         </span>
       </div>
 

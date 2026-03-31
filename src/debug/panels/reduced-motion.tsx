@@ -1,22 +1,29 @@
 import { useEffect, useState } from "react";
 import { type AnimationItem, scanAnimations } from "../checks";
 import type { CheckIssue } from "../checks";
+import { pluralize, showToast } from "../utils";
 
 export function ReducedMotionPanel() {
   const [prefersReduced, setPrefersReduced] = useState(false);
   const [animations, setAnimations] = useState<AnimationItem[]>([]);
   const [issues, setIssues] = useState<CheckIssue[]>([]);
 
-  const rescan = () => {
+  const rescan = (notify = true) => {
     const result = scanAnimations();
     setPrefersReduced(result.prefersReduced);
     setAnimations(result.items);
     setIssues(result.issues);
+    if (notify) {
+      const n = result.issues.length;
+      showToast(
+        `Rescan complete: ${n ? `${pluralize(n, "issue")} found` : "no issues found"}`,
+      );
+    }
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: rescan is stable
   useEffect(() => {
-    rescan();
+    rescan(false);
 
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
     const handler = (e: MediaQueryListEvent) => setPrefersReduced(e.matches);
@@ -30,7 +37,11 @@ export function ReducedMotionPanel() {
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Reduced Motion</h3>
       <div className="a11y-panel-toolbar">
-        <button type="button" onClick={rescan} className="a11y-panel-btn">
+        <button
+          type="button"
+          onClick={() => rescan()}
+          className="a11y-panel-btn"
+        >
           Rescan
         </button>
       </div>

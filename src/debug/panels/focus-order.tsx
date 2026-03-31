@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   describeElement,
   getReactComponentName,
+  pluralize,
   scrollToAndHighlight,
 } from "../utils";
 import type { A11yFocusEvent } from "../utils/focus-stream";
@@ -181,7 +182,7 @@ export function FocusOrderPanel() {
       {recording && (
         <div className="a11y-recorder-status">
           <span className="a11y-recorder-dot" />
-          Recording... ({entries.length} event{entries.length !== 1 ? "s" : ""})
+          Recording... ({pluralize(entries.length, "event")})
         </div>
       )}
 
@@ -225,7 +226,7 @@ export function FocusOrderPanel() {
       {!recording && entries.length > 0 && (
         <div className="a11y-panel-toolbar" style={{ marginTop: 8 }}>
           <span className="a11y-panel-count">
-            {entries.length} step{entries.length !== 1 ? "s" : ""} recorded
+            {pluralize(entries.length, "step")} recorded
           </span>
         </div>
       )}

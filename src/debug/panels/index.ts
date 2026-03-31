@@ -1,5 +1,7 @@
 import type { ComponentType } from "react";
 import { AnnouncementsLogPanel } from "./announcements-log";
+import { AriaValidationPanel } from "./aria-validation";
+import { ColorContrastPanel } from "./color-contrast";
 import { DuplicateIdPanel } from "./duplicate-ids";
 import { ElementInspectorPanel } from "./element-inspector";
 import { FocusHistoryPanel } from "./focus-history";
@@ -9,11 +11,16 @@ import { FocusTrackerPanel } from "./focus-tracker";
 import { FocusTrapPanel } from "./focus-trap";
 import { FormLabelPanel } from "./form-labels";
 import { HeadingHierarchyPanel } from "./heading-hierarchy";
+import { ImageAuditPanel } from "./image-audit";
 import { KeyboardLogPanel } from "./keyboard-log";
 import { LandmarkSummaryPanel } from "./landmark-summary";
+import { LinksButtonsPanel } from "./links-buttons";
 import { LiveRegionsPanel } from "./live-regions";
 import { OverviewPanel } from "./overview";
 import { ReducedMotionPanel } from "./reduced-motion";
+import { ScreenReaderPreviewPanel } from "./screen-reader-preview";
+import { TabOrderPanel } from "./tab-order";
+import { TouchTargetsPanel } from "./touch-targets";
 
 /**
  * Registry mapping panel IDs (from sidebar-data.ts) to their React components.
@@ -42,4 +49,11 @@ export const panelComponents: Record<
   "keyboard-log": KeyboardLogPanel,
   announcements: AnnouncementsLogPanel,
   "live-regions": LiveRegionsPanel,
+  images: ImageAuditPanel,
+  "touch-targets": TouchTargetsPanel,
+  "tab-order": TabOrderPanel,
+  "aria-validation": AriaValidationPanel,
+  "screen-reader": ScreenReaderPreviewPanel,
+  contrast: ColorContrastPanel,
+  "links-buttons": LinksButtonsPanel,
 };

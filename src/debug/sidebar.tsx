@@ -1,9 +1,12 @@
 import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  toggleContrastOverlay,
   toggleForcedColors,
   toggleReflow,
+  toggleTabOrder,
   toggleTextSpacing,
+  toggleTouchTargetsOverlay,
 } from "./overlays";
 import { panelComponents } from "./panels";
 import {
@@ -114,6 +117,9 @@ export function AccessibilityDebugSidebar({
       "text-spacing": () => toggleTextSpacing(),
       reflow: () => toggleReflow(),
       "forced-colors": () => toggleForcedColors(),
+      "tab-order": () => toggleTabOrder(),
+      contrast: () => toggleContrastOverlay(),
+      "touch-targets": () => toggleTouchTargetsOverlay(),
     };
     handlers[id]?.();
     setActiveOverlays((prev) => {

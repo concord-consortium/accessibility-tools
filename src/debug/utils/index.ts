@@ -36,3 +36,14 @@ export {
   type LiveRegionInfo,
   type AnnouncementEvent,
 } from "./live-region-observer";
+
+export {
+  computeAccessibleInfo,
+  formatAnnouncement,
+  getEffectiveRole,
+  type AccessibleInfo,
+} from "./accname";
+
+export { computeContrast, contrastRatio, formatRatio } from "./contrast";
+
+export { pluralize } from "./pluralize";

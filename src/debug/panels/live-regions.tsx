@@ -8,7 +8,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { scrollToAndHighlight } from "../utils";
+import { pluralize, scrollToAndHighlight, showToast } from "../utils";
 import type { LiveRegionInfo } from "../utils/live-region-observer";
 import {
   getLiveRegions,
@@ -49,7 +49,7 @@ export function LiveRegionsPanel() {
   const [regions, setRegions] = useState<RegionEntry[]>([]);
   const [, forceUpdate] = useState(0);
 
-  const rescan = useCallback(() => {
+  const doScan = useCallback(() => {
     const infos = getLiveRegions();
     const entries = infos.map(analyzeRegion);
 
@@ -67,18 +67,27 @@ export function LiveRegionsPanel() {
     }
 
     setRegions(entries);
+    return entries;
   }, []);
 
-  useEffect(() => {
-    rescan();
+  const rescan = useCallback(() => {
+    const entries = doScan();
+    const n = entries.filter((r) => r.hasIssue).length;
+    showToast(
+      `Rescan complete: ${n ? `${pluralize(n, "issue")} found` : "no issues found"}`,
+    );
+  }, [doScan]);
 
-    // Re-scan when announcements fire (content changed)
+  useEffect(() => {
+    doScan();
+
+    // Re-scan when announcements fire (content changed) - no toast
     const unsubscribe = subscribeAnnouncements(() => {
-      rescan();
+      doScan();
     });
 
     return unsubscribe;
-  }, [rescan]);
+  }, [doScan]);
 
   const issueCount = regions.filter((r) => r.hasIssue).length;
 
@@ -86,13 +95,16 @@ export function LiveRegionsPanel() {
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Live Region Inventory</h3>
       <div className="a11y-panel-toolbar">
-        <button type="button" onClick={rescan} className="a11y-panel-btn">
+        <button
+          type="button"
+          onClick={() => rescan()}
+          className="a11y-panel-btn"
+        >
           Rescan
         </button>
         <span className="a11y-panel-count">
-          {regions.length} region{regions.length !== 1 ? "s" : ""}
-          {issueCount > 0 &&
-            `, ${issueCount} issue${issueCount !== 1 ? "s" : ""}`}
+          {pluralize(regions.length, "region")}
+          {issueCount > 0 && `, ${pluralize(issueCount, "issue")}`}
         </span>
       </div>
 

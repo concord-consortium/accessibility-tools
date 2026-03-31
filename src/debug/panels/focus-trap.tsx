@@ -9,7 +9,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { describeElement, scrollToAndHighlight } from "../utils";
+import { describeElement, pluralize, scrollToAndHighlight } from "../utils";
 import { subscribeFocus } from "../utils/focus-stream";
 
 interface DetectedTrap {
@@ -199,7 +199,7 @@ export function FocusTrapPanel() {
           Clear
         </button>
         <span className="a11y-panel-count">
-          {traps.length} trap{traps.length !== 1 ? "s" : ""} detected
+          {pluralize(traps.length, "trap")} detected
           {activeCount > 0 && (
             <span className="a11y-trap-active-badge">
               {" "}

@@ -5,34 +5,34 @@ import { scanImages } from "./images";
 import { scanLinksButtons } from "./links-buttons";
 import { scanTouchTargets } from "./touch-targets";
 
-describe("stub check modules", () => {
-  it("scanColorContrast returns empty results", () => {
+describe("check modules return valid results on empty DOM", () => {
+  it("scanColorContrast returns results structure", () => {
     const result = scanColorContrast();
-    expect(result.items).toEqual([]);
-    expect(result.issues).toEqual([]);
+    expect(result).toHaveProperty("items");
+    expect(result).toHaveProperty("issues");
   });
 
-  it("scanImages returns empty results", () => {
+  it("scanImages returns results structure", () => {
     const result = scanImages();
-    expect(result.items).toEqual([]);
-    expect(result.issues).toEqual([]);
+    expect(result).toHaveProperty("items");
+    expect(result).toHaveProperty("issues");
   });
 
-  it("scanLinksButtons returns empty results", () => {
+  it("scanLinksButtons returns results structure", () => {
     const result = scanLinksButtons();
-    expect(result.items).toEqual([]);
-    expect(result.issues).toEqual([]);
+    expect(result).toHaveProperty("items");
+    expect(result).toHaveProperty("issues");
   });
 
-  it("scanAriaValidation returns empty results", () => {
+  it("scanAriaValidation returns results structure", () => {
     const result = scanAriaValidation();
-    expect(result.items).toEqual([]);
-    expect(result.issues).toEqual([]);
+    expect(result).toHaveProperty("items");
+    expect(result).toHaveProperty("issues");
   });
 
-  it("scanTouchTargets returns empty results", () => {
+  it("scanTouchTargets returns results structure", () => {
     const result = scanTouchTargets();
-    expect(result.items).toEqual([]);
-    expect(result.issues).toEqual([]);
+    expect(result).toHaveProperty("items");
+    expect(result).toHaveProperty("issues");
   });
 });

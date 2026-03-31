@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import {
   describeElement,
   highlightElement,
+  pluralize,
   removeHighlight,
   scrollToAndHighlight,
 } from "../utils";
@@ -103,7 +104,7 @@ export function FocusLossPanel() {
           Clear
         </button>
         <span className="a11y-panel-count">
-          {entries.length} loss event{entries.length !== 1 ? "s" : ""}
+          {pluralize(entries.length, "loss event")}
         </span>
       </div>
 

@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { type FormControlItem, scanFormControls } from "../checks";
 import type { CheckIssue } from "../checks";
-import { isHighlighted, scrollToAndHighlight } from "../utils";
+import {
+  isHighlighted,
+  pluralize,
+  scrollToAndHighlight,
+  showToast,
+} from "../utils";
 
 export function FormLabelPanel() {
   const [controls, setControls] = useState<FormControlItem[]>([]);
@@ -9,20 +14,26 @@ export function FormLabelPanel() {
   const observerRef = useRef<MutationObserver | null>(null);
   const [, forceUpdate] = useState(0);
 
-  const rescan = () => {
+  const rescan = (notify = true) => {
     const result = scanFormControls();
     setControls(result.items);
     setIssues(result.issues);
+    if (notify) {
+      const n = result.issues.length;
+      showToast(
+        `Rescan complete: ${n ? `${pluralize(n, "issue")} found` : "no issues found"}`,
+      );
+    }
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: rescan is stable
   useEffect(() => {
-    rescan();
+    rescan(false);
 
     let debounceTimer: ReturnType<typeof setTimeout>;
     observerRef.current = new MutationObserver(() => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(rescan, 200);
+      debounceTimer = setTimeout(() => rescan(false), 200);
     });
     observerRef.current.observe(document.body, {
       childList: true,
@@ -38,7 +49,11 @@ export function FormLabelPanel() {
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Form Label Checker</h3>
       <div className="a11y-panel-toolbar">
-        <button type="button" onClick={rescan} className="a11y-panel-btn">
+        <button
+          type="button"
+          onClick={() => rescan()}
+          className="a11y-panel-btn"
+        >
           Rescan
         </button>
         <span className="a11y-panel-count">

@@ -1039,6 +1039,95 @@ const CSS = `
   background: #374151;
   color: #9ca3af;
 }
+
+/* Image Audit */
+.a11y-img-status {
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 0 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.a11y-img-status-has-alt {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.a11y-img-status-decorative {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.a11y-img-status-missing {
+  background: #fef2f2;
+  color: #dc2626;
+}
+.a11y-img-status-generic,
+.a11y-img-status-long-alt {
+  background: #fefce8;
+  color: #ca8a04;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-img-status-has-alt {
+  background: #14532d;
+  color: #4ade80;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-img-status-decorative {
+  background: #374151;
+  color: #9ca3af;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-img-status-missing {
+  background: #3b1111;
+  color: #f87171;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-img-status-generic,
+.a11y-debug-sidebar[data-theme="dark"] .a11y-img-status-long-alt {
+  background: #422006;
+  color: #facc15;
+}
+
+/* ARIA Validation */
+.a11y-panel-tag-warning {
+  color: #ca8a04;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-panel-tag-warning {
+  color: #facc15;
+}
+
+/* Screen Reader Preview */
+.a11y-sr-announcement {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: var(--a11y-sidebar-header-bg);
+  border: 1px solid var(--a11y-sidebar-border);
+  border-radius: 4px;
+  min-height: 32px;
+}
+.a11y-sr-empty-name {
+  color: #dc2626;
+  font-style: italic;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-sr-empty-name {
+  color: #f87171;
+}
+
+/* Color Contrast */
+.a11y-contrast-ratio {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 40px;
+}
+.a11y-contrast-swatch {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 0 3px;
+  border: 1px solid var(--a11y-sidebar-border);
+  border-radius: 2px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
 `;
 
 const injectedTargets = new WeakSet<Document | ShadowRoot>();

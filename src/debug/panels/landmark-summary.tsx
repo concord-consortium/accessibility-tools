@@ -1,29 +1,44 @@
 import { useEffect, useState } from "react";
 import { type LandmarkItem, scanLandmarks } from "../checks";
 import type { CheckIssue } from "../checks";
-import { isHighlighted, scrollToAndHighlight } from "../utils";
+import {
+  isHighlighted,
+  pluralize,
+  scrollToAndHighlight,
+  showToast,
+} from "../utils";
 
 export function LandmarkSummaryPanel() {
   const [landmarks, setLandmarks] = useState<LandmarkItem[]>([]);
   const [issues, setIssues] = useState<CheckIssue[]>([]);
   const [, forceUpdate] = useState(0);
 
-  const rescan = () => {
+  const rescan = (notify = true) => {
     const result = scanLandmarks();
     setLandmarks(result.items);
     setIssues(result.issues);
+    if (notify) {
+      const n = result.issues.length;
+      showToast(
+        `Rescan complete: ${n ? `${pluralize(n, "issue")} found` : "no issues found"}`,
+      );
+    }
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: rescan is stable
   useEffect(() => {
-    rescan();
+    rescan(false);
   }, []);
 
   return (
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Landmark Summary</h3>
       <div className="a11y-panel-toolbar">
-        <button type="button" onClick={rescan} className="a11y-panel-btn">
+        <button
+          type="button"
+          onClick={() => rescan()}
+          className="a11y-panel-btn"
+        >
           Rescan
         </button>
         <span className="a11y-panel-count">
