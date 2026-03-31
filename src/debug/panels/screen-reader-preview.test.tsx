@@ -37,7 +37,7 @@ describe("ScreenReaderPreviewPanel", () => {
     expect(screen.getByText(/focus an element/i)).toBeTruthy();
   });
 
-  it("shows accessible info after focus event", () => {
+  it("shows accessible name after focus event", () => {
     render(<ScreenReaderPreviewPanel />);
     const btn = document.createElement("button");
     btn.textContent = "Save";
@@ -48,7 +48,6 @@ describe("ScreenReaderPreviewPanel", () => {
     });
 
     expect(screen.getAllByText(/Save/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("button").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows role for focused element", () => {
@@ -61,9 +60,7 @@ describe("ScreenReaderPreviewPanel", () => {
       dispatch({ element: btn, previousElement: null, timestamp: 1000 });
     });
 
-    // Should show role in the breakdown
-    const roleValues = screen.getAllByText("button");
-    expect(roleValues.length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("button").length).toBeGreaterThanOrEqual(1);
   });
 
   it("warns when focused element has no accessible name", () => {
@@ -77,5 +74,41 @@ describe("ScreenReaderPreviewPanel", () => {
     });
 
     expect(screen.getByText(/no accessible name/i)).toBeTruthy();
+  });
+
+  it("shows element tag in breakdown", () => {
+    render(<ScreenReaderPreviewPanel />);
+    const input = document.createElement("input");
+    input.setAttribute("type", "text");
+    input.setAttribute("aria-label", "Username");
+    document.body.appendChild(input);
+
+    act(() => {
+      dispatch({ element: input, previousElement: null, timestamp: 1000 });
+    });
+
+    expect(screen.getByText(/input/)).toBeTruthy();
+    expect(screen.getByText("Username")).toBeTruthy();
+  });
+
+  it("shows states like disabled", () => {
+    render(<ScreenReaderPreviewPanel />);
+    const btn = document.createElement("button");
+    btn.textContent = "Save";
+    btn.setAttribute("disabled", "");
+    document.body.appendChild(btn);
+
+    act(() => {
+      dispatch({ element: btn, previousElement: null, timestamp: 1000 });
+    });
+
+    expect(screen.getAllByText(/disabled/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("unsubscribes on unmount", () => {
+    const { unmount } = render(<ScreenReaderPreviewPanel />);
+    expect(subscribers).toHaveLength(1);
+    unmount();
+    expect(subscribers).toHaveLength(0);
   });
 });

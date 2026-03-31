@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AriaValidationPanel } from "./aria-validation";
 
@@ -32,9 +32,28 @@ describe("AriaValidationPanel", () => {
   });
 
   it("shows issues when ARIA errors exist", () => {
-    document.body.innerHTML =
-      '<div id="root"><div role="banana">Invalid</div></div>';
+    document.body.innerHTML = '<div role="banana">Invalid</div>';
     render(<AriaValidationPanel />);
     expect(screen.getByText(/invalid role/i)).toBeTruthy();
+  });
+
+  it("shows severity badge ERR for errors", () => {
+    document.body.innerHTML = '<div role="banana">Invalid</div>';
+    render(<AriaValidationPanel />);
+    expect(screen.getByText("ERR")).toBeTruthy();
+  });
+
+  it("rescan button triggers toast", () => {
+    render(<AriaValidationPanel />);
+    const container = document.createElement("div");
+    container.className = "a11y-debug-sidebar";
+    document.body.appendChild(container);
+
+    act(() => {
+      screen.getByText("Rescan").click();
+    });
+
+    const toast = document.querySelector(".a11y-toast");
+    expect(toast?.textContent).toContain("Rescan complete");
   });
 });
