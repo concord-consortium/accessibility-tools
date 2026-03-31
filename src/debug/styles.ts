@@ -1096,6 +1096,9 @@ const CSS = `
 
 /* Screen Reader Preview */
 .a11y-sr-announcement {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   font-size: 14px;
   font-weight: 500;
   padding: 8px;
@@ -1104,6 +1107,32 @@ const CSS = `
   border: 1px solid var(--a11y-sidebar-border);
   border-radius: 4px;
   min-height: 32px;
+}
+.a11y-sr-announcement-text {
+  flex: 1;
+}
+.a11y-sr-speak-btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  color: var(--a11y-sidebar-text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+}
+.a11y-sr-speak-btn:hover {
+  background: var(--a11y-sidebar-icon-hover-bg);
+  color: var(--a11y-sidebar-text);
+}
+.a11y-sr-speak-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.a11y-sr-speak-icon {
+  width: 20px;
+  height: 20px;
 }
 .a11y-sr-empty-name {
   color: #dc2626;
