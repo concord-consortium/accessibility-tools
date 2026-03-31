@@ -29,3 +29,10 @@ export {
   useFocusStream,
   type FocusHistoryEntry,
 } from "./use-focus-stream";
+
+export {
+  subscribeAnnouncements,
+  getLiveRegions,
+  type LiveRegionInfo,
+  type AnnouncementEvent,
+} from "./live-region-observer";

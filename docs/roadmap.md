@@ -171,16 +171,19 @@ The implementation is structured in phases, each building on the previous. All h
 
   ### Tier 3: Keyboard, announcements, and live regions
 
-  - [ ] 2. Keyboard Event Log
+  - [x] 2. Keyboard Event Log
     - Capture-phase keydown listener + preventDefault/stopPropagation detection
-    - Log panel
-  - [ ] 3. Announcements Log
+    - Monkey-patches Event.prototype to detect interception after all handlers run
+    - Color-coded: red for prevented/stopped, PD/SP badges
+  - [x] 3. Announcements Log
     - MutationObserver on `[aria-live]` elements for text changes
-    - Log panel
-  - [ ] 21. Live Region Inventory + overlay toggle
-    - Lists all `[aria-live]` elements (complements Announcements Log)
-    - Shares MutationObserver pattern from Announcements Log
-    - Overlay: colored borders with flash on change
+    - Shows politeness level (polite/assertive), component name, timestamp
+    - Log persists after announcements are cleared from DOM
+  - [x] 21. Live Region Inventory
+    - Lists all `[aria-live]` elements with politeness, text, component name
+    - Flags: competing assertive regions, large subtrees, aria-live="off"
+    - Click to scroll-to-highlight with politeness-colored overlay
+  - [x] Shared: live-region-observer utility for MutationObserver + subscription
 
   ### Tier 4: Accessible name computation + audits + overlays
 

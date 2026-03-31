@@ -1,4 +1,5 @@
 import type { ComponentType } from "react";
+import { AnnouncementsLogPanel } from "./announcements-log";
 import { DuplicateIdPanel } from "./duplicate-ids";
 import { ElementInspectorPanel } from "./element-inspector";
 import { FocusHistoryPanel } from "./focus-history";
@@ -8,7 +9,9 @@ import { FocusTrackerPanel } from "./focus-tracker";
 import { FocusTrapPanel } from "./focus-trap";
 import { FormLabelPanel } from "./form-labels";
 import { HeadingHierarchyPanel } from "./heading-hierarchy";
+import { KeyboardLogPanel } from "./keyboard-log";
 import { LandmarkSummaryPanel } from "./landmark-summary";
+import { LiveRegionsPanel } from "./live-regions";
 import { OverviewPanel } from "./overview";
 import { ReducedMotionPanel } from "./reduced-motion";
 
@@ -36,4 +39,7 @@ export const panelComponents: Record<
   "focus-history": FocusHistoryPanel,
   "focus-trap": FocusTrapPanel,
   "focus-order": FocusOrderPanel,
+  "keyboard-log": KeyboardLogPanel,
+  announcements: AnnouncementsLogPanel,
+  "live-regions": LiveRegionsPanel,
 };

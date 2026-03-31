@@ -907,6 +907,138 @@ const CSS = `
   text-align: right;
   flex-shrink: 0;
 }
+
+/* Keyboard Event Log */
+.a11y-kbd-key {
+  font-family: monospace;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--a11y-sidebar-header-bg);
+  border: 1px solid var(--a11y-sidebar-border);
+  border-radius: 3px;
+  padding: 0 4px;
+  white-space: nowrap;
+  min-width: 32px;
+  text-align: center;
+}
+.a11y-kbd-prevented {
+  background: #fef2f2;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-kbd-prevented {
+  background: #3b1111;
+}
+.a11y-kbd-normal {
+  background: transparent;
+}
+.a11y-kbd-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 2px;
+  padding: 0 3px;
+  white-space: nowrap;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-kbd-badge {
+  color: #f87171;
+  background: #3b1111;
+  border-color: #7f1d1d;
+}
+.a11y-kbd-time {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Announcements Log */
+.a11y-announcement-row {
+  min-height: 24px;
+}
+.a11y-announcement-assertive {
+  border-left: 2px solid #f97316;
+  padding-left: 8px;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-announcement-assertive {
+  border-left-color: #fb923c;
+}
+.a11y-announcement-badge {
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 2px;
+  padding: 0 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.a11y-announcement-badge-polite {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.a11y-announcement-badge-assertive {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.a11y-announcement-badge-off {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-announcement-badge-polite {
+  background: #1e3a5f;
+  color: #60a5fa;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-announcement-badge-assertive {
+  background: #431407;
+  color: #fb923c;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-announcement-badge-off {
+  background: #374151;
+  color: #9ca3af;
+}
+.a11y-announcement-cleared {
+  color: var(--a11y-sidebar-text-muted);
+  font-style: italic;
+}
+.a11y-announcement-time {
+  color: var(--a11y-sidebar-text-muted);
+  font-family: monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Live Region Inventory */
+.a11y-live-badge {
+  font-size: 9px;
+  font-weight: 600;
+  border-radius: 2px;
+  padding: 0 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.a11y-live-badge-polite {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.a11y-live-badge-assertive {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.a11y-live-badge-off {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-live-badge-polite {
+  background: #1e3a5f;
+  color: #60a5fa;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-live-badge-assertive {
+  background: #431407;
+  color: #fb923c;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-live-badge-off {
+  background: #374151;
+  color: #9ca3af;
+}
 `;
 
 const injectedTargets = new WeakSet<Document | ShadowRoot>();
