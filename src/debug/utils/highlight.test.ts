@@ -1,10 +1,18 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import {
   destroyHighlight,
   highlightElement,
+  isHighlighted,
   removeHighlight,
+  scrollToAndHighlight,
   updateHighlightPosition,
 } from "./highlight";
+
+// jsdom doesn't implement scrollIntoView or scrollBy
+beforeAll(() => {
+  Element.prototype.scrollIntoView = () => {};
+  Element.prototype.scrollBy = () => {};
+});
 
 afterEach(() => {
   destroyHighlight();
@@ -48,7 +56,7 @@ describe("highlightElement", () => {
     el.remove();
   });
 
-  it("applies custom border color", () => {
+  it("applies custom border color with transparent background", () => {
     const el = document.createElement("div");
     document.body.appendChild(el);
 
@@ -94,6 +102,89 @@ describe("removeHighlight", () => {
   });
 });
 
+describe("isHighlighted", () => {
+  it("returns false when nothing is highlighted", () => {
+    const el = document.createElement("div");
+    expect(isHighlighted(el)).toBe(false);
+  });
+
+  it("returns true for the currently highlighted element", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    highlightElement(el);
+    expect(isHighlighted(el)).toBe(true);
+
+    el.remove();
+  });
+
+  it("returns false for a different element", () => {
+    const el1 = document.createElement("div");
+    const el2 = document.createElement("div");
+    document.body.appendChild(el1);
+    document.body.appendChild(el2);
+
+    highlightElement(el1);
+    expect(isHighlighted(el2)).toBe(false);
+
+    el1.remove();
+    el2.remove();
+  });
+
+  it("returns false after removeHighlight", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    highlightElement(el);
+    removeHighlight();
+    expect(isHighlighted(el)).toBe(false);
+
+    el.remove();
+  });
+});
+
+describe("scrollToAndHighlight", () => {
+  it("highlights the element", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    scrollToAndHighlight(el);
+    expect(isHighlighted(el)).toBe(true);
+
+    el.remove();
+  });
+
+  it("toggles off when clicking the same element", () => {
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+
+    scrollToAndHighlight(el);
+    expect(isHighlighted(el)).toBe(true);
+
+    scrollToAndHighlight(el);
+    expect(isHighlighted(el)).toBe(false);
+
+    el.remove();
+  });
+
+  it("switches highlight to a different element", () => {
+    const el1 = document.createElement("div");
+    const el2 = document.createElement("div");
+    document.body.appendChild(el1);
+    document.body.appendChild(el2);
+
+    scrollToAndHighlight(el1);
+    expect(isHighlighted(el1)).toBe(true);
+
+    scrollToAndHighlight(el2);
+    expect(isHighlighted(el1)).toBe(false);
+    expect(isHighlighted(el2)).toBe(true);
+
+    el1.remove();
+    el2.remove();
+  });
+});
+
 describe("updateHighlightPosition", () => {
   it("is a no-op when nothing is highlighted", () => {
     expect(() => updateHighlightPosition()).not.toThrow();
@@ -106,7 +197,6 @@ describe("updateHighlightPosition", () => {
     highlightElement(el);
     updateHighlightPosition();
 
-    // jsdom returns all-zero rects, but we can verify the code path ran
     const overlay = document.getElementById("a11y-debug-highlight");
     expect(overlay?.style.top).toBe("0px");
     expect(overlay?.style.left).toBe("0px");

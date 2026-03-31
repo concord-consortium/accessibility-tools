@@ -18,14 +18,15 @@ export function LandmarksSection() {
       </header>
 
       {showMain ? (
-        <main style={{ border: "1px solid #16a34a", padding: 8, marginTop: 8 }}>
-          <p>Main content landmark (required - exactly one per page)</p>
+        <main style={{ border: "1px solid #dc2626", padding: 8, marginTop: 8 }}>
+          <p>
+            Bad: Second &lt;main&gt; element - creates a duplicate main landmark
+            (page already has one in the demo chrome)
+          </p>
         </main>
       ) : (
-        <div style={{ border: "1px dashed #dc2626", padding: 8, marginTop: 8 }}>
-          <p>
-            Main landmark removed - page is now missing required &lt;main&gt;
-          </p>
+        <div style={{ border: "1px dashed #999", padding: 8, marginTop: 8 }}>
+          <p>Duplicate &lt;main&gt; removed</p>
         </div>
       )}
 
@@ -34,9 +35,7 @@ export function LandmarksSection() {
         onClick={() => setShowMain((v) => !v)}
         style={{ marginTop: 8 }}
       >
-        {showMain
-          ? "Remove <main> (trigger missing landmark)"
-          : "Restore <main>"}
+        {showMain ? "Remove duplicate <main>" : "Add duplicate <main>"}
       </button>
 
       <aside

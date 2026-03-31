@@ -1,4 +1,11 @@
+import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  toggleForcedColors,
+  toggleReflow,
+  toggleTextSpacing,
+} from "./overlays";
+import { panelComponents } from "./panels";
 import {
   type CategoryDef,
   type PanelDef,
@@ -7,7 +14,8 @@ import {
   overlayToggles,
 } from "./sidebar-data";
 import { injectStyles } from "./styles";
-import { setSidebarRoot } from "./utils";
+import { removeHighlight, setSidebarRoot } from "./utils";
+import { VERSION } from "./version";
 
 export interface AccessibilityDebugSidebarProps {
   theme?: "light" | "dark";
@@ -30,6 +38,7 @@ export function AccessibilityDebugSidebar({
     },
   );
   const [activeOverlays, setActiveOverlays] = useState<Set<string>>(new Set());
+  const [showOverlayHelp, setShowOverlayHelp] = useState(false);
 
   const sidebarRef = useRef<HTMLDivElement>(null);
   const categoryTabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -98,6 +107,13 @@ export function AccessibilityDebugSidebar({
   );
 
   const toggleOverlay = useCallback((id: string) => {
+    if (overlayToggles.find((t) => t.id === id)?.disabled) return;
+    const handlers: Record<string, () => void> = {
+      "text-spacing": () => toggleTextSpacing(),
+      reflow: () => toggleReflow(),
+      "forced-colors": () => toggleForcedColors(),
+    };
+    handlers[id]?.();
     setActiveOverlays((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -110,11 +126,22 @@ export function AccessibilityDebugSidebar({
   }, []);
 
   return (
-    <div ref={sidebarRef} className="a11y-debug-sidebar" data-theme={theme}>
+    <div
+      ref={sidebarRef}
+      className="a11y-debug-sidebar"
+      data-theme={theme}
+      data-a11y-debug="sidebar"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && showOverlayHelp) {
+          setShowOverlayHelp(false);
+          e.stopPropagation();
+        }
+      }}
+    >
       {/* Header */}
       <div className="a11y-sidebar-header">
         <span className="a11y-sidebar-title">cc-a11y-tools</span>
-        <span className="a11y-sidebar-version">v{__A11Y_VERSION__}</span>
+        <span className="a11y-sidebar-version">v{VERSION}</span>
       </div>
 
       {/* Category tabs */}
@@ -197,13 +224,46 @@ export function AccessibilityDebugSidebar({
                   ? { role: "log", "aria-live": "polite" as const }
                   : { role: "tabpanel" as const })}
               >
-                <p className="a11y-sidebar-placeholder">
-                  {currentPanel?.label} - TBD
-                </p>
+                {currentPanel && panelComponents[currentPanel.id] ? (
+                  (() => {
+                    const PanelComponent = panelComponents[currentPanel.id];
+                    return <PanelComponent />;
+                  })()
+                ) : (
+                  <>
+                    <h3 className="a11y-panel-title">{currentPanel?.label}</h3>
+                    <p className="a11y-sidebar-placeholder">
+                      Not yet implemented
+                    </p>
+                  </>
+                )}
               </div>
             </>
           )}
         </div>
+      )}
+
+      {/* Overlay help panel */}
+      {showOverlayHelp && (
+        <section
+          className="a11y-sidebar-overlay-help"
+          aria-label="Overlay descriptions"
+        >
+          {overlayToggles.map((toggle) => {
+            const Icon = toggle.icon;
+            return (
+              <div key={toggle.id} className="a11y-sidebar-overlay-help-row">
+                <Icon className="a11y-icon" />
+                <div>
+                  <strong>{toggle.label}</strong>
+                  <div className="a11y-sidebar-overlay-help-desc">
+                    {toggle.description}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </section>
       )}
 
       {/* Overlay toggles */}
@@ -219,16 +279,41 @@ export function AccessibilityDebugSidebar({
             <button
               key={toggle.id}
               type="button"
-              className={`a11y-sidebar-overlay-btn ${isActive ? "active" : ""}`}
-              aria-pressed={isActive}
+              disabled={toggle.disabled}
+              className={`a11y-sidebar-overlay-btn ${isActive ? "active" : ""} ${toggle.disabled ? "disabled" : ""}`}
+              aria-pressed={toggle.disabled ? undefined : isActive}
               aria-label={toggle.label}
-              title={toggle.label}
+              title={
+                toggle.disabled
+                  ? `${toggle.label} (standalone mode only)`
+                  : toggle.label
+              }
               onClick={() => toggleOverlay(toggle.id)}
             >
               <Icon className="a11y-icon" />
             </button>
           );
         })}
+        <span className="a11y-sidebar-overlay-spacer" />
+        <button
+          type="button"
+          className="a11y-sidebar-overlay-btn"
+          aria-label="Overlay help"
+          aria-pressed={showOverlayHelp}
+          title="Overlay help"
+          onClick={() => setShowOverlayHelp((v) => !v)}
+        >
+          ?
+        </button>
+        <button
+          type="button"
+          className="a11y-sidebar-overlay-btn"
+          aria-label="Clear highlight"
+          title="Clear highlight"
+          onClick={() => removeHighlight()}
+        >
+          <XMarkIcon className="a11y-icon" />
+        </button>
       </div>
 
       {/* Footer */}

@@ -10,6 +10,8 @@ export {
   removeHighlight,
   updateHighlightPosition,
   destroyHighlight,
+  scrollToAndHighlight,
+  isHighlighted,
 } from "./highlight";
 
 export {

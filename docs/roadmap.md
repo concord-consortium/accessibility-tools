@@ -27,22 +27,77 @@ The implementation is structured in phases, each building on the previous. All h
 
   Ordered for quick wins first, with shared code dependencies respected.
   Panel numbers (e.g., "9. Heading Hierarchy") are identifiers from design.md, not sequence.
-  Unit tests for each panel should be written alongside the panel, not deferred.
-
-  Each panel renders inside the existing sidebar wireframe's panel content area.
-  The sidebar-data.ts file maps panel IDs to categories/icons - new panels register
-  there and provide a component that receives the panel content container.
-
-  Foundation utilities (fiber traversal, element highlight, focus stream) are shared
-  modules in src/debug/utils/ imported by multiple panels. Build and test these first
-  since nearly every panel depends on at least one.
-
-  Overlay toggles inject/remove DOM into the app content area (not the sidebar).
-  The sidebar self-exclusion filter (checking if target is inside the sidebar root)
-  must be applied in every panel that observes the page DOM.
+  Unit tests for each panel should be written alongside the panel (colocated), not deferred.
 
   See design.md "Sidebar panels" section for the full specification of each panel.
   Each panel description there is the authoritative spec for what to build.
+
+  **Panel registration:**
+  Each panel renders inside the existing sidebar wireframe's panel content area.
+  Register new panels in `src/debug/panels/index.ts` by mapping the panel ID
+  (from `sidebar-data.ts`) to a React component. Unregistered panels show
+  "Not yet implemented" with the panel title.
+
+  **Panel architecture - checks vs rendering:**
+  All DOM scan/audit logic must live in `src/debug/checks/`, NOT inline in panel
+  components. Each check module exports a function like `scanHeadings(root)` that
+  takes a root element (or document) and returns typed results. Panel components
+  import from checks and only handle rendering. This enables the WCAG Audit Report
+  Generator (Tier 6) to run the same checks against scoped DOM subtrees.
+  Tests go on the check functions (pure DOM in, results out).
+
+  **Panel UI conventions:**
+  - Each panel renders its own `<h3 className="a11y-panel-title">` as the first child
+  - Use `<div className="a11y-panel-content">` as the root wrapper
+  - Include a Rescan button via `<div className="a11y-panel-toolbar">`
+  - Show issue count in `<span className="a11y-panel-count">`
+  - Show issues in `<div className="a11y-panel-issues">`
+
+  **Clickable element rows:**
+  All panel rows that reference a page element must be clickable `<button>` elements
+  (never div+onClick) with proper ARIA:
+  - Use `<button className="a11y-panel-row a11y-panel-row-clickable">`
+  - Include `aria-label` describing the action (e.g., "Go to h2: Focusable Elements")
+  - Include `title` attribute for hover tooltip with full details
+  - Call `scrollToAndHighlight(element)` on click - this scrolls to the element
+    with padding so it isn't pinned to viewport edges, highlights it with an overlay,
+    and toggles highlight off if the same element is clicked again
+  - Use `forceUpdate` state counter to re-render after click so active row updates
+  - Apply `a11y-panel-row-error` class for elements with issues (red background)
+  - Apply `a11y-panel-row-active` class via `isHighlighted(element)` for the
+    currently highlighted element (blue background + left border)
+
+  **Foundation utilities** (in `src/debug/utils/`):
+  - `fiber.ts` - React component name resolution via fiber traversal
+  - `highlight.ts` - element highlight overlay with scroll tracking, toggle, padding
+  - `focus-stream.ts` - shared focus event stream with sidebar self-exclusion
+
+  **Sidebar self-exclusion:**
+  The sidebar root has `data-a11y-debug="sidebar"`. All panels that scan the DOM
+  must use `isInsideSidebar(element)` to filter out sidebar elements. The highlight
+  overlay has `data-a11y-debug="highlight"` so it is also excluded from scans.
+
+  **Overlay toggles:**
+  Overlay toggles inject/remove CSS into the app content area (not the sidebar).
+  CSS overlays must exclude the sidebar using the reset pattern:
+  apply styles globally, then reset on `.a11y-debug-sidebar, .a11y-debug-sidebar *`.
+  Disabled overlays (e.g., Reflow Test - standalone mode only) set `disabled: true`
+  in `sidebar-data.ts`.
+
+  **Overlay help panel:**
+  The overlay strip has a `?` button that toggles a help panel showing each
+  overlay's icon, name, and description. Descriptions are in `sidebar-data.ts`
+  on each `OverlayToggleDef`. The `X` button next to `?` clears the current
+  element highlight.
+
+  **Demo layout:**
+  The demo imports from `../src/` directly (not path aliases - Vite's self-referencing
+  package resolution doesn't work). The demo `<main>` wraps the content area.
+  A sticky "Top" button floats at the top-right corner.
+
+  **Version display:**
+  The sidebar header reads the version from `src/debug/version.ts` which imports
+  directly from `package.json`. Do not use `define` or global constants for the version.
 
   ### Foundation (build first - used by many panels)
 
@@ -56,25 +111,25 @@ The implementation is structured in phases, each building on the previous. All h
 
   ### Tier 1: Quick wins - simple DOM queries or pure CSS, immediate value
 
-  - [ ] Text Spacing Override overlay toggle (WCAG 1.4.12)
+  - [x] Text Spacing Override overlay toggle (WCAG 1.4.12)
     - Pure CSS injection - simplest possible item: inject/remove a `<style>` tag
-  - [ ] Reflow Test overlay toggle (WCAG 1.4.10)
+  - [x] Reflow Test overlay toggle (WCAG 1.4.10)
     - Pure CSS width constraint on app content
-  - [ ] Forced Colors Mode overlay toggle (WCAG 1.4.11)
+  - [x] Forced Colors Mode overlay toggle (WCAG 1.4.11)
     - Pure CSS override for high contrast simulation
-  - [ ] 9. Heading Hierarchy Validator
+  - [x] 9. Heading Hierarchy Validator
     - Query `h1`-`h6`, validate nesting, render tree
     - No event listeners, no MutationObserver
-  - [ ] 20. Landmark Summary
+  - [x] 20. Landmark Summary
     - Query landmark elements, check labels, render outline
     - Same pattern as Heading Hierarchy
-  - [ ] 16. Duplicate ID Detector
+  - [x] 16. Duplicate ID Detector
     - `querySelectorAll('[id]')`, group by id, flag duplicates
     - MutationObserver for live updates
-  - [ ] 12. Form Label Checker
+  - [x] 12. Form Label Checker
     - Query form controls, check label associations
     - Static scan + MutationObserver
-  - [ ] 17. Reduced Motion Indicator
+  - [x] 17. Reduced Motion Indicator
     - `matchMedia` check + stylesheet scan
 
   ### Tier 2: Focus panels (share the focus event stream)

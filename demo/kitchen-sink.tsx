@@ -48,35 +48,16 @@ const sections = [
   { id: "audit", label: "Audit Report", component: AuditReportSection },
 ] as const;
 
-// Intentional a11y violations in the nav (marked with *)
-const subtleViolations: Record<
-  string,
-  { label?: string; attrs?: Record<string, string> }
-> = {
-  // Generic link text - violates WCAG 2.4.4 (Link Purpose)
-  images: { label: "More *" },
-  // Redundant role="link" on an <a> - unnecessary ARIA
-  landmarks: { attrs: { role: "link" } },
-};
-
 export function KitchenSink() {
   return (
     <div className="kitchen-sink">
       <nav className="kitchen-sink-nav" aria-label="Kitchen sink sections">
-        <a href="#top">Top</a>
-        {sections.map(({ id, label }) => {
-          const violation = subtleViolations[id];
-          return (
-            <a key={id} href={`#section-${id}`} {...(violation?.attrs ?? {})}>
-              {violation?.label ?? label}
-            </a>
-          );
-        })}
+        {sections.map(({ id, label }) => (
+          <a key={id} href={`#section-${id}`}>
+            {label}
+          </a>
+        ))}
       </nav>
-      <p className="kitchen-sink-nav-footnote">
-        * Elements marked with an asterisk have intentional accessibility
-        violations for panel testing.
-      </p>
 
       {sections.map(({ id, component: Section }) => (
         <div key={id} id={`section-${id}`}>

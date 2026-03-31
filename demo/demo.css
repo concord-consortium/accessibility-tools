@@ -40,10 +40,7 @@ body {
   background: #f5f5f5;
   border: 1px solid #e0e0e0;
   border-radius: 4px;
-  margin-bottom: 4px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
+  margin-bottom: 16px;
 }
 
 .kitchen-sink-nav a {
@@ -63,11 +60,25 @@ body {
   text-decoration: underline;
 }
 
-.kitchen-sink-nav-footnote {
-  font-size: 11px;
-  color: #767676;
-  margin-bottom: 16px;
-  font-style: italic;
+.demo-top-link {
+  float: right;
+  position: sticky;
+  top: 4px;
+  margin-top: -14px;
+  margin-right: -8px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #2563eb;
+  cursor: pointer;
+  z-index: 5;
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.demo-top-link:hover {
+  background: #e8e8e8;
 }
 
 .kitchen-sink section {

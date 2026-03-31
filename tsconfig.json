@@ -6,12 +6,8 @@
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@concord-consortium/accessibility-tools/hooks": ["./src/hooks/index.ts"],
-      "@concord-consortium/accessibility-tools/debug": ["./src/debug/index.ts"],
-      "@concord-consortium/accessibility-tools/audit": ["./src/audit/index.ts"]
-    }
+    "resolveJsonModule": true,
+    "skipLibCheck": true
   },
   "include": ["src", "demo", "tests"]
 }

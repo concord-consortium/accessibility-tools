@@ -11,8 +11,75 @@
 
 const HIGHLIGHT_ID = "a11y-debug-highlight";
 
+function findScrollParent(element: Element): Element | null {
+  let current = element.parentElement;
+  while (current) {
+    const style = getComputedStyle(current);
+    if (
+      style.overflow === "auto" ||
+      style.overflow === "scroll" ||
+      style.overflowX === "auto" ||
+      style.overflowX === "scroll" ||
+      style.overflowY === "auto" ||
+      style.overflowY === "scroll"
+    ) {
+      return current;
+    }
+    current = current.parentElement;
+  }
+  return null;
+}
+
 let activeHighlight: HTMLElement | null = null;
 let activeElementRef: WeakRef<Element> | null = null;
+let scrollListenerActive = false;
+let rafPending = false;
+
+/**
+ * Check if an element is currently highlighted.
+ */
+export function isHighlighted(element: Element): boolean {
+  return (
+    activeElementRef?.deref() === element &&
+    activeHighlight?.style.display === "block"
+  );
+}
+
+function updatePosition(): void {
+  const el = activeElementRef?.deref();
+  if (!el || !activeHighlight || activeHighlight.style.display === "none") {
+    return;
+  }
+  const rect = el.getBoundingClientRect();
+  activeHighlight.style.top = `${rect.top}px`;
+  activeHighlight.style.left = `${rect.left}px`;
+  activeHighlight.style.width = `${rect.width}px`;
+  activeHighlight.style.height = `${rect.height}px`;
+}
+
+function handleScroll(): void {
+  if (rafPending) return;
+  rafPending = true;
+  requestAnimationFrame(() => {
+    rafPending = false;
+    updatePosition();
+  });
+}
+
+function startScrollListener(): void {
+  if (scrollListenerActive) return;
+  // Capture phase to catch scroll on any container
+  document.addEventListener("scroll", handleScroll, true);
+  window.addEventListener("resize", handleScroll);
+  scrollListenerActive = true;
+}
+
+function stopScrollListener(): void {
+  if (!scrollListenerActive) return;
+  document.removeEventListener("scroll", handleScroll, true);
+  window.removeEventListener("resize", handleScroll);
+  scrollListenerActive = false;
+}
 
 function getOrCreateOverlay(): HTMLElement {
   let overlay = document.getElementById(HIGHLIGHT_ID);
@@ -65,6 +132,7 @@ export function highlightElement(
 
   activeHighlight = overlay;
   activeElementRef = new WeakRef(element);
+  startScrollListener();
 }
 
 /**
@@ -76,6 +144,7 @@ export function removeHighlight(): void {
   }
   activeHighlight = null;
   activeElementRef = null;
+  stopScrollListener();
 }
 
 /**
@@ -96,6 +165,48 @@ export function updateHighlightPosition(element?: Element): void {
 }
 
 /**
+ * Scroll to an element in the page and highlight it.
+ * Useful for panels that list elements - click a row to jump to it.
+ */
+export function scrollToAndHighlight(
+  element: Element,
+  options?: { color?: string },
+): void {
+  // Toggle off if clicking the same element
+  if (
+    activeElementRef?.deref() === element &&
+    activeHighlight?.style.display === "block"
+  ) {
+    removeHighlight();
+    return;
+  }
+  // Find the scrollable container (the element with overflow: auto)
+  const scrollParent = findScrollParent(element);
+  if (scrollParent) {
+    const rect = element.getBoundingClientRect();
+    const containerRect = scrollParent.getBoundingClientRect();
+    const padding = 60;
+
+    if (rect.top < containerRect.top + padding) {
+      // Element is above or pinned to top - scroll up with padding
+      scrollParent.scrollBy({
+        top: rect.top - containerRect.top - padding,
+        behavior: "smooth",
+      });
+    } else if (rect.bottom > containerRect.bottom - padding) {
+      // Element is below or pinned to bottom - scroll down with padding
+      scrollParent.scrollBy({
+        top: rect.bottom - containerRect.bottom + padding,
+        behavior: "smooth",
+      });
+    }
+  } else {
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  highlightElement(element, options);
+}
+
+/**
  * Fully remove the highlight overlay from the DOM and reset state.
  * Call when the debug tool is unmounted.
  */
@@ -106,4 +217,5 @@ export function destroyHighlight(): void {
   }
   activeHighlight = null;
   activeElementRef = null;
+  stopScrollListener();
 }

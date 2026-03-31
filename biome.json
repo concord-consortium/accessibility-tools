@@ -23,6 +23,16 @@
           }
         }
       }
+    },
+    {
+      "include": ["src/debug/panels/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
     }
   ]
 }

@@ -181,17 +181,56 @@ export const categories: CategoryDef[] = [
 export interface OverlayToggleDef {
   id: string;
   label: string;
+  description: string;
   icon: ComponentType<{ className?: string }>;
+  disabled?: boolean;
 }
 
 export const overlayToggles: OverlayToggleDef[] = [
-  { id: "tab-order", label: "Tab Order", icon: HashtagIcon },
-  { id: "contrast", label: "Contrast Ratios", icon: PaintBrushIcon },
-  { id: "touch-targets", label: "Touch Targets", icon: CursorArrowRaysIcon },
-  { id: "live-regions", label: "Live Regions", icon: SignalIcon },
-  { id: "text-spacing", label: "Text Spacing", icon: Bars3Icon },
-  { id: "reflow", label: "Reflow Test", icon: DevicePhoneMobileIcon },
-  { id: "forced-colors", label: "Forced Colors", icon: EyeDropperIcon },
+  {
+    id: "tab-order",
+    label: "Tab Order",
+    description: "Show numbered badges on tabbable elements",
+    icon: HashtagIcon,
+  },
+  {
+    id: "contrast",
+    label: "Contrast Ratios",
+    description: "Show contrast ratio badges on text elements",
+    icon: PaintBrushIcon,
+  },
+  {
+    id: "touch-targets",
+    label: "Touch Targets",
+    description: "Highlight undersized touch targets",
+    icon: CursorArrowRaysIcon,
+  },
+  {
+    id: "live-regions",
+    label: "Live Regions",
+    description: "Highlight aria-live regions on the page",
+    icon: SignalIcon,
+  },
+  {
+    id: "text-spacing",
+    label: "Text Spacing",
+    description: "Apply WCAG 1.4.12 text spacing overrides",
+    icon: Bars3Icon,
+  },
+  {
+    id: "reflow",
+    label: "Reflow Test",
+    description:
+      "Constrain width to test WCAG 1.4.10 reflow (standalone mode only)",
+    icon: DevicePhoneMobileIcon,
+    disabled: true,
+  },
+  {
+    id: "forced-colors",
+    label: "Forced Colors",
+    description: "Simulate high contrast / forced colors mode",
+    icon: EyeDropperIcon,
+  },
 ];
 
 export interface FooterActionDef {
