@@ -16,10 +16,10 @@ describe("AriaTreePanel", () => {
     expect(screen.getByText("ARIA Tree View")).toBeTruthy();
   });
 
-  it("has Rescan, Expand, and Collapse buttons", () => {
+  it("has Rescan and Collapse toggle button", () => {
     render(<AriaTreePanel />);
     expect(screen.getByText("Rescan")).toBeTruthy();
-    expect(screen.getByText("Expand")).toBeTruthy();
+    // Defaults to expanded, so button shows "Collapse"
     expect(screen.getByText("Collapse")).toBeTruthy();
   });
 
@@ -59,9 +59,22 @@ describe("AriaTreePanel", () => {
       '<nav aria-label="Main"><a href="/">Home</a></nav>';
     render(<AriaTreePanel />);
 
-    // Find a toggle arrow (nav has children so it gets one)
-    const toggles = document.querySelectorAll(".a11y-tree-toggle");
-    expect(toggles.length).toBeGreaterThan(0);
+    // Find a treeitem with aria-expanded="true" (auto-expanded on mount)
+    const expandedItem = document.querySelector(
+      '.a11y-tree-node[aria-expanded="true"]',
+    );
+    expect(expandedItem).toBeTruthy();
+
+    // Click the toggle arrow to collapse
+    const toggle = expandedItem?.querySelector(".a11y-tree-toggle");
+    expect(toggle).toBeTruthy();
+
+    act(() => {
+      (toggle?.closest("button") as HTMLElement).click();
+    });
+
+    // After clicking, the node should be collapsed
+    expect(expandedItem?.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("roles-only filter shows count", () => {

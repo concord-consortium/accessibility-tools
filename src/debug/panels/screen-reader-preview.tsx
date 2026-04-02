@@ -7,7 +7,8 @@
  */
 
 import { SpeakerWaveIcon } from "@heroicons/react/24/outline";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { PickElementButton } from "../components/pick-element-button";
 import {
   getReactComponentName,
   getReactFiberPath,
@@ -20,6 +21,7 @@ import {
   formatAnnouncement,
 } from "../utils/accname";
 import { useFocusStream } from "../utils/use-focus-stream";
+import { usePickMode } from "../utils/use-pick-mode";
 
 const canSpeak =
   typeof window !== "undefined" &&
@@ -47,48 +49,26 @@ export function ScreenReaderPreviewPanel() {
     setInfo(computeAccessibleInfo(current.element));
   }, [current, trackFocus]);
 
-  // Pick mode: click any element to inspect it
+  const handlePick = useCallback((target: Element) => {
+    setElement(target);
+    setInfo(computeAccessibleInfo(target));
+    setPickMode(false);
+    setTrackFocus(false);
+    highlightElement(target, { color: "#7c3aed" });
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    setPickMode(false);
+  }, []);
+
+  usePickMode({ active: pickMode, onPick: handlePick, onCancel: handleCancel });
+
+  // Clean up highlight on unmount
   useEffect(() => {
-    if (!pickMode) return;
-
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest("[data-a11y-debug]")) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setElement(target);
-      setInfo(computeAccessibleInfo(target));
-      setPickMode(false);
-      setTrackFocus(false);
-      highlightElement(target, { color: "#7c3aed" });
-    };
-
-    const handleMouseOver = (e: MouseEvent) => {
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest("[data-a11y-debug]")) return;
-      highlightElement(target, { color: "#f59e0b" });
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setPickMode(false);
-        removeHighlight();
-      }
-    };
-
-    document.addEventListener("click", handleClick, true);
-    document.addEventListener("mouseover", handleMouseOver, true);
-    document.addEventListener("keydown", handleKeyDown, true);
-
     return () => {
-      document.removeEventListener("click", handleClick, true);
-      document.removeEventListener("mouseover", handleMouseOver, true);
-      document.removeEventListener("keydown", handleKeyDown, true);
       removeHighlight();
     };
-  }, [pickMode]);
+  }, []);
 
   const el = element;
   const tag = el?.tagName?.toLowerCase() ?? "unknown";
@@ -100,17 +80,13 @@ export function ScreenReaderPreviewPanel() {
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Screen Reader Text Preview</h3>
       <div className="a11y-panel-toolbar">
-        <button
-          type="button"
-          className={`a11y-panel-btn ${pickMode ? "a11y-panel-btn-active" : ""}`}
-          aria-pressed={pickMode}
+        <PickElementButton
+          active={pickMode}
           onClick={() => {
             setPickMode((v) => !v);
             if (!pickMode) setTrackFocus(false);
           }}
-        >
-          Pick Element
-        </button>
+        />
         <button
           type="button"
           className={`a11y-panel-btn ${trackFocus ? "a11y-panel-btn-active" : ""}`}

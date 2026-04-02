@@ -1,13 +1,16 @@
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { MoonIcon, SunIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CCLogo } from "./cc-logo";
 import {
   toggleContrastOverlay,
   toggleForcedColors,
+  toggleLiveRegionsOverlay,
   toggleReflow,
   toggleTabOrder,
   toggleTextSpacing,
   toggleTouchTargetsOverlay,
 } from "./overlays";
+import { triggerReposition } from "./overlays/reposition";
 import { panelComponents } from "./panels";
 import {
   type CategoryDef,
@@ -24,8 +27,9 @@ export interface AccessibilityDebugSidebarProps {
 }
 
 export function AccessibilityDebugSidebar({
-  theme = "light",
+  theme: initialTheme = "light",
 }: AccessibilityDebugSidebarProps) {
+  const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
   const enabledCategories = categories.filter((c) => !c.disabled);
   const [activeCategory, setActiveCategory] = useState(
     enabledCategories[0]?.id ?? categories[0].id,
@@ -120,8 +124,11 @@ export function AccessibilityDebugSidebar({
       "tab-order": () => toggleTabOrder(),
       contrast: () => toggleContrastOverlay(),
       "touch-targets": () => toggleTouchTargetsOverlay(),
+      "live-regions": () => toggleLiveRegionsOverlay(),
     };
     handlers[id]?.();
+    // Trigger reposition after layout-changing overlays (e.g., text spacing)
+    requestAnimationFrame(() => triggerReposition());
     setActiveOverlays((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -148,7 +155,21 @@ export function AccessibilityDebugSidebar({
     >
       {/* Header */}
       <div className="a11y-sidebar-header">
-        <span className="a11y-sidebar-title">cc-a11y-tools</span>
+        <CCLogo className="a11y-sidebar-logo" />
+        <span className="a11y-sidebar-title">Accessibility Debugger</span>
+        <button
+          type="button"
+          className="a11y-theme-toggle"
+          aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
+          onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))}
+        >
+          {theme === "light" ? (
+            <MoonIcon className="a11y-theme-toggle-icon" />
+          ) : (
+            <SunIcon className="a11y-theme-toggle-icon" />
+          )}
+        </button>
         <span className="a11y-sidebar-version">v{VERSION}</span>
       </div>
 

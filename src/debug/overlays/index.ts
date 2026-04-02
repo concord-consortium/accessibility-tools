@@ -4,6 +4,7 @@ export { toggleForcedColors } from "./forced-colors";
 export { toggleTabOrder } from "./tab-order";
 export { toggleContrastOverlay } from "./contrast-overlay";
 export { toggleTouchTargetsOverlay } from "./touch-targets-overlay";
+export { toggleLiveRegionsOverlay } from "./live-regions-overlay";
 export {
   injectOverlayCSS,
   removeOverlayCSS,

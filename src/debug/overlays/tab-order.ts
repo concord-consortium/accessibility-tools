@@ -2,14 +2,17 @@
  * Tab Order Overlay toggle.
  *
  * Shows numbered badges on all tabbable elements in the page,
- * following browser tab order rules.
+ * following browser tab order rules. Badges reposition on
+ * scroll, resize, and layout changes via the shared reposition manager.
  */
 
 import { isInsideSidebar } from "../utils/focus-stream";
+import { onReposition } from "./reposition";
 
 const BADGE_CLASS = "a11y-tab-order-badge";
 let active = false;
-let badges: HTMLElement[] = [];
+let badges: Array<{ badge: HTMLElement; element: Element }> = [];
+let unregisterReposition: (() => void) | null = null;
 
 const TABBABLE_SELECTOR = [
   "a[href]",
@@ -20,6 +23,14 @@ const TABBABLE_SELECTOR = [
   "[tabindex]:not([tabindex='-1'])",
   "summary",
 ].join(", ");
+
+function updatePositions() {
+  for (const { badge, element } of badges) {
+    const rect = element.getBoundingClientRect();
+    badge.style.top = `${rect.top - 8}px`;
+    badge.style.left = `${rect.left - 8}px`;
+  }
+}
 
 function createBadges() {
   removeBadges();
@@ -39,8 +50,10 @@ function createBadges() {
 
   // Sort by tab order
   tabbable.sort((a, b) => {
-    const aIdx = Number(a.getAttribute("tabindex") ?? 0);
-    const bIdx = Number(b.getAttribute("tabindex") ?? 0);
+    const aRaw = Number(a.getAttribute("tabindex") ?? 0);
+    const bRaw = Number(b.getAttribute("tabindex") ?? 0);
+    const aIdx = Number.isNaN(aRaw) ? 0 : aRaw;
+    const bIdx = Number.isNaN(bRaw) ? 0 : bRaw;
     if (aIdx > 0 && bIdx > 0) return aIdx - bIdx;
     if (aIdx > 0) return -1;
     if (bIdx > 0) return 1;
@@ -78,12 +91,16 @@ function createBadges() {
       font-family: system-ui, sans-serif;
     `;
     document.body.appendChild(badge);
-    badges.push(badge);
+    badges.push({ badge, element: el });
   }
+
+  unregisterReposition = onReposition(updatePositions);
 }
 
 function removeBadges() {
-  for (const badge of badges) {
+  unregisterReposition?.();
+  unregisterReposition = null;
+  for (const { badge } of badges) {
     badge.remove();
   }
   badges = [];

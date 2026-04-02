@@ -43,17 +43,62 @@ const CSS = `
   border-left: 1px solid var(--a11y-sidebar-border);
 }
 
+/* Pick mode cursor */
+body.a11y-pick-mode,
+body.a11y-pick-mode * {
+  cursor: crosshair !important;
+}
+.a11y-pick-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.a11y-pick-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 /* Header */
 .a11y-sidebar-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 6px;
   padding: 8px 12px;
   background: var(--a11y-sidebar-header-bg);
   border-bottom: 1px solid var(--a11y-sidebar-border);
 }
+.a11y-sidebar-logo {
+  width: 16px;
+  height: 18px;
+  flex-shrink: 0;
+}
 .a11y-sidebar-title {
   font-weight: 600;
+}
+.a11y-theme-toggle {
+  margin-left: auto;
+  margin-right: 6px;
+  border: none;
+  background: transparent;
+  color: var(--a11y-sidebar-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+}
+.a11y-theme-toggle:hover {
+  background: var(--a11y-sidebar-icon-hover-bg);
+  color: var(--a11y-sidebar-text);
+}
+.a11y-theme-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.a11y-theme-toggle-icon {
+  width: 14px;
+  height: 14px;
 }
 .a11y-sidebar-version {
   color: var(--a11y-sidebar-text-muted);
@@ -474,7 +519,7 @@ const CSS = `
   opacity: 1;
 }
 .a11y-debug-sidebar[data-theme="dark"] .a11y-toast {
-  background: #15803d;
+  background: #166534;
 }
 
 /* Overview panel */

@@ -3,14 +3,27 @@
  *
  * Shows contrast ratio badges on text elements in the page.
  * Color-coded: green (passes AA+AAA), yellow (AA only), red (fails AA).
+ * Badges reposition on scroll, resize, and layout changes via the
+ * shared reposition manager.
  */
 
 import { computeContrast, formatRatio } from "../utils/contrast";
 import { isInsideSidebar } from "../utils/focus-stream";
+import { onReposition } from "./reposition";
 
 const BADGE_CLASS = "a11y-contrast-overlay-badge";
 let active = false;
-let overlayBadges: HTMLElement[] = [];
+let overlayBadges: Array<{ badge: HTMLElement; element: Element }> = [];
+let unregisterReposition: (() => void) | null = null;
+let domObserver: MutationObserver | null = null;
+
+function updatePositions() {
+  for (const { badge, element } of overlayBadges) {
+    const rect = element.getBoundingClientRect();
+    badge.style.top = `${rect.top}px`;
+    badge.style.left = `${rect.right + 2}px`;
+  }
+}
 
 function createBadges() {
   removeBadges();
@@ -54,9 +67,9 @@ function createBadges() {
       }
 
       const color = result.passesAAA
-        ? "#16a34a"
+        ? "#15803d"
         : result.passesAA
-          ? "#ca8a04"
+          ? "#a16207"
           : "#dc2626";
 
       const badge = document.createElement("div");
@@ -80,14 +93,37 @@ function createBadges() {
         white-space: nowrap;
       `;
       document.body.appendChild(badge);
-      overlayBadges.push(badge);
+      overlayBadges.push({ badge, element: el });
     }
     node = walker.nextNode();
   }
+
+  unregisterReposition = onReposition(updatePositions);
+
+  domObserver = new MutationObserver((mutations) => {
+    // Ignore mutations from our own badge elements
+    const isOwnMutation = mutations.every((m) =>
+      [...m.addedNodes, ...m.removedNodes].every(
+        (n) =>
+          n instanceof HTMLElement &&
+          n.getAttribute("data-a11y-debug") === "contrast-badge",
+      ),
+    );
+    if (isOwnMutation) return;
+    if (active) {
+      domObserver?.disconnect();
+      createBadges();
+    }
+  });
+  domObserver.observe(document.body, { childList: true, subtree: true });
 }
 
 function removeBadges() {
-  for (const badge of overlayBadges) {
+  domObserver?.disconnect();
+  domObserver = null;
+  unregisterReposition?.();
+  unregisterReposition = null;
+  for (const { badge } of overlayBadges) {
     badge.remove();
   }
   overlayBadges = [];

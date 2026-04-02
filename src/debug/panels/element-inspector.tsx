@@ -6,10 +6,10 @@
  * passing an element via onNavigateToPanel("inspector", element).
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { generateAuditMarkdown, runAudit } from "../checks/audit";
+import { PickElementButton } from "../components/pick-element-button";
 import {
-  describeElement,
   getReactComponentName,
   getReactFiberPath,
   highlightElement,
@@ -18,6 +18,7 @@ import {
   scrollToAndHighlight,
   showToast,
 } from "../utils";
+import { usePickMode } from "../utils/use-pick-mode";
 
 const ARIA_ATTRIBUTES = [
   "role",
@@ -84,46 +85,17 @@ export function ElementInspectorPanel({
     }
   }, [inspectTarget]);
 
-  // Click-to-pick mode
-  useEffect(() => {
-    if (!pickMode) return;
+  const handlePick = useCallback((target: Element) => {
+    setElement(target);
+    setPickMode(false);
+    highlightElement(target);
+  }, []);
 
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest("[data-a11y-debug]")) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setElement(target);
-      setPickMode(false);
-      highlightElement(target);
-    };
+  const handleCancel = useCallback(() => {
+    setPickMode(false);
+  }, []);
 
-    const handleMouseOver = (e: MouseEvent) => {
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest("[data-a11y-debug]")) return;
-      highlightElement(target, { color: "#f59e0b" });
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setPickMode(false);
-        removeHighlight();
-      }
-    };
-
-    document.addEventListener("click", handleClick, true);
-    document.addEventListener("mouseover", handleMouseOver, true);
-    document.addEventListener("keydown", handleKeyDown, true);
-
-    return () => {
-      document.removeEventListener("click", handleClick, true);
-      document.removeEventListener("mouseover", handleMouseOver, true);
-      document.removeEventListener("keydown", handleKeyDown, true);
-      removeHighlight();
-    };
-  }, [pickMode]);
+  usePickMode({ active: pickMode, onPick: handlePick, onCancel: handleCancel });
 
   // Clean up highlight on unmount
   useEffect(() => {
@@ -137,14 +109,10 @@ export function ElementInspectorPanel({
       <div className="a11y-panel-content">
         <h3 className="a11y-panel-title">Element Inspector</h3>
         <div className="a11y-panel-toolbar">
-          <button
-            type="button"
-            className={`a11y-panel-btn ${pickMode ? "a11y-panel-btn-active" : ""}`}
-            aria-pressed={pickMode}
+          <PickElementButton
+            active={pickMode}
             onClick={() => setPickMode((v) => !v)}
-          >
-            Pick Element
-          </button>
+          />
         </div>
         <div className="a11y-focus-empty">
           Click "Pick Element" then click any element on the page, or navigate
@@ -185,14 +153,10 @@ export function ElementInspectorPanel({
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Element Inspector</h3>
       <div className="a11y-panel-toolbar">
-        <button
-          type="button"
-          className={`a11y-panel-btn ${pickMode ? "a11y-panel-btn-active" : ""}`}
-          aria-pressed={pickMode}
+        <PickElementButton
+          active={pickMode}
           onClick={() => setPickMode((v) => !v)}
-        >
-          Pick Element
-        </button>
+        />
         <button
           type="button"
           className="a11y-panel-btn"

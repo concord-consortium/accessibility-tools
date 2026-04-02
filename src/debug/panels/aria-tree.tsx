@@ -18,6 +18,7 @@ import { getEffectiveRole } from "../utils/accname";
 import { isInsideSidebar } from "../utils/focus-stream";
 
 interface TreeNode {
+  id: string;
   element: Element;
   tag: string;
   role: string | null;
@@ -46,8 +47,11 @@ const ARIA_DISPLAY_ATTRS = [
   "aria-invalid",
 ] as const;
 
-function buildTree(root: Element, depth = 0): TreeNode {
+let nextNodeId = 0;
+
+function buildTree(root: Element, depth = 0, parentPath = ""): TreeNode {
   const tag = root.tagName.toLowerCase();
+  const id = parentPath ? `${parentPath}>${tag}:${nextNodeId++}` : tag;
   const role = getEffectiveRole(root);
   const ariaLabel = root.getAttribute("aria-label");
 
@@ -62,7 +66,7 @@ function buildTree(root: Element, depth = 0): TreeNode {
   const children: TreeNode[] = [];
   for (const child of root.children) {
     if (isInsideSidebar(child)) continue;
-    children.push(buildTree(child, depth + 1));
+    children.push(buildTree(child, depth + 1, id));
   }
 
   const hasRoleDescendant = children.some(
@@ -70,6 +74,7 @@ function buildTree(root: Element, depth = 0): TreeNode {
   );
 
   return {
+    id,
     element: root,
     tag,
     role,
@@ -108,20 +113,17 @@ export function AriaTreePanel() {
 
   const rescan = useCallback((notify = true) => {
     const root = document.body;
+    nextNodeId = 0;
     const newTree = buildTree(root);
     setTree(newTree);
 
-    // Auto-expand first two levels
+    // Auto-expand all nodes
     const toExpand = new Set<Element>();
-    function expandLevel(node: TreeNode, maxDepth: number) {
-      if (node.depth <= maxDepth) {
-        toExpand.add(node.element);
-        for (const child of node.children) {
-          expandLevel(child, maxDepth);
-        }
-      }
+    function collectAll(node: TreeNode) {
+      if (node.children.length > 0) toExpand.add(node.element);
+      for (const child of node.children) collectAll(child);
     }
-    expandLevel(newTree, 1);
+    collectAll(newTree);
     setExpanded(toExpand);
 
     if (notify) {
@@ -168,6 +170,19 @@ export function AriaTreePanel() {
   const totalNodes = tree ? countNodes(tree) : 0;
   const roleNodes = tree ? countRoleNodes(tree) : 0;
 
+  // Count expandable nodes to determine toggle state
+  const expandableCount = (() => {
+    if (!tree) return 0;
+    let count = 0;
+    function walk(node: TreeNode) {
+      if (node.children.length > 0) count++;
+      for (const child of node.children) walk(child);
+    }
+    walk(tree);
+    return count;
+  })();
+  const allExpanded = expanded.size >= expandableCount;
+
   return (
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">ARIA Tree View</h3>
@@ -181,19 +196,11 @@ export function AriaTreePanel() {
         </button>
         <button
           type="button"
-          onClick={expandAll}
+          onClick={allExpanded ? collapseAll : expandAll}
           className="a11y-panel-btn"
           disabled={!tree}
         >
-          Expand
-        </button>
-        <button
-          type="button"
-          onClick={collapseAll}
-          className="a11y-panel-btn"
-          disabled={!tree}
-        >
-          Collapse
+          {allExpanded ? "Collapse" : "Expand"}
         </button>
       </div>
 
@@ -262,9 +269,9 @@ function TreeNodeView({
 
     return (
       <>
-        {childrenWithRoles.map((child, i) => (
+        {childrenWithRoles.map((child) => (
           <TreeNodeView
-            key={`${child.tag}-${i}`}
+            key={child.id}
             node={child}
             filter={filter}
             expanded={expanded}
@@ -336,9 +343,9 @@ function TreeNodeView({
       {isExpanded && visibleChildren.length > 0 && (
         // biome-ignore lint/a11y/useSemanticElements: WAI-ARIA tree pattern requires role="group" on tree item children
         <div role="group">
-          {visibleChildren.map((child, i) => (
+          {visibleChildren.map((child) => (
             <TreeNodeView
-              key={`${child.tag}-${i}`}
+              key={child.id}
               node={child}
               filter={filter}
               expanded={expanded}

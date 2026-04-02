@@ -9,5 +9,5 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["src", "demo", "tests"]
+  "include": ["src", "demo", "tests", "demo/sections/aria-attributes.tsx"]
 }

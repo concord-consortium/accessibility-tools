@@ -15,23 +15,19 @@ import { toggleOverlayCSS } from "./inject-css";
 
 const CSS = `
 /* WCAG 1.4.12 Text Spacing Override */
-* {
+*:not([data-a11y-debug]):not([data-a11y-debug] *) {
   line-height: 1.5 !important;
   letter-spacing: 0.12em !important;
   word-spacing: 0.16em !important;
 }
-p {
+p:not([data-a11y-debug]):not([data-a11y-debug] *) {
   margin-bottom: 2em !important;
 }
-/* Reset sidebar */
-.a11y-debug-sidebar,
-.a11y-debug-sidebar * {
+/* Prevent inheritance from parent into sidebar */
+.a11y-debug-sidebar {
   line-height: normal !important;
   letter-spacing: normal !important;
   word-spacing: normal !important;
-}
-.a11y-debug-sidebar p {
-  margin-bottom: 0 !important;
 }
 `;
 

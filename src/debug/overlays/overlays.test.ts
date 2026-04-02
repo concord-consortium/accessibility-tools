@@ -23,9 +23,10 @@ describe("toggleTextSpacing", () => {
     expect(style?.textContent).toContain("word-spacing: 0.16em");
   });
 
-  it("includes sidebar reset", () => {
+  it("excludes sidebar via data-a11y-debug and resets inheritance", () => {
     toggleTextSpacing();
     const style = document.getElementById("a11y-overlay-text-spacing");
+    expect(style?.textContent).toContain("[data-a11y-debug]");
     expect(style?.textContent).toContain(".a11y-debug-sidebar");
     expect(style?.textContent).toContain("line-height: normal");
   });
