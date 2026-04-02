@@ -9,13 +9,15 @@ import { scanImages } from "../checks/images";
 import { scanLandmarks } from "../checks/landmarks";
 import { scanLinksButtons } from "../checks/links-buttons";
 import { scanAnimations } from "../checks/reduced-motion";
-import type { ScoreExplanation } from "../checks/scoring";
+import type { CheckScore } from "../checks/scoring";
 import {
   type OverallScore,
   calculateOverallScore,
   generateMarkdownReport,
 } from "../checks/scoring";
 import { scanTouchTargets } from "../checks/touch-targets";
+import type { CheckIssue } from "../checks/types";
+import { categories } from "../sidebar-data";
 import { pluralize, showToast, withSelfExclusionDisabled } from "../utils";
 
 interface OverviewPanelProps {
@@ -48,8 +50,17 @@ function runAllChecks(): OverallScore {
   return calculateOverallScore(checks);
 }
 
+/** Look up the icon component for a panel by its check ID. */
+function getPanelIcon(checkId: string) {
+  for (const cat of categories) {
+    const panel = cat.panels.find((p) => p.id === checkId);
+    if (panel) return panel.icon;
+  }
+  return null;
+}
+
 export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
-  const [showExplain, setShowExplain] = useState(false);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [scores, setScores] = useState<OverallScore>({
     score: 100,
     color: "green",
@@ -100,14 +111,6 @@ export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
         </button>
         <button
           type="button"
-          className={`a11y-panel-btn ${showExplain ? "a11y-panel-btn-active" : ""}`}
-          aria-expanded={showExplain}
-          onClick={() => setShowExplain((v) => !v)}
-        >
-          Explain
-        </button>
-        <button
-          type="button"
           className="a11y-panel-btn"
           onClick={() => {
             const md = generateMarkdownReport(scores);
@@ -122,54 +125,26 @@ export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
         </button>
       </div>
 
-      {/* Score explanation */}
-      {showExplain && (
-        <div className="a11y-overview-explain">
-          <p>
-            <strong>Overall: {scores.score}/100</strong> (average of{" "}
-            {scores.checks.length} checks)
-          </p>
-          {scores.checks.map((check) => (
-            <ExplainCard key={check.id} check={check} />
-          ))}
-        </div>
-      )}
-
       {/* Check cards - grows to fill space */}
       <div className="a11y-overview-checks">
         {scores.checks.map((check) => (
-          <button
-            type="button"
+          <CheckCard
             key={check.id}
-            className={`a11y-overview-check-card ${check.errorCount > 0 ? "a11y-overview-check-error" : ""}`}
-            aria-label={`${check.label}: score ${check.score}, ${pluralize(check.errorCount, "error")}, ${pluralize(check.warningCount, "warning")}`}
-            title={`${check.label}: ${check.score}/100 - ${pluralize(check.errorCount, "error")}, ${pluralize(check.warningCount, "warning")}`}
-            onClick={() => onNavigateToPanel?.(check.id)}
-          >
-            <div className="a11y-overview-check-header">
-              <span className="a11y-overview-check-name">{check.label}</span>
-              <span
-                className={`a11y-overview-check-score a11y-score-${check.color}`}
-              >
-                {check.score}
-              </span>
-            </div>
-            <div className="a11y-overview-check-summary">
-              {check.errorCount > 0 && (
-                <span className="a11y-overview-check-errors">
-                  {pluralize(check.errorCount, "error")}
-                </span>
-              )}
-              {check.warningCount > 0 && (
-                <span className="a11y-overview-check-warnings">
-                  {pluralize(check.warningCount, "warning")}
-                </span>
-              )}
-              {check.errorCount === 0 && check.warningCount === 0 && (
-                <span className="a11y-overview-check-pass">All clear</span>
-              )}
-            </div>
-          </button>
+            check={check}
+            expanded={expandedCards.has(check.id)}
+            onToggle={() =>
+              setExpandedCards((prev) => {
+                const next = new Set(prev);
+                if (next.has(check.id)) {
+                  next.delete(check.id);
+                } else {
+                  next.add(check.id);
+                }
+                return next;
+              })
+            }
+            onNavigate={() => onNavigateToPanel?.(check.id)}
+          />
         ))}
       </div>
 
@@ -225,33 +200,138 @@ export function OverviewPanel({ onNavigateToPanel }: OverviewPanelProps) {
   );
 }
 
-function ExplainCard({
+function CheckCard({
   check,
+  expanded,
+  onToggle,
+  onNavigate,
 }: {
-  check: { label: string; score: number; explanation: ScoreExplanation };
+  check: CheckScore;
+  expanded: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
 }) {
+  const Icon = getPanelIcon(check.id);
+  const errors = check.issues.filter((i) => i.severity === "error");
+  const warnings = check.issues.filter((i) => i.severity === "warning");
   const { explanation } = check;
+
   return (
-    <div className="a11y-overview-explain-card">
-      <strong>
-        {check.label}: {check.score}/100
-      </strong>
-      <div className="a11y-overview-explain-detail">
-        100 - ({explanation.totalDeductions} deductions /{" "}
-        {explanation.totalItems} items) x 10 = 100 -{" "}
-        {explanation.normalizedDeduction} = {check.score}
-      </div>
-      {explanation.issueBreakdown.length > 0 && (
-        <div className="a11y-overview-explain-issues">
-          {explanation.issueBreakdown.map((ib, i) => (
-            <div key={`ib-${i}`} className="a11y-overview-explain-issue">
-              {ib.severity}({ib.severity === "error" ? 10 : 3}) x {ib.wcagLevel}
-              ({ib.wcagLevel === "A" ? 3 : ib.wcagLevel === "AA" ? 2 : 1}) ={" "}
-              {ib.weight}: {ib.message}
-            </div>
-          ))}
+    <div
+      className={`a11y-overview-check-card ${check.errorCount > 0 ? "a11y-overview-check-error" : ""}`}
+    >
+      <div className="a11y-overview-check-header">
+        <button
+          type="button"
+          className="a11y-overview-check-toggle"
+          aria-expanded={expanded}
+          aria-label={`${check.label}: score ${check.score}, ${pluralize(check.errorCount, "error")}, ${pluralize(check.warningCount, "warning")}`}
+          onClick={onToggle}
+        >
+          <span className="a11y-overview-check-name">{check.label}</span>
+          <div className="a11y-overview-check-summary">
+            {check.errorCount > 0 && (
+              <span className="a11y-overview-check-errors">
+                {pluralize(check.errorCount, "error")}
+              </span>
+            )}
+            {check.warningCount > 0 && (
+              <span className="a11y-overview-check-warnings">
+                {pluralize(check.warningCount, "warning")}
+              </span>
+            )}
+            {check.errorCount === 0 && check.warningCount === 0 && (
+              <span className="a11y-overview-check-pass">All clear</span>
+            )}
+          </div>
+        </button>
+        <div className="a11y-overview-check-right">
+          <span
+            className={`a11y-overview-check-score a11y-score-${check.color}`}
+          >
+            {check.score}
+          </span>
+          {Icon && (
+            <button
+              type="button"
+              className="a11y-overview-open-panel-btn"
+              aria-label={`Open ${check.label} panel`}
+              title={`Open ${check.label} panel`}
+              onClick={onNavigate}
+            >
+              <Icon className="a11y-icon" />
+            </button>
+          )}
         </div>
+      </div>
+
+      {expanded && (
+        <button
+          type="button"
+          className="a11y-overview-check-expanded"
+          aria-label={`Open ${check.label} panel`}
+          title={`Open ${check.label} panel`}
+          onClick={onNavigate}
+        >
+          {/* Issues list */}
+          {(errors.length > 0 || warnings.length > 0) && (
+            <IssueList errors={errors} warnings={warnings} />
+          )}
+
+          {/* Score explanation */}
+          <div className="a11y-overview-explain">
+            <div className="a11y-overview-explain-detail">
+              <strong>Score: {check.score}</strong> = 100 - (
+              {explanation.totalDeductions} deductions /{" "}
+              {explanation.totalItems} items) x 10 = 100 -{" "}
+              {explanation.normalizedDeduction}
+            </div>
+            {explanation.issueBreakdown.length > 0 && (
+              <div className="a11y-overview-explain-issues">
+                {explanation.issueBreakdown.map((ib, i) => (
+                  <div key={`ib-${i}`} className="a11y-overview-explain-issue">
+                    {ib.severity}({ib.severity === "error" ? 10 : 3}) x{" "}
+                    {ib.wcagLevel}(
+                    {ib.wcagLevel === "A" ? 3 : ib.wcagLevel === "AA" ? 2 : 1})
+                    = {ib.weight}: {ib.message}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </button>
       )}
+    </div>
+  );
+}
+
+function IssueList({
+  errors,
+  warnings,
+}: {
+  errors: CheckIssue[];
+  warnings: CheckIssue[];
+}) {
+  return (
+    <div className="a11y-overview-issue-list">
+      {errors.map((issue, i) => (
+        <div
+          key={`err-${i}`}
+          className="a11y-overview-issue a11y-overview-issue-error"
+        >
+          <span className="a11y-overview-issue-badge">error</span>
+          <span className="a11y-overview-issue-msg">{issue.message}</span>
+        </div>
+      ))}
+      {warnings.map((issue, i) => (
+        <div
+          key={`warn-${i}`}
+          className="a11y-overview-issue a11y-overview-issue-warning"
+        >
+          <span className="a11y-overview-issue-badge">warning</span>
+          <span className="a11y-overview-issue-msg">{issue.message}</span>
+        </div>
+      ))}
     </div>
   );
 }

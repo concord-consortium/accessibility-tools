@@ -569,8 +569,7 @@ body.a11y-pick-mode * {
   border: 1px solid var(--a11y-sidebar-border);
   border-radius: 4px;
   padding: 8px;
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 6px;
   font-size: 11px;
 }
 .a11y-overview-explain-card {
@@ -589,6 +588,9 @@ body.a11y-pick-mode * {
 }
 .a11y-overview-explain-issues {
   margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 .a11y-overview-explain-issue {
   color: var(--a11y-sidebar-text-muted);
@@ -607,22 +609,29 @@ body.a11y-pick-mode * {
 .a11y-overview-check-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px;
-  min-height: 44px;
   border: 1px solid var(--a11y-sidebar-border);
   border-radius: 4px;
+  background: transparent;
+  width: 100%;
+}
+.a11y-overview-check-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border: none;
   background: transparent;
   text-align: left;
   font: inherit;
   color: inherit;
   cursor: pointer;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
-.a11y-overview-check-card:hover {
+.a11y-overview-check-toggle:hover {
   background: var(--a11y-sidebar-icon-hover-bg);
 }
-.a11y-overview-check-card:focus-visible {
+.a11y-overview-check-toggle:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: -2px;
 }
@@ -632,10 +641,105 @@ body.a11y-pick-mode * {
 .a11y-debug-sidebar[data-theme="dark"] .a11y-overview-check-error {
   border-left-color: #f87171;
 }
+.a11y-overview-check-expanded {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 8px;
+  border: none;
+  border-top: 1px solid var(--a11y-sidebar-border);
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  width: 100%;
+  font-size: 11px;
+}
+.a11y-overview-check-expanded:hover {
+  background: var(--a11y-sidebar-icon-hover-bg);
+}
+.a11y-overview-check-expanded:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.a11y-overview-open-panel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--a11y-sidebar-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--a11y-sidebar-text-muted);
+  cursor: pointer;
+}
+.a11y-overview-open-panel-btn:hover {
+  background: var(--a11y-sidebar-icon-hover-bg);
+  color: var(--a11y-sidebar-text);
+}
+.a11y-overview-open-panel-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.a11y-overview-open-panel-btn .a11y-icon {
+  width: 14px;
+  height: 14px;
+}
+.a11y-overview-issue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  margin-bottom: 6px;
+}
+.a11y-overview-issue {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 10px;
+}
+.a11y-overview-issue-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 0 3px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.a11y-overview-issue-error .a11y-overview-issue-badge {
+  color: #dc2626;
+  background: #fef2f2;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-overview-issue-error .a11y-overview-issue-badge {
+  color: #f87171;
+  background: #3b1111;
+}
+.a11y-overview-issue-warning .a11y-overview-issue-badge {
+  color: #a16207;
+  background: #fefce8;
+}
+.a11y-debug-sidebar[data-theme="dark"] .a11y-overview-issue-warning .a11y-overview-issue-badge {
+  color: #facc15;
+  background: #3b2f11;
+}
+.a11y-overview-issue-msg {
+  color: var(--a11y-sidebar-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .a11y-overview-check-header {
   display: flex;
-  justify-content: space-between;
+  align-items: stretch;
+  gap: 8px;
+}
+.a11y-overview-check-right {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  gap: 2px;
+  padding: 6px 8px 6px 0;
 }
 .a11y-overview-check-name {
   font-size: 12px;
