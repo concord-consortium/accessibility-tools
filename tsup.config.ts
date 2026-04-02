@@ -8,7 +8,9 @@ export default defineConfig([
       "audit/index": "src/audit/index.ts",
     },
     format: ["esm", "cjs"],
-    dts: true,
+    dts: {
+      tsconfig: "tsconfig.build.json",
+    },
     external: ["react", "react-dom", "react/jsx-runtime"],
     outDir: "dist",
     clean: true,
