@@ -2,11 +2,109 @@
 
 Accessibility debugging tools, composable React hooks, and CI integrations for React applications.
 
-## Status
+## Accessibility Debug Sidebar
 
-**Phase 1: Package Scaffold + Demo App** - in progress.
+A drop-in sidebar panel that provides live accessibility auditing for any React application. Attach it alongside your app and use it during development to catch WCAG issues as you build.
 
-See [docs/roadmap.md](docs/roadmap.md) for the full implementation plan.
+### What it does
+
+- **Overview panel** with an aggregate accessibility score across 10 checks, expandable cards with error/warning lists and score breakdowns
+- **Check panels** for heading hierarchy, form labels, color contrast, images, links/buttons, ARIA validation, landmarks, duplicate IDs, touch targets, and reduced motion
+- **Tool panels** including element inspector, live focus tracker, keyboard event log, screen reader text preview, ARIA tree view, tab order overlay, announcements log, live region inventory, focus history, focus loss detector, focus trap detector, focus order recorder, and WCAG audit report
+- **Overlay toggles** for tab order, contrast ratios, touch targets, live regions, text spacing (WCAG 1.4.12), reflow testing, and forced colors simulation
+- Light and dark theme support
+- All panels update live as the page changes
+
+### Integration
+
+Install the package:
+
+```bash
+npm install @concord-consortium/accessibility-tools
+```
+
+Import and render the sidebar alongside your app:
+
+```tsx
+import { AccessibilityDebugSidebar } from "@concord-consortium/accessibility-tools/debug";
+
+function App() {
+  return (
+    <>
+      <div className="your-app">
+        {/* your app content */}
+      </div>
+      <AccessibilityDebugSidebar />
+    </>
+  );
+}
+```
+
+The sidebar renders as a 300px-wide panel. Your app container should use flexbox so the sidebar sits alongside it:
+
+```css
+#root {
+  display: flex;
+  height: 100vh;
+}
+
+#root > .your-app {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+}
+```
+
+### Conditional rendering with a query parameter
+
+A common pattern is to only show the sidebar when a URL parameter is present:
+
+```tsx
+const showDebugger = new URLSearchParams(window.location.search).has("debugA11y");
+
+function App() {
+  return (
+    <>
+      <div className="your-app">{/* ... */}</div>
+      {showDebugger && <AccessibilityDebugSidebar />}
+    </>
+  );
+}
+```
+
+Then visit your app with `?debugA11y` to enable it.
+
+### Props
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `theme` | `"light" \| "dark"` | `"light"` | Color theme. A toggle button in the sidebar header also allows switching at runtime. |
+
+### Local development with yalc
+
+To test changes locally in a consuming app:
+
+```bash
+# In this repo - build and publish to local yalc store
+npm run build
+yalc publish
+
+# In the consuming app
+yalc add @concord-consortium/accessibility-tools
+# After making changes, push updates
+# (back in this repo)
+yalc publish --push
+```
+
+## Package Entry Points
+
+| Entry point | Description |
+|---|---|
+| `@concord-consortium/accessibility-tools/hooks` | React hooks + AccessibilityProvider |
+| `@concord-consortium/accessibility-tools/debug` | AccessibilityDebugSidebar component |
+| `@concord-consortium/accessibility-tools/audit` | Headless WCAG audit engine |
+| `@concord-consortium/accessibility-tools/styles` | Focus ring CSS custom properties |
+| `@concord-consortium/accessibility-tools/styles/mixins` | Focus ring SCSS mixin |
 
 ## Development
 
@@ -24,16 +122,6 @@ npm run format          # Biome formatting only
 ### Git hooks
 
 Git hooks are managed by [lefthook](https://github.com/evilmartians/lefthook) and install automatically on `npm install` via the `prepare` script. The pre-commit hook runs `npm run check` (Biome lint + format + TypeScript typecheck) before each commit.
-
-## Package Entry Points
-
-| Entry point | Description | Status |
-|---|---|---|
-| `@concord-consortium/accessibility-tools/hooks` | React hooks + AccessibilityProvider | Stubbed |
-| `@concord-consortium/accessibility-tools/debug` | AccessibilityDebugSidebar component | Stubbed |
-| `@concord-consortium/accessibility-tools/audit` | Headless WCAG audit engine | Stubbed |
-| `@concord-consortium/accessibility-tools/styles` | Focus ring CSS custom properties | Placeholder |
-| `@concord-consortium/accessibility-tools/styles/mixins` | Focus ring SCSS mixin | Placeholder |
 
 ## Requirements
 
