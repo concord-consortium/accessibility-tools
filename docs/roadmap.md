@@ -234,7 +234,41 @@ The implementation is structured in phases, each building on the previous. All h
   - [ ] Bookmarklet generation
   - [ ] Shadow DOM style isolation
 
-## Phase 2: CLI + Test Framework Integration
+## Phase 2: Hooks + Strategy Pattern
+
+During this phase update the AccessibilityProvider context as needed to support the hooks.
+
+- [ ] Implement FocusTrapStrategy interface
+- [ ] Implement core hooks:
+  - [ ] useFocusTrap (Tab cycling, Enter/Escape, capture-phase listeners, portal support via getExternalElements)
+  - [ ] useKeyboardNav (arrow/Home/End/Enter navigation + optional focusRing)
+  - [ ] useSelectionAnnouncer (aria-live announcements for selection changes)
+  - [ ] useKeyboardResize (WAI-ARIA separator pattern)
+- [ ] Implement useAccessibility uber-hook composing all sub-hooks:
+  - [ ] focusTrap?: { containerRef, strategy }
+  - [ ] navigation?: { itemSelector, orientation, focusRing, ... }
+  - [ ] announcements?: { selectedItems, getLabel, ... }
+  - [ ] resize?: { orientation, min, max, step, ... }
+  - [ ] Auto-wiring: navigation.activeIndex -> announcements
+- [ ] CSS + SCSS for focus rings:
+  - [ ] Pure CSS with custom properties (--a11y-focus-ring-color, etc.)
+  - [ ] SCSS mixin wrapping the CSS custom properties
+- [ ] Wire hooks into debug context so hook-enhanced panels activate:
+  - [ ] Focus Trap State (from useFocusTrap reports)
+  - [ ] Navigation State (from useKeyboardNav reports)
+  - [ ] Custom App Log (from debug.log() calls)
+  - [ ] Panels 1-7 gain richer data when hooks are present
+- [ ] Expose debug handle in hook return value:
+  - [ ] a11y.debug?.log(), reportKeyEvent(), reportAnnouncement()
+- [ ] Add hook-exercising sections to demo kitchen sink:
+  - [ ] Focus trap demo (Enter to enter, Tab cycles, Escape exits)
+  - [ ] Keyboard navigation demo (arrow keys through a list of items)
+  - [ ] Selection announcer demo (click items, hear announcements)
+  - [ ] Keyboard resize demo (arrow keys to resize a panel)
+  - [ ] Strategy swap demo (switch between different FocusTrapStrategy implementations to show the strategy pattern in action)
+- [ ] Unit tests for all hooks using mock strategies
+
+## Phase 3: CLI + Test Framework Integration
 
 - [ ] cc-a11y-tools CLI:
   - [ ] `audit` command (exits non-zero on failures - CI gate)
@@ -257,40 +291,6 @@ The implementation is structured in phases, each building on the previous. All h
   - [ ] Cypress equivalents of the above Playwright tests
 - [ ] CI example in README (GitHub Actions: serve build + run audit)
 
-## Phase 3: Hooks + Strategy Pattern
-
-During this phase update the AccessibilityProvider context as needed to support the hooks.
-
-- [ ] Implement FocusTrapStrategy interface
-- [ ] Implement core hooks:
-  - [ ] useFocusTrap (Tab cycling, Enter/Escape, capture-phase listeners, portal support via getExternalElements)
-  - [ ] useKeyboardNav (arrow/Home/End/Enter navigation + optional focusRing)
-  - [ ] useSelectionAnnouncer (aria-live announcements for selection changes)
-  - [ ] useKeyboardResize (WAI-ARIA separator pattern)
-- [ ] Implement useAccessibility uber-hook composing all sub-hooks:
-  - [ ] focusTrap?: { containerRef, strategy }
-  - [ ] navigation?: { itemSelector, orientation, focusRing, ... }
-  - [ ] announcements?: { selectedItems, getLabel, ... }
-  - [ ] resize?: { orientation, min, max, step, ... }
-  - [ ] Auto-wiring: navigation.activeIndex → announcements
-- [ ] CSS + SCSS for focus rings:
-  - [ ] Pure CSS with custom properties (--a11y-focus-ring-color, etc.)
-  - [ ] SCSS mixin wrapping the CSS custom properties
-- [ ] Wire hooks into debug context so hook-enhanced panels activate:
-  - [ ] Focus Trap State (from useFocusTrap reports)
-  - [ ] Navigation State (from useKeyboardNav reports)
-  - [ ] Custom App Log (from debug.log() calls)
-  - [ ] Panels 1-7 gain richer data when hooks are present
-- [ ] Expose debug handle in hook return value:
-  - [ ] a11y.debug?.log(), reportKeyEvent(), reportAnnouncement()
-- [ ] Add hook-exercising sections to demo kitchen sink:
-  - [ ] Focus trap demo (Enter to enter, Tab cycles, Escape exits)
-  - [ ] Keyboard navigation demo (arrow keys through a list of items)
-  - [ ] Selection announcer demo (click items, hear announcements)
-  - [ ] Keyboard resize demo (arrow keys to resize a panel)
-  - [ ] Strategy swap demo (switch between different FocusTrapStrategy implementations to show the strategy pattern in action)
-- [ ] Unit tests for all hooks using mock strategies
-
 ## Phase 4: Documentation + Publishing
 
 - [ ] README with:
@@ -304,8 +304,8 @@ During this phase update the AccessibilityProvider context as needed to support 
 ## Rationale
 
 - **Phase 1** delivers the debug sidebar and demo app first - the most immediately useful output. Every panel is developed and tested against the demo kitchen sink. The standalone injection mode means anyone can try the sidebar on any page without installing anything. No hooks needed yet.
-- **Phase 2** adds CI/CD and test framework integration. The audit engine from Phase 1 is already built - this phase wraps it in a CLI and test matchers. These are tested by running the CLI/matchers against the demo app itself.
-- **Phase 3** adds the React hooks and strategy pattern. These are developed and tested against new sections added to the same demo kitchen sink - a focus trap demo, keyboard nav demo, resize demo, etc. The demo app serves as both the development testbed and the documentation (developers can read the demo source to see how to use the hooks).
+- **Phase 2** adds the React hooks and strategy pattern. These are developed and tested against new sections added to the same demo kitchen sink - a focus trap demo, keyboard nav demo, resize demo, etc. The demo app serves as both the development testbed and the documentation (developers can read the demo source to see how to use the hooks). Hooks are prioritized over CLI/CI tooling because they provide immediate value to consuming apps.
+- **Phase 3** adds CI/CD and test framework integration. The audit engine from Phase 1 is already built - this phase wraps it in a CLI and test matchers. These are tested by running the CLI/matchers against the demo app itself.
 - **Phase 4** is documentation and publishing. By this point everything is working and tested via the demo app.
 
 App-specific wrappers (e.g., `useClueAccessibility` for [CLUE](https://github.com/concord-consortium/collaborative-learning), `useCodapAccessibility` for [CODAP](https://github.com/concord-consortium/codap)) are created in each app's own repo, not in this package. See design.md for examples of how apps create strategy factories that translate their concepts into the generic `FocusTrapStrategy` interface.
