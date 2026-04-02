@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { type ContrastItem, scanColorContrast } from "../checks/color-contrast";
 import type { CheckIssue } from "../checks/types";
+import { CheckPanelIssues } from "../components/check-panel-issues";
 import {
   isHighlighted,
   pluralize,
@@ -49,27 +50,7 @@ export function ColorContrastPanel() {
         </span>
       </div>
 
-      {issues.length > 0 && (
-        <div className="a11y-panel-issues">
-          {issues
-            .filter((i) => i.severity === "error")
-            .slice(0, 5)
-            .map((issue, i) => (
-              <div
-                key={`issue-${issue.type}-${i}`}
-                className="a11y-panel-issue"
-              >
-                {issue.message}
-              </div>
-            ))}
-          {issues.filter((i) => i.severity === "error").length > 5 && (
-            <div className="a11y-panel-issue">
-              ...and {issues.filter((i) => i.severity === "error").length - 5}{" "}
-              more failures
-            </div>
-          )}
-        </div>
-      )}
+      <CheckPanelIssues issues={issues} />
 
       {failures.length === 0 &&
         contrastItems.length > 0 &&

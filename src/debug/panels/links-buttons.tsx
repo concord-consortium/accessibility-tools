@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { type LinkButtonItem, scanLinksButtons } from "../checks/links-buttons";
 import type { CheckIssue } from "../checks/types";
 import {
+  CheckPanelIssues,
+  type ItemFilter,
+  buildSeverityMap,
+  getItemSeverity,
+  issueRowClass,
+} from "../components/check-panel-issues";
+import {
   isHighlighted,
   pluralize,
   scrollToAndHighlight,
@@ -11,6 +18,7 @@ import {
 export function LinksButtonsPanel() {
   const [linkItems, setLinkItems] = useState<LinkButtonItem[]>([]);
   const [issues, setIssues] = useState<CheckIssue[]>([]);
+  const [filter, setFilter] = useState<ItemFilter>("all");
   const [, forceUpdate] = useState(0);
 
   const rescan = (notify = true) => {
@@ -30,6 +38,24 @@ export function LinksButtonsPanel() {
     rescan(false);
   }, []);
 
+  const severityMap = buildSeverityMap(issues);
+  const errorItemCount = linkItems.filter(
+    (item) =>
+      getItemSeverity(severityMap, item.element, item.hasIssue) === "error",
+  ).length;
+  const warningItemCount = linkItems.filter(
+    (item) =>
+      getItemSeverity(severityMap, item.element, item.hasIssue) === "warning",
+  ).length;
+  const filteredItems =
+    filter === "all"
+      ? linkItems
+      : linkItems.filter(
+          (item) =>
+            getItemSeverity(severityMap, item.element, item.hasIssue) ===
+            filter.slice(0, -1),
+        );
+
   return (
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Link & Button Audit</h3>
@@ -46,22 +72,21 @@ export function LinksButtonsPanel() {
         </span>
       </div>
 
-      {issues.length > 0 && (
-        <div className="a11y-panel-issues">
-          {issues.map((issue, i) => (
-            <div key={`issue-${issue.type}-${i}`} className="a11y-panel-issue">
-              {issue.message}
-            </div>
-          ))}
-        </div>
-      )}
+      <CheckPanelIssues
+        issues={issues}
+        filter={filter}
+        onFilterChange={setFilter}
+        itemCount={linkItems.length}
+        errorItemCount={errorItemCount}
+        warningItemCount={warningItemCount}
+      />
 
       <div className="a11y-panel-list">
-        {linkItems.map((item, i) => (
+        {filteredItems.map((item, i) => (
           <button
             type="button"
             key={`lb-${i}`}
-            className={`a11y-panel-row a11y-panel-row-clickable ${item.hasIssue ? "a11y-panel-row-error" : ""} ${isHighlighted(item.element) ? "a11y-panel-row-active" : ""}`}
+            className={`a11y-panel-row a11y-panel-row-clickable ${issueRowClass(severityMap, item.element, item.hasIssue)} ${isHighlighted(item.element) ? "a11y-panel-row-active" : ""}`}
             aria-label={`${item.tag}: ${item.accessibleName || "(no name)"}`}
             title={`${item.accessibleName || "(no name)"}\n<${item.tag}>${item.href ? `\nhref: ${item.href}` : ""}${item.component ? `\n${item.component}` : ""}`}
             onClick={() => {

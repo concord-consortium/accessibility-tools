@@ -2,6 +2,13 @@ import { useEffect, useState } from "react";
 import { type ImageItem, scanImages } from "../checks/images";
 import type { CheckIssue } from "../checks/types";
 import {
+  CheckPanelIssues,
+  type ItemFilter,
+  buildSeverityMap,
+  getItemSeverity,
+  issueRowClass,
+} from "../components/check-panel-issues";
+import {
   isHighlighted,
   pluralize,
   scrollToAndHighlight,
@@ -11,6 +18,7 @@ import {
 export function ImageAuditPanel() {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [issues, setIssues] = useState<CheckIssue[]>([]);
+  const [filter, setFilter] = useState<ItemFilter>("all");
   const [, forceUpdate] = useState(0);
 
   const rescan = (notify = true) => {
@@ -30,6 +38,28 @@ export function ImageAuditPanel() {
     rescan(false);
   }, []);
 
+  const severityMap = buildSeverityMap(issues);
+  const imgHasIssue = (img: ImageItem) =>
+    img.status === "missing" ||
+    img.status === "generic" ||
+    img.status === "long-alt";
+  const errorItemCount = images.filter(
+    (img) =>
+      getItemSeverity(severityMap, img.element, imgHasIssue(img)) === "error",
+  ).length;
+  const warningItemCount = images.filter(
+    (img) =>
+      getItemSeverity(severityMap, img.element, imgHasIssue(img)) === "warning",
+  ).length;
+  const filteredImages =
+    filter === "all"
+      ? images
+      : images.filter(
+          (img) =>
+            getItemSeverity(severityMap, img.element, imgHasIssue(img)) ===
+            filter.slice(0, -1),
+        );
+
   return (
     <div className="a11y-panel-content">
       <h3 className="a11y-panel-title">Image Audit</h3>
@@ -46,22 +76,21 @@ export function ImageAuditPanel() {
         </span>
       </div>
 
-      {issues.length > 0 && (
-        <div className="a11y-panel-issues">
-          {issues.map((issue, i) => (
-            <div key={`issue-${issue.type}-${i}`} className="a11y-panel-issue">
-              {issue.message}
-            </div>
-          ))}
-        </div>
-      )}
+      <CheckPanelIssues
+        issues={issues}
+        filter={filter}
+        onFilterChange={setFilter}
+        itemCount={images.length}
+        errorItemCount={errorItemCount}
+        warningItemCount={warningItemCount}
+      />
 
       <div className="a11y-panel-list">
-        {images.map((img, i) => (
+        {filteredImages.map((img, i) => (
           <button
             type="button"
             key={`img-${i}`}
-            className={`a11y-panel-row a11y-panel-row-clickable ${img.status === "missing" ? "a11y-panel-row-error" : ""} ${isHighlighted(img.element) ? "a11y-panel-row-active" : ""}`}
+            className={`a11y-panel-row a11y-panel-row-clickable ${issueRowClass(severityMap, img.element, imgHasIssue(img))} ${isHighlighted(img.element) ? "a11y-panel-row-active" : ""}`}
             aria-label={`${img.status}: ${img.alt || "no alt"} - ${img.src}`}
             title={`${img.status}: ${img.alt || "(no alt)"}\n${img.src}${img.component ? `\n${img.component}` : ""}`}
             onClick={() => {

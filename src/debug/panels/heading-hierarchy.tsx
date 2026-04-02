@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { type HeadingItem, scanHeadings } from "../checks";
 import type { CheckIssue } from "../checks";
 import {
+  CheckPanelIssues,
+  buildSeverityMap,
+  issueRowClass,
+} from "../components/check-panel-issues";
+import {
   isHighlighted,
   pluralize,
   scrollToAndHighlight,
@@ -46,37 +51,32 @@ export function HeadingHierarchyPanel() {
         </span>
       </div>
 
-      {issues.length > 0 && (
-        <div className="a11y-panel-issues">
-          {issues.map((issue, i) => (
-            <div key={`issue-${issue.type}-${i}`} className="a11y-panel-issue">
-              {issue.message}
-            </div>
-          ))}
-        </div>
-      )}
+      <CheckPanelIssues issues={issues} />
 
       <div className="a11y-panel-list">
-        {headings.map((h, i) => (
-          <button
-            type="button"
-            key={`h-${i}`}
-            className={`a11y-panel-row a11y-panel-row-clickable ${h.hasIssue ? "a11y-panel-row-error" : ""} ${isHighlighted(h.element) ? "a11y-panel-row-active" : ""}`}
-            style={{ marginLeft: (h.level - 1) * 12 }}
-            aria-label={`Go to h${h.level}: ${h.text}`}
-            title={`h${h.level}: ${h.text}${h.component ? ` in ${h.component}` : ""}${h.issueReason ? `: ${h.issueReason}` : ""}`}
-            onClick={() => {
-              scrollToAndHighlight(h.element);
-              forceUpdate((n) => n + 1);
-            }}
-          >
-            <span className="a11y-panel-tag">h{h.level}</span>
-            <span className="a11y-panel-text">{h.text}</span>
-            {h.component && (
-              <span className="a11y-panel-component">{h.component}</span>
-            )}
-          </button>
-        ))}
+        {(() => {
+          const severityMap = buildSeverityMap(issues);
+          return headings.map((h, i) => (
+            <button
+              type="button"
+              key={`h-${i}`}
+              className={`a11y-panel-row a11y-panel-row-clickable ${issueRowClass(severityMap, h.element, h.hasIssue)} ${isHighlighted(h.element) ? "a11y-panel-row-active" : ""}`}
+              style={{ marginLeft: (h.level - 1) * 12 }}
+              aria-label={`Go to h${h.level}: ${h.text}`}
+              title={`h${h.level}: ${h.text}${h.component ? ` in ${h.component}` : ""}${h.issueReason ? `: ${h.issueReason}` : ""}`}
+              onClick={() => {
+                scrollToAndHighlight(h.element);
+                forceUpdate((n) => n + 1);
+              }}
+            >
+              <span className="a11y-panel-tag">h{h.level}</span>
+              <span className="a11y-panel-text">{h.text}</span>
+              {h.component && (
+                <span className="a11y-panel-component">{h.component}</span>
+              )}
+            </button>
+          ));
+        })()}
       </div>
     </div>
   );
