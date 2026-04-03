@@ -22,4 +22,16 @@ export default defineConfig([
     outDir: "dist",
     clean: false,
   },
+  {
+    entry: { standalone: "src/standalone/index.ts" },
+    format: ["iife"],
+    platform: "browser",
+    globalName: "__a11yDebug",
+    noExternal: [/.*/],
+    outDir: "dist",
+    outExtension: () => ({ js: ".js" }),
+    clean: false,
+    minify: true,
+    sourcemap: true,
+  },
 ]);

@@ -229,10 +229,10 @@ The implementation is structured in phases, each building on the previous. All h
     - Overview "Audit Page" button wired up (runs against document root)
     - Overview "Audit Sidebar" button wired up (withSelfExclusionDisabled)
 
-- [ ] Standalone injection mode (standalone.js entry point):
-  - [ ] Self-contained bundle with React included
-  - [ ] Bookmarklet generation
-  - [ ] Shadow DOM style isolation
+- [x] Standalone injection mode (standalone.js entry point):
+  - [x] Self-contained IIFE bundle with React included (~335KB minified)
+  - [x] Bookmarklet support via window.__a11yDebugToggle()
+  - [x] Shadow DOM style isolation
 
 ## Phase 2: Hooks + Strategy Pattern
 

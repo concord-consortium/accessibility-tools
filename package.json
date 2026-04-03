@@ -8,7 +8,8 @@
     "node": ">=18"
   },
   "files": [
-    "dist"
+    "dist",
+    "!dist/standalone.*"
   ],
   "bin": {
     "cc-a11y-tools": "./dist/cli/cc-a11y-tools.js"
