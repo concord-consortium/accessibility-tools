@@ -1,5 +1,13 @@
 import { MoonIcon, SunIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { useAccessibilityContext } from "../hooks/provider";
 import { CCLogo } from "./cc-logo";
 import {
   toggleContrastOverlay,
@@ -30,14 +38,31 @@ export function AccessibilityDebugSidebar({
   theme: initialTheme = "light",
 }: AccessibilityDebugSidebarProps) {
   const [theme, setTheme] = useState<"light" | "dark">(initialTheme);
-  const enabledCategories = categories.filter((c) => !c.disabled);
+
+  // Dynamically enable the Hooks tab when hook instances are registered
+  const debugCtx = useAccessibilityContext();
+  const noopSub = useCallback(() => () => {}, []);
+  const hasHookInstances = useSyncExternalStore(
+    debugCtx?.subscribeInstances ?? noopSub,
+    () => (debugCtx?.getInstances()?.size ?? 0) > 0,
+  );
+
+  const effectiveCategories = useMemo(
+    () =>
+      categories.map((c) =>
+        c.id === "hooks" ? { ...c, disabled: !hasHookInstances } : c,
+      ),
+    [hasHookInstances],
+  );
+
+  const enabledCategories = effectiveCategories.filter((c) => !c.disabled);
   const [activeCategory, setActiveCategory] = useState(
     enabledCategories[0]?.id ?? categories[0].id,
   );
   const [activePanels, setActivePanels] = useState<Record<string, string>>(
     () => {
       const initial: Record<string, string> = {};
-      for (const cat of categories) {
+      for (const cat of effectiveCategories) {
         initial[cat.id] = cat.panels[0].id;
       }
       return initial;
@@ -62,7 +87,9 @@ export function AccessibilityDebugSidebar({
     return () => setSidebarRoot(null);
   }, []);
 
-  const currentCategory = categories.find((c) => c.id === activeCategory);
+  const currentCategory = effectiveCategories.find(
+    (c) => c.id === activeCategory,
+  );
   const currentPanelId = currentCategory
     ? activePanels[currentCategory.id]
     : undefined;
@@ -180,7 +207,7 @@ export function AccessibilityDebugSidebar({
         aria-label="Panel categories"
         onKeyDown={handleCategoryKeyDown}
       >
-        {categories.map((cat) => (
+        {effectiveCategories.map((cat) => (
           <button
             key={cat.id}
             type="button"
@@ -263,7 +290,7 @@ export function AccessibilityDebugSidebar({
                           context?: unknown,
                         ) => {
                           // Find which category owns the target panel
-                          for (const cat of categories) {
+                          for (const cat of effectiveCategories) {
                             const panel = cat.panels.find(
                               (p) => p.id === panelId,
                             );

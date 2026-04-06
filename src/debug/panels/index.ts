@@ -4,6 +4,7 @@ import { AriaTreePanel } from "./aria-tree";
 import { AriaValidationPanel } from "./aria-validation";
 import { AuditReportPanel } from "./audit-report";
 import { ColorContrastPanel } from "./color-contrast";
+import { CustomAppLogPanel } from "./custom-app-log";
 import { DuplicateIdPanel } from "./duplicate-ids";
 import { ElementInspectorPanel } from "./element-inspector";
 import { FocusHistoryPanel } from "./focus-history";
@@ -11,6 +12,7 @@ import { FocusLossPanel } from "./focus-loss";
 import { FocusOrderPanel } from "./focus-order";
 import { FocusTrackerPanel } from "./focus-tracker";
 import { FocusTrapPanel } from "./focus-trap";
+import { FocusTrapStatePanel } from "./focus-trap-state";
 import { FormLabelPanel } from "./form-labels";
 import { HeadingHierarchyPanel } from "./heading-hierarchy";
 import { ImageAuditPanel } from "./image-audit";
@@ -60,4 +62,6 @@ export const panelComponents: Record<
   "links-buttons": LinksButtonsPanel,
   "aria-tree": AriaTreePanel,
   "audit-report": AuditReportPanel,
+  "trap-state": FocusTrapStatePanel,
+  "custom-log": CustomAppLogPanel,
 };

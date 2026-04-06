@@ -174,6 +174,7 @@ export const categories: CategoryDef[] = [
         id: "custom-log",
         label: "Custom App Log",
         icon: CodeBracketIcon,
+        isLog: true,
       },
     ],
   },

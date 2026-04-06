@@ -1,9 +1,9 @@
 /**
  * AccessibilityProvider - debug context for hook-to-sidebar communication.
  *
- * When debug={true}, creates state management for all reporting functions.
+ * When debug={true}, creates state management for all reporting functions
+ * and exposes subscription-based read access for sidebar panels.
  * When debug={false} (default), context value is null - zero overhead.
- * Hooks use optional chaining (ctx?.reportX) so calls are no-ops in production.
  */
 
 import {
@@ -19,6 +19,7 @@ import type {
   AccessibilityInstanceState,
   FocusTrapEvent,
   KeyboardEventReport,
+  LogEntry,
 } from "./types";
 
 export const AccessibilityReactContext =
@@ -29,31 +30,76 @@ export interface AccessibilityProviderProps {
   debug?: boolean;
 }
 
+const MAX_EVENTS_PER_INSTANCE = 100;
+const MAX_LOG_ENTRIES = 200;
+
 export function AccessibilityProvider({
   children,
   debug = false,
 }: AccessibilityProviderProps) {
+  // Data stores (refs to avoid re-rendering the whole tree)
   const instancesRef = useRef(new Map<string, AccessibilityInstanceState>());
+  const instancesVersionRef = useRef(0);
+  const instanceSubscribers = useRef(new Set<() => void>());
+
+  const focusTrapEventsRef = useRef(new Map<string, FocusTrapEvent[]>());
+  const trapEventsVersionRef = useRef(0);
+  const trapEventSubscribers = useRef(new Set<() => void>());
+
+  const logEntriesRef = useRef<LogEntry[]>([]);
+  const logVersionRef = useRef(0);
+  const logSubscribers = useRef(new Set<() => void>());
+
   const navsRef = useRef(
     new Map<string, { itemSelector: string; orientation: string }>(),
   );
 
+  // Notify helpers
+  const notifyInstances = useCallback(() => {
+    instancesVersionRef.current++;
+    for (const cb of instanceSubscribers.current) cb();
+  }, []);
+
+  const notifyTrapEvents = useCallback(() => {
+    trapEventsVersionRef.current++;
+    for (const cb of trapEventSubscribers.current) cb();
+  }, []);
+
+  const notifyLog = useCallback(() => {
+    logVersionRef.current++;
+    for (const cb of logSubscribers.current) cb();
+  }, []);
+
+  // Write-side: reporting functions
   const registerInstance = useCallback(
     (id: string, state: AccessibilityInstanceState) => {
       instancesRef.current.set(id, state);
+      notifyInstances();
     },
-    [],
+    [notifyInstances],
   );
 
-  const unregisterInstance = useCallback((id: string) => {
-    instancesRef.current.delete(id);
-  }, []);
+  const unregisterInstance = useCallback(
+    (id: string) => {
+      instancesRef.current.delete(id);
+      focusTrapEventsRef.current.delete(id);
+      notifyInstances();
+      notifyTrapEvents();
+    },
+    [notifyInstances, notifyTrapEvents],
+  );
 
   const reportFocusTrapEvent = useCallback(
-    (_id: string, _event: FocusTrapEvent) => {
-      // Sidebar panels can subscribe to these events in a future iteration
+    (id: string, event: FocusTrapEvent) => {
+      const events = focusTrapEventsRef.current.get(id) ?? [];
+      events.push(event);
+      if (events.length > MAX_EVENTS_PER_INSTANCE) {
+        events.splice(0, events.length - MAX_EVENTS_PER_INSTANCE);
+      }
+      focusTrapEventsRef.current.set(id, events);
+      notifyTrapEvents();
     },
-    [],
+    [notifyTrapEvents],
   );
 
   const registerNav = useCallback(
@@ -69,7 +115,7 @@ export function AccessibilityProvider({
 
   const reportNavState = useCallback(
     (_id: string, _state: { activeIndex: number; totalItems: number }) => {
-      // Sidebar panels can subscribe to these in a future iteration
+      // Navigation State panel will subscribe in a future iteration
     },
     [],
   );
@@ -86,11 +132,51 @@ export function AccessibilityProvider({
   }, []);
 
   const log = useCallback(
-    (_message: string, _data?: Record<string, unknown>) => {
-      // Sidebar Custom App Log can subscribe in a future iteration
+    (message: string, data?: Record<string, unknown>) => {
+      const entries = logEntriesRef.current;
+      entries.push({ message, data, timestamp: Date.now() });
+      if (entries.length > MAX_LOG_ENTRIES) {
+        entries.splice(0, entries.length - MAX_LOG_ENTRIES);
+      }
+      // Replace array ref so useSyncExternalStore detects the change
+      logEntriesRef.current = [...entries];
+      notifyLog();
     },
-    [],
+    [notifyLog],
   );
+
+  // Read-side: getters and subscriptions for sidebar panels
+  const getInstances = useCallback(() => instancesRef.current, []);
+
+  const subscribeInstances = useCallback((cb: () => void) => {
+    instanceSubscribers.current.add(cb);
+    return () => {
+      instanceSubscribers.current.delete(cb);
+    };
+  }, []);
+
+  const getFocusTrapEvents = useCallback(() => focusTrapEventsRef.current, []);
+
+  const subscribeFocusTrapEvents = useCallback((cb: () => void) => {
+    trapEventSubscribers.current.add(cb);
+    return () => {
+      trapEventSubscribers.current.delete(cb);
+    };
+  }, []);
+
+  const getLogEntries = useCallback(() => logEntriesRef.current, []);
+
+  const subscribeLog = useCallback((cb: () => void) => {
+    logSubscribers.current.add(cb);
+    return () => {
+      logSubscribers.current.delete(cb);
+    };
+  }, []);
+
+  const clearLog = useCallback(() => {
+    logEntriesRef.current = [];
+    notifyLog();
+  }, [notifyLog]);
 
   const value = useMemo<AccessibilityContextValue | null>(() => {
     if (!debug) return null;
@@ -104,6 +190,13 @@ export function AccessibilityProvider({
       reportAnnouncement,
       reportKeyEvent,
       log,
+      getInstances,
+      subscribeInstances,
+      getFocusTrapEvents,
+      subscribeFocusTrapEvents,
+      getLogEntries,
+      subscribeLog,
+      clearLog,
     };
   }, [
     debug,
@@ -116,6 +209,13 @@ export function AccessibilityProvider({
     reportAnnouncement,
     reportKeyEvent,
     log,
+    getInstances,
+    subscribeInstances,
+    getFocusTrapEvents,
+    subscribeFocusTrapEvents,
+    getLogEntries,
+    subscribeLog,
+    clearLog,
   ]);
 
   return (
@@ -127,7 +227,6 @@ export function AccessibilityProvider({
 
 /**
  * Returns the debug context value, or null when no provider or debug=false.
- * Hooks use this internally to report state with zero overhead in production.
  */
 export function useAccessibilityContext(): AccessibilityContextValue | null {
   return useContext(AccessibilityReactContext);

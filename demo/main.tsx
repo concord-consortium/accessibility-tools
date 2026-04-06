@@ -6,7 +6,7 @@ import "./demo.css";
 
 function App() {
   return (
-    <AccessibilityProvider>
+    <AccessibilityProvider debug>
       <div className="demo-layout">
         <main className="demo-content">
           <button

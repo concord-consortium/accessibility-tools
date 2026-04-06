@@ -132,7 +132,14 @@ export interface KeyboardEventReport {
   timestamp: number;
 }
 
+export interface LogEntry {
+  message: string;
+  data?: Record<string, unknown>;
+  timestamp: number;
+}
+
 export interface AccessibilityContextValue {
+  // Write-side: hooks call these to report state
   registerInstance: (id: string, state: AccessibilityInstanceState) => void;
   unregisterInstance: (id: string) => void;
   reportFocusTrapEvent: (id: string, event: FocusTrapEvent) => void;
@@ -152,6 +159,15 @@ export interface AccessibilityContextValue {
   ) => void;
   reportKeyEvent: (event: KeyboardEventReport) => void;
   log: (message: string, data?: Record<string, unknown>) => void;
+
+  // Read-side: sidebar panels subscribe to reported data
+  getInstances: () => Map<string, AccessibilityInstanceState>;
+  subscribeInstances: (cb: () => void) => () => void;
+  getFocusTrapEvents: () => Map<string, FocusTrapEvent[]>;
+  subscribeFocusTrapEvents: (cb: () => void) => () => void;
+  getLogEntries: () => LogEntry[];
+  subscribeLog: (cb: () => void) => () => void;
+  clearLog: () => void;
 }
 
 /** Subset of debug context safe for app use. */
