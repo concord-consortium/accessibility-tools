@@ -6,15 +6,16 @@
  * Enter/Space activation, wrap-around, and optional focus ring.
  */
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccessibilityContext } from "./provider";
 import type { NavigationConfig, NavigationResult } from "./types";
+import { useStableId } from "./use-stable-id";
 
 export function useKeyboardNav(
   config: NavigationConfig | undefined,
 ): NavigationResult | null {
   const [activeIndex, setActiveIndex] = useState(-1);
-  const instanceId = useId();
+  const instanceId = useStableId();
   const debugCtx = useAccessibilityContext();
   const itemsRef = useRef<HTMLElement[]>([]);
 

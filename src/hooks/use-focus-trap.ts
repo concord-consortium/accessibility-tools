@@ -17,9 +17,10 @@
  * Shift+Tab ignoring tabindex=-1 on native elements).
  */
 
-import { useCallback, useEffect, useId, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAccessibilityContext } from "./provider";
 import type { FocusTrapConfig } from "./types";
+import { useStableId } from "./use-stable-id";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
 
@@ -47,7 +48,7 @@ function findNextFocusableOutside(
 export function useFocusTrap(config: FocusTrapConfig | undefined) {
   const isTrappedRef = useRef(false);
   const slotIndexRef = useRef(0);
-  const instanceId = useId();
+  const instanceId = useStableId();
   const debugCtx = useAccessibilityContext();
   const containerRef = config?.containerRef;
   const strategy = config?.strategy;
