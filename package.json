@@ -74,6 +74,7 @@
   "scripts": {
     "build": "tsup && node scripts/copy-styles.mjs",
     "demo": "vite serve demo",
+    "demo:build": "vite build demo --outDir ../dist-s3 --emptyOutDir --base ./",
     "test": "vitest run",
     "test:smoke": "npm run build && vitest run --config vitest.smoke.config.ts",
     "lint": "biome lint .",

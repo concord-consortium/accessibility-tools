@@ -84,7 +84,13 @@ Then visit your app with `?debugA11y` to enable it.
 
 The standalone build bundles React and renders the sidebar in a Shadow DOM container, so it can be injected into any page without dependencies or style conflicts.
 
-The standalone bundle is not included in the npm package to keep install size small. Build it from source:
+The standalone bundle is not included in the npm package to keep install size small. A hosted version is deployed alongside the demo:
+
+```
+https://models-resources.concord.org/accessibility-tools/branch/main/standalone.js
+```
+
+Or build it from source:
 
 ```bash
 npm run build    # outputs dist/standalone.js (~335KB minified)
@@ -92,23 +98,21 @@ npm run build    # outputs dist/standalone.js (~335KB minified)
 
 ### Hosting
 
-Serve `dist/standalone.js` from any static host. Load it on a page with a script tag:
+Load the hosted standalone script on any page with a script tag:
 
 ```html
-<script src="https://your-host.example.com/standalone.js"></script>
+<script src="https://models-resources.concord.org/accessibility-tools/branch/main/standalone.js"></script>
 ```
 
-The sidebar will appear on the right side of the page. The page content is shifted left to make room.
+Or serve `dist/standalone.js` from your own static host. The sidebar will appear on the right side of the page. The page content is shifted left to make room.
 
 ### Bookmarklet
 
-Create a bookmarklet that loads the standalone script from your hosted URL. Replace `YOUR_HOST` with the actual URL where you serve `standalone.js`:
+Create a bookmarklet that loads the standalone script. To install, create a new bookmark and paste the following as the URL:
 
 ```
-javascript:void(function(){if(window.__a11yDebugToggle){window.__a11yDebugToggle();return}var s=document.createElement('script');s.src='https://YOUR_HOST/standalone.js';document.head.appendChild(s)})()
+javascript:void(function(){if(window.__a11yDebugToggle){window.__a11yDebugToggle();return}var s=document.createElement('script');s.src='https://models-resources.concord.org/accessibility-tools/branch/main/standalone.js';document.head.appendChild(s)})()
 ```
-
-To install: create a new bookmark in your browser and paste the above as the URL.
 
 - First click loads the sidebar
 - Subsequent clicks toggle it on/off via `window.__a11yDebugToggle()`
