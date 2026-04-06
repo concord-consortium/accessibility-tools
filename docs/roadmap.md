@@ -238,14 +238,14 @@ The implementation is structured in phases, each building on the previous. All h
 
 During this phase update the AccessibilityProvider context as needed to support the hooks.
 
-- [ ] Implement FocusTrapStrategy interface
+- [x] Implement FocusTrapStrategy interface
 - [ ] Implement core hooks:
-  - [ ] useFocusTrap (Tab cycling, Enter/Escape, capture-phase listeners, portal support via getExternalElements)
+  - [x] useFocusTrap (Tab cycling, Enter/Escape, capture-phase listeners, portal support via getExternalElements)
   - [ ] useKeyboardNav (arrow/Home/End/Enter navigation + optional focusRing)
   - [ ] useSelectionAnnouncer (aria-live announcements for selection changes)
   - [ ] useKeyboardResize (WAI-ARIA separator pattern)
-- [ ] Implement useAccessibility uber-hook composing all sub-hooks:
-  - [ ] focusTrap?: { containerRef, strategy }
+- [x] Implement useAccessibility uber-hook composing all sub-hooks:
+  - [x] focusTrap?: { containerRef, strategy }
   - [ ] navigation?: { itemSelector, orientation, focusRing, ... }
   - [ ] announcements?: { selectedItems, getLabel, ... }
   - [ ] resize?: { orientation, min, max, step, ... }
@@ -258,10 +258,10 @@ During this phase update the AccessibilityProvider context as needed to support 
   - [ ] Navigation State (from useKeyboardNav reports)
   - [ ] Custom App Log (from debug.log() calls)
   - [ ] Panels 1-7 gain richer data when hooks are present
-- [ ] Expose debug handle in hook return value:
-  - [ ] a11y.debug?.log(), reportKeyEvent(), reportAnnouncement()
+- [x] Expose debug handle in hook return value:
+  - [x] a11y.debug?.log(), reportKeyEvent(), reportAnnouncement()
 - [ ] Add hook-exercising sections to demo kitchen sink:
-  - [ ] Focus trap demo (Enter to enter, Tab cycles, Escape exits)
+  - [x] Focus trap demo (Enter to enter, Tab cycles, Escape exits)
   - [ ] Keyboard navigation demo (arrow keys through a list of items)
   - [ ] Selection announcer demo (click items, hear announcements)
   - [ ] Keyboard resize demo (arrow keys to resize a panel)
