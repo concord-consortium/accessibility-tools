@@ -78,7 +78,7 @@
     "lint": "biome lint .",
     "format": "biome format .",
     "check": "biome check . && tsc --noEmit",
-    "prepare": "test -d .git && lefthook install || true"
+    "prepare": "(test -d .git && lefthook install || true) && npm run build"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
