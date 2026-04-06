@@ -15,6 +15,7 @@ import type {
 } from "./types";
 import { useFocusTrap } from "./use-focus-trap";
 import { useKeyboardNav } from "./use-keyboard-nav";
+import { useKeyboardResize } from "./use-keyboard-resize";
 
 export function useAccessibility(
   options: AccessibilityOptions,
@@ -22,9 +23,9 @@ export function useAccessibility(
   // Always call all hooks (Rules of Hooks) - they no-op when config is undefined
   useFocusTrap(options.focusTrap);
   const navigation = useKeyboardNav(options.navigation);
+  const resizable = useKeyboardResize(options.resize);
 
   // Future hooks will be called here:
-  // const resize = useKeyboardResize(options.resize);
   // useSelectionAnnouncer(options.announcements);
 
   const debugCtx = useAccessibilityContext();
@@ -41,7 +42,7 @@ export function useAccessibility(
 
   return {
     navigation,
-    resizable: null,
+    resizable,
     debug,
   };
 }

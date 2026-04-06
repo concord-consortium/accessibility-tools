@@ -5,6 +5,7 @@ export {
 } from "./provider";
 export { useFocusTrap } from "./use-focus-trap";
 export { useKeyboardNav } from "./use-keyboard-nav";
+export { useKeyboardResize } from "./use-keyboard-resize";
 export { useDropdown } from "./use-dropdown";
 export { useAccessibility } from "./use-accessibility";
 export type {
