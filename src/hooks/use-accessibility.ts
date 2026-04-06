@@ -14,15 +14,16 @@ import type {
   AccessibilityResult,
 } from "./types";
 import { useFocusTrap } from "./use-focus-trap";
+import { useKeyboardNav } from "./use-keyboard-nav";
 
 export function useAccessibility(
   options: AccessibilityOptions,
 ): AccessibilityResult {
   // Always call all hooks (Rules of Hooks) - they no-op when config is undefined
   useFocusTrap(options.focusTrap);
+  const navigation = useKeyboardNav(options.navigation);
 
   // Future hooks will be called here:
-  // const nav = useKeyboardNav(options.navigation);
   // const resize = useKeyboardResize(options.resize);
   // useSelectionAnnouncer(options.announcements);
 
@@ -39,7 +40,7 @@ export function useAccessibility(
   }, [debugCtx]);
 
   return {
-    navigation: null,
+    navigation,
     resizable: null,
     debug,
   };

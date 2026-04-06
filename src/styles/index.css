@@ -1,9 +1,19 @@
-/* @concord-consortium/accessibility-tools - CSS custom properties placeholder */
-/* Full focus ring styles will be added in Phase 3 */
+/* @concord-consortium/accessibility-tools - Focus ring CSS custom properties */
 
 :root {
   --a11y-focus-ring-color: #2563eb;
   --a11y-focus-ring-width: 2px;
   --a11y-focus-ring-offset: 2px;
   --a11y-focus-ring-style: solid;
+}
+
+/* Focus ring for keyboard-navigated items.
+   Applied via :focus-visible for native elements, and via
+   .keyboard-focused class for SVG/custom elements where
+   :focus-visible support is inconsistent. */
+:focus-visible,
+.keyboard-focused {
+  outline: var(--a11y-focus-ring-width) var(--a11y-focus-ring-style)
+    var(--a11y-focus-ring-color);
+  outline-offset: var(--a11y-focus-ring-offset);
 }

@@ -20,6 +20,7 @@ import { KeyboardLogPanel } from "./keyboard-log";
 import { LandmarkSummaryPanel } from "./landmark-summary";
 import { LinksButtonsPanel } from "./links-buttons";
 import { LiveRegionsPanel } from "./live-regions";
+import { NavStatePanel } from "./nav-state";
 import { OverviewPanel } from "./overview";
 import { ReducedMotionPanel } from "./reduced-motion";
 import { ScreenReaderPreviewPanel } from "./screen-reader-preview";
@@ -63,5 +64,6 @@ export const panelComponents: Record<
   "aria-tree": AriaTreePanel,
   "audit-report": AuditReportPanel,
   "trap-state": FocusTrapStatePanel,
+  "nav-state": NavStatePanel,
   "custom-log": CustomAppLogPanel,
 };

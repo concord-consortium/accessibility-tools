@@ -11,6 +11,7 @@ import { FormLabelsSection } from "./sections/form-labels";
 import { HeadingHierarchySection } from "./sections/heading-hierarchy";
 import { ImagesSection } from "./sections/images";
 import { KeyboardHandlingSection } from "./sections/keyboard-handling";
+import { KeyboardNavSection } from "./sections/keyboard-nav";
 import { LandmarksSection } from "./sections/landmarks";
 import { LinksAndButtonsSection } from "./sections/links-and-buttons";
 import { ScreenReaderPreviewSection } from "./sections/screen-reader-preview";
@@ -30,6 +31,7 @@ const sections = [
     component: AnnouncementsSection,
   },
   { id: "focus-trap", label: "Focus Trap", component: FocusTrapSection },
+  { id: "keyboard-nav", label: "Keyboard Nav", component: KeyboardNavSection },
   { id: "contrast", label: "Contrast", component: ColorContrastSection },
   { id: "headings", label: "Headings", component: HeadingHierarchySection },
   { id: "forms", label: "Form Labels", component: FormLabelsSection },
