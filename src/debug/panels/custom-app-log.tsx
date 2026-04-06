@@ -5,7 +5,7 @@
  * Reads from the AccessibilityContext via subscriptions.
  */
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { useAccessibilityContext } from "../../hooks/provider";
 
 function formatTime(ts: number): string {

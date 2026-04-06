@@ -1,12 +1,6 @@
 import { MoonIcon, SunIcon, XMarkIcon } from "@heroicons/react/24/outline";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { useAccessibilityContext } from "../hooks/provider";
 import { CCLogo } from "./cc-logo";
 import {

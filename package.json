@@ -59,6 +59,7 @@
     "@types/node": "^25.5.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/use-sync-external-store": "^1.5.0",
     "@vitejs/plugin-react": "^4",
     "jsdom": "^29.0.1",
     "lefthook": "^2.1.4",
@@ -82,6 +83,7 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
-    "dom-accessibility-api": "^0.7.1"
+    "dom-accessibility-api": "^0.7.1",
+    "use-sync-external-store": "^1.6.0"
   }
 }

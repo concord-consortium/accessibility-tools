@@ -6,7 +6,7 @@
  * Only active when an AccessibilityProvider with debug={true} wraps the app.
  */
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { useAccessibilityContext } from "../../hooks/provider";
 import type { FocusTrapEvent } from "../../hooks/types";
 import { describeElement, scrollToAndHighlight } from "../utils";
