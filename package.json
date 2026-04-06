@@ -75,7 +75,7 @@
     "build": "tsup && node scripts/copy-styles.mjs",
     "demo": "vite serve demo",
     "demo:build": "vite build demo --outDir ../dist-s3 --emptyOutDir --base ./",
-    "deploy:build": "npm run build && npm run demo:build && cp dist/standalone.js dist-s3/standalone.js",
+    "deploy:build": "npm run build && npm run demo:build && cp dist/standalone.js dist-s3/standalone.js && cp demo/bookmarklet.html dist-s3/bookmarklet.html",
     "test": "vitest run",
     "test:smoke": "npm run build && vitest run --config vitest.smoke.config.ts",
     "lint": "biome lint .",

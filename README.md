@@ -108,7 +108,9 @@ Or serve `dist/standalone.js` from your own static host. The sidebar will appear
 
 ### Bookmarklet
 
-Create a bookmarklet that loads the standalone script. To install, create a new bookmark and paste the following as the URL:
+Install the bookmarklet by visiting the [bookmarklet install page](https://models-resources.concord.org/accessibility-tools/branch/main/bookmarklet.html) and dragging the button to your bookmarks bar.
+
+Or create a bookmark manually and paste the following as the URL:
 
 ```
 javascript:void(function(){if(window.__a11yDebugToggle){window.__a11yDebugToggle();return}var s=document.createElement('script');s.src='https://models-resources.concord.org/accessibility-tools/branch/main/standalone.js';document.head.appendChild(s)})()
