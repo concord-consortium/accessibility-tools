@@ -1,4 +1,5 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { useDropdown } from "../../src/hooks/use-dropdown";
 import { useKeyboardNav } from "../../src/hooks/use-keyboard-nav";
 
 const items = ["Apple", "Banana", "Cherry", "Date", "Elderberry"];
@@ -12,7 +13,20 @@ const colors = [
   { name: "Violet", hex: "#8b5cf6" },
 ];
 
+const sizes = ["Small", "Medium", "Large", "Extra Large"];
+
 export function KeyboardNavSection() {
+  // --- Dropdown ---
+  const [selectedSize, setSelectedSize] = useState("Medium");
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const dropdown = useDropdown({
+    triggerRef,
+    listRef,
+    itemSelector: "[role='option']",
+    label: "Size picker",
+    onSelect: (el) => setSelectedSize(el.textContent ?? ""),
+  });
   // --- Horizontal nav ---
   const hRef = useRef<HTMLDivElement>(null);
   const hNav = useKeyboardNav({
@@ -20,7 +34,8 @@ export function KeyboardNavSection() {
     itemSelector: "[data-nav-item]",
     orientation: "horizontal",
     wrap: true,
-    onSelect: (el) => alert(`Selected: ${el.textContent}`),
+    focusRing: true,
+    onSelect: () => {},
   });
 
   // --- Vertical nav ---
@@ -31,7 +46,7 @@ export function KeyboardNavSection() {
     orientation: "vertical",
     wrap: true,
     focusRing: true,
-    onSelect: (el) => alert(`Selected: ${el.textContent}`),
+    onSelect: () => {},
   });
 
   return (
@@ -108,6 +123,72 @@ export function KeyboardNavSection() {
       </div>
       <p style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
         Active: {vNav ? (items[vNav.activeIndex] ?? "none") : "none"}
+      </p>
+
+      {/* Dropdown */}
+      <h3>Dropdown (useDropdown hook)</h3>
+      <p style={{ fontSize: 13 }}>
+        Uses <code>useDropdown</code> hook. Enter/Space toggles, arrow keys
+        navigate, Escape closes, click outside closes.
+      </p>
+      <div
+        style={{ position: "relative", display: "inline-block", marginTop: 8 }}
+      >
+        <button
+          ref={triggerRef}
+          type="button"
+          {...dropdown?.triggerProps}
+          style={{
+            padding: "6px 16px",
+            border: "1px solid #ccc",
+            borderRadius: 4,
+            background: "white",
+            cursor: "pointer",
+            minWidth: 140,
+            textAlign: "left",
+          }}
+        >
+          {selectedSize} &#9662;
+        </button>
+        {dropdown?.isOpen && (
+          <div
+            ref={listRef}
+            {...dropdown.listProps}
+            style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              marginTop: 2,
+              border: "1px solid #ccc",
+              borderRadius: 4,
+              background: "white",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              minWidth: 140,
+              zIndex: 10,
+              outline: "none",
+            }}
+          >
+            {sizes.map((size, i) => (
+              <div
+                key={size}
+                {...dropdown.getItemProps(i)}
+                style={{
+                  padding: "6px 12px",
+                  cursor: "pointer",
+                  background:
+                    dropdown.activeIndex === i ? "#eff6ff" : "transparent",
+                  fontWeight: size === selectedSize ? 600 : 400,
+                  outline: "none",
+                }}
+              >
+                {size}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <p style={{ fontSize: 11, color: "#666", marginTop: 4 }}>
+        Selected: {selectedSize}
       </p>
     </section>
   );
