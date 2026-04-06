@@ -47,7 +47,7 @@ jobs:
         with:
           bucket: models-resources
           prefix: accessibility-tools
-          build: npm run build && npm run demo:build && cp dist/standalone.js dist-s3/standalone.js
+          build: npm run deploy:build
           folderToDeploy: dist-s3
           githubToken: ${{ secrets.GITHUB_TOKEN }}
           deployRunUrl: https://models-resources.concord.org/accessibility-tools/__deployPath__/index.html
