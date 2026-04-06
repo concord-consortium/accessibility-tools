@@ -17,15 +17,20 @@ export function useKeyboardResize(
 ): ResizableResult | null {
   const orientation = config?.orientation;
   const value = config?.value ?? 0;
-  const min = config?.min ?? 0;
-  const max = config?.max ?? 9999;
+  const min = config?.min;
+  const max = config?.max;
   const step = config?.step ?? DEFAULT_STEP;
   const largeStep = config?.largeStep ?? DEFAULT_LARGE_STEP;
   const onResize = config?.onResize;
   const label = config?.label;
 
-  const clamp = useCallback(
-    (v: number) => Math.max(min, Math.min(max, v)),
+  const constrain = useCallback(
+    (v: number) => {
+      let result = v;
+      if (min != null) result = Math.max(min, result);
+      if (max != null) result = Math.min(max, result);
+      return result;
+    },
     [min, max],
   );
 
@@ -37,36 +42,48 @@ export function useKeyboardResize(
       let newValue: number | null = null;
 
       if (orientation === "horizontal") {
-        if (e.key === "ArrowRight") newValue = clamp(value + increment);
-        else if (e.key === "ArrowLeft") newValue = clamp(value - increment);
+        if (e.key === "ArrowRight") newValue = constrain(value + increment);
+        else if (e.key === "ArrowLeft") newValue = constrain(value - increment);
       } else {
-        if (e.key === "ArrowDown") newValue = clamp(value + increment);
-        else if (e.key === "ArrowUp") newValue = clamp(value - increment);
+        if (e.key === "ArrowDown") newValue = constrain(value + increment);
+        else if (e.key === "ArrowUp") newValue = constrain(value - increment);
       }
 
-      if (e.key === "Home") newValue = min;
-      else if (e.key === "End") newValue = max;
+      if (e.key === "Home" && min != null) newValue = min;
+      else if (e.key === "End" && max != null) newValue = max;
 
       if (newValue !== null && newValue !== value) {
         e.preventDefault();
         onResize(newValue);
       }
     },
-    [config, orientation, value, min, max, step, largeStep, onResize, clamp],
+    [
+      config,
+      orientation,
+      value,
+      min,
+      max,
+      step,
+      largeStep,
+      onResize,
+      constrain,
+    ],
   );
 
   if (!config) return null;
 
   const percentage =
-    max > min ? Math.round(((value - min) / (max - min)) * 100) : 0;
+    min != null && max != null && max > min
+      ? Math.round(((value - min) / (max - min)) * 100)
+      : undefined;
 
   return {
     resizeHandleProps: {
       role: "separator",
       "aria-orientation": orientation,
       "aria-valuenow": value,
-      "aria-valuemin": min,
-      "aria-valuemax": max,
+      "aria-valuemin": config.min,
+      "aria-valuemax": config.max,
       "aria-label": label,
       tabIndex: 0,
       onKeyDown: handleKeyDown,

@@ -69,8 +69,8 @@ export interface AnnouncementsConfig {
 export interface ResizableConfig {
   orientation: "horizontal" | "vertical";
   value: number;
-  min: number;
-  max: number;
+  min?: number;
+  max?: number;
   step?: number;
   largeStep?: number;
   onResize: (value: number) => void;
