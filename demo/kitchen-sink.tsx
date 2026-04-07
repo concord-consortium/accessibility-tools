@@ -17,6 +17,7 @@ import { LandmarksSection } from "./sections/landmarks";
 import { LinksAndButtonsSection } from "./sections/links-and-buttons";
 import { ScreenReaderPreviewSection } from "./sections/screen-reader-preview";
 import { SelectionAnnouncerSection } from "./sections/selection-announcer";
+import { StrategySwapSection } from "./sections/strategy-swap";
 import { TouchTargetsSection } from "./sections/touch-targets";
 
 const sections = [
@@ -43,6 +44,11 @@ const sections = [
     id: "selection-announcer",
     label: "Announcer",
     component: SelectionAnnouncerSection,
+  },
+  {
+    id: "strategy-swap",
+    label: "Strategy Swap",
+    component: StrategySwapSection,
   },
   { id: "contrast", label: "Contrast", component: ColorContrastSection },
   { id: "headings", label: "Headings", component: HeadingHierarchySection },
