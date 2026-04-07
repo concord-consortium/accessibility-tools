@@ -16,6 +16,7 @@ import { KeyboardResizeSection } from "./sections/keyboard-resize";
 import { LandmarksSection } from "./sections/landmarks";
 import { LinksAndButtonsSection } from "./sections/links-and-buttons";
 import { ScreenReaderPreviewSection } from "./sections/screen-reader-preview";
+import { SelectionAnnouncerSection } from "./sections/selection-announcer";
 import { TouchTargetsSection } from "./sections/touch-targets";
 
 const sections = [
@@ -37,6 +38,11 @@ const sections = [
     id: "keyboard-resize",
     label: "Keyboard Resize",
     component: KeyboardResizeSection,
+  },
+  {
+    id: "selection-announcer",
+    label: "Announcer",
+    component: SelectionAnnouncerSection,
   },
   { id: "contrast", label: "Contrast", component: ColorContrastSection },
   { id: "headings", label: "Headings", component: HeadingHierarchySection },
