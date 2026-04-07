@@ -13,6 +13,7 @@ export function KeyboardResizeSection() {
     largeStep: 50,
     onResize: setHWidth,
     label: "Resize panel width",
+    role: "separator",
   });
 
   // --- Vertical resize ---
@@ -26,6 +27,7 @@ export function KeyboardResizeSection() {
     largeStep: 25,
     onResize: setVHeight,
     label: "Resize panel height",
+    role: "separator",
   });
 
   return (
@@ -33,9 +35,11 @@ export function KeyboardResizeSection() {
       <h2>Keyboard Resize</h2>
 
       <p>
-        Uses <code>useKeyboardResize</code> hook with the WAI-ARIA separator
-        pattern. Focus the handle and use arrow keys to resize. Hold Shift for
-        larger steps. Home/End jump to min/max.
+        Uses <code>useKeyboardResize</code> hook. Focus the handle and use arrow
+        keys to resize. Hold Shift for larger steps. Home/End jump to min/max.
+        These demos use <code>role="separator"</code> since the handles divide
+        two panels. For standalone resize handles (e.g., tile resize), use a
+        button element and omit the role.
       </p>
 
       {/* Horizontal */}

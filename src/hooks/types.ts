@@ -75,6 +75,8 @@ export interface ResizableConfig {
   largeStep?: number;
   onResize: (value: number) => void;
   label: string;
+  /** ARIA role for the handle. Use "separator" for split pane dividers. Omit for button elements. */
+  role?: string;
 }
 
 // ---------------------------------------------------------------------------

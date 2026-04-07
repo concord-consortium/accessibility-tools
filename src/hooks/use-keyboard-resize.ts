@@ -79,11 +79,11 @@ export function useKeyboardResize(
 
   return {
     resizeHandleProps: {
-      role: "separator",
-      "aria-orientation": orientation,
-      "aria-valuenow": value,
-      "aria-valuemin": config.min,
-      "aria-valuemax": config.max,
+      role: config.role,
+      "aria-orientation": config.role ? orientation : undefined,
+      "aria-valuenow": config.role ? value : undefined,
+      "aria-valuemin": config.role ? config.min : undefined,
+      "aria-valuemax": config.role ? config.max : undefined,
       "aria-label": label,
       tabIndex: 0,
       onKeyDown: handleKeyDown,

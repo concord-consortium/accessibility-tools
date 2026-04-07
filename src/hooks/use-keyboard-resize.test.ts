@@ -22,7 +22,7 @@ describe("useKeyboardResize", () => {
     expect(result.current).toBeNull();
   });
 
-  it("returns resizeHandleProps with correct ARIA attributes", () => {
+  it("returns resizeHandleProps with correct ARIA attributes when role is provided", () => {
     const onResize = vi.fn();
     const { result } = renderHook(() =>
       useKeyboardResize({
@@ -32,6 +32,7 @@ describe("useKeyboardResize", () => {
         max: 400,
         onResize,
         label: "Resize panel",
+        role: "separator",
       }),
     );
 
@@ -41,6 +42,25 @@ describe("useKeyboardResize", () => {
     expect(props?.["aria-valuenow"]).toBe(200);
     expect(props?.["aria-valuemin"]).toBe(100);
     expect(props?.["aria-valuemax"]).toBe(400);
+    expect(props?.["aria-label"]).toBe("Resize panel");
+    expect(props?.tabIndex).toBe(0);
+  });
+
+  it("omits role and value attributes when role is not provided", () => {
+    const onResize = vi.fn();
+    const { result } = renderHook(() =>
+      useKeyboardResize({
+        orientation: "horizontal",
+        value: 200,
+        onResize,
+        label: "Resize panel",
+      }),
+    );
+
+    const props = result.current?.resizeHandleProps;
+    expect(props?.role).toBeUndefined();
+    expect(props?.["aria-orientation"]).toBeUndefined();
+    expect(props?.["aria-valuenow"]).toBeUndefined();
     expect(props?.["aria-label"]).toBe("Resize panel");
     expect(props?.tabIndex).toBe(0);
   });
