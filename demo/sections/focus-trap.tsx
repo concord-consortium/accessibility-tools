@@ -76,6 +76,34 @@ export function FocusTrapSection() {
     strategy: multiStrategy,
   });
 
+  // --- Tab-within-slots: content has multiple focusables ---
+  const tabWithinRef = useRef<HTMLDivElement>(null);
+  const twTitleRef = useRef<HTMLInputElement>(null);
+  const twToolbarRef = useRef<HTMLButtonElement>(null);
+  const twContentRef = useRef<HTMLDivElement>(null);
+  const [twFocused, setTwFocused] = useState(false);
+
+  const tabWithinStrategy = useMemo<FocusTrapStrategy>(
+    () => ({
+      getElements: () => ({
+        title: twTitleRef.current ?? undefined,
+        toolbar: twToolbarRef.current ?? undefined,
+        content: twContentRef.current ?? undefined,
+      }),
+      cycleOrder: ["title", "toolbar", "content"],
+      tabWithinSlots: ["content"],
+      announceEnter:
+        "Entered tab-within trap. Tab navigates within content before cycling.",
+      announceExit: "Exited tab-within trap",
+    }),
+    [],
+  );
+
+  const tabWithinTrap = useFocusTrap({
+    containerRef: tabWithinRef,
+    strategy: tabWithinStrategy,
+  });
+
   return (
     <section>
       <h2>Focus Trap</h2>
@@ -179,6 +207,78 @@ export function FocusTrapSection() {
               style={{ width: "100%", boxSizing: "border-box" }}
               placeholder="Type content here..."
             />
+          </label>
+        </div>
+      </div>
+
+      {/* Tab-within-slots */}
+      <h3>Tab within content (tabWithinSlots)</h3>
+      <p style={{ fontSize: 13 }}>
+        The content slot has <code>tabWithinSlots: ["content"]</code>, so Tab
+        moves through focusable elements inside it before cycling to the next
+        slot. Title and toolbar cycle immediately.
+      </p>
+      <div
+        ref={tabWithinRef}
+        tabIndex={0}
+        role="group"
+        aria-label="Tab-within-slots focus trap demo"
+        onFocus={(e) => {
+          if (e.target === tabWithinRef.current) setTwFocused(true);
+        }}
+        onBlur={(e) => {
+          if (e.target === tabWithinRef.current) setTwFocused(false);
+        }}
+        style={containerStyle(tabWithinTrap?.isTrapped ?? false, twFocused)}
+      >
+        <p style={{ margin: "0 0 8px", fontSize: 13 }}>
+          {tabWithinTrap?.isTrapped
+            ? "Trapped. Tab within content: Input 1 -> Input 2 -> Checkbox -> then cycles to title."
+            : "Focus this container and press Enter to enter the trap."}
+        </p>
+
+        <div style={{ marginBottom: 8 }}>
+          <label style={{ fontSize: 12, fontWeight: 600 }}>
+            Title:{" "}
+            <input
+              ref={twTitleRef}
+              type="text"
+              placeholder="Title (cycles immediately)"
+            />
+          </label>
+        </div>
+
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 600 }}>Toolbar: </span>
+          <button ref={twToolbarRef} type="button">
+            Format
+          </button>
+        </div>
+
+        <div
+          ref={twContentRef}
+          style={{
+            padding: 8,
+            border: "1px dashed #bfdbfe",
+            borderRadius: 4,
+            background: "#f8fafc",
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+            Content slot (Tab navigates within):
+          </div>
+          <input
+            type="text"
+            placeholder="Input 1"
+            style={{ marginBottom: 4, display: "block" }}
+          />
+          <input
+            type="text"
+            placeholder="Input 2"
+            style={{ marginBottom: 4, display: "block" }}
+          />
+          <label style={{ fontSize: 12 }}>
+            <input type="checkbox" /> Agree to terms
           </label>
         </div>
       </div>

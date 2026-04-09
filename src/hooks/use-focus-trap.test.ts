@@ -341,6 +341,176 @@ describe("useFocusTrap", () => {
     expect(strategy.onExit).toHaveBeenCalledOnce();
   });
 
+  it("Tab navigates within slot when in tabWithinSlots", () => {
+    const container = createContainer();
+    const contentDiv = document.createElement("div");
+    const btn1 = document.createElement("button");
+    btn1.textContent = "Btn 1";
+    vi.spyOn(btn1, "focus");
+    const btn2 = document.createElement("button");
+    btn2.textContent = "Btn 2";
+    vi.spyOn(btn2, "focus");
+    contentDiv.appendChild(btn1);
+    contentDiv.appendChild(btn2);
+    container.appendChild(contentDiv);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: contentDiv }),
+      cycleOrder: ["content"],
+      tabWithinSlots: ["content"],
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Enter trap
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: container });
+      document.dispatchEvent(event);
+    });
+
+    // Focus first button
+    Object.defineProperty(document, "activeElement", {
+      value: btn1,
+      configurable: true,
+    });
+
+    // Tab should move to btn2 within the slot
+    act(() => pressKey("Tab"));
+    expect(btn2.focus).toHaveBeenCalled();
+  });
+
+  it("Tab cycles to next slot at boundary of tabWithinSlots", () => {
+    const container = createContainer();
+    const titleInput = createSlot("input");
+    const contentDiv = document.createElement("div");
+    const btn1 = document.createElement("button");
+    btn1.textContent = "Btn 1";
+    contentDiv.appendChild(btn1);
+    container.appendChild(titleInput);
+    container.appendChild(contentDiv);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title: titleInput, content: contentDiv }),
+      cycleOrder: ["title", "content"],
+      tabWithinSlots: ["content"],
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Enter trap
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: container });
+      document.dispatchEvent(event);
+    });
+
+    // Navigate to content slot, then to btn1
+    Object.defineProperty(document, "activeElement", {
+      value: btn1,
+      configurable: true,
+    });
+
+    // Tab at last focusable in content - should cycle to title
+    act(() => pressKey("Tab"));
+    expect(titleInput.focus).toHaveBeenCalled();
+  });
+
+  it("Shift+Tab navigates backward within tabWithinSlots", () => {
+    const container = createContainer();
+    const contentDiv = document.createElement("div");
+    const btn1 = document.createElement("button");
+    btn1.textContent = "Btn 1";
+    vi.spyOn(btn1, "focus");
+    const btn2 = document.createElement("button");
+    btn2.textContent = "Btn 2";
+    vi.spyOn(btn2, "focus");
+    contentDiv.appendChild(btn1);
+    contentDiv.appendChild(btn2);
+    container.appendChild(contentDiv);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: contentDiv }),
+      cycleOrder: ["content"],
+      tabWithinSlots: ["content"],
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Enter trap
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: container });
+      document.dispatchEvent(event);
+    });
+
+    // Focus second button
+    Object.defineProperty(document, "activeElement", {
+      value: btn2,
+      configurable: true,
+    });
+
+    // Shift+Tab should move to btn1
+    act(() => pressKey("Tab", { shiftKey: true }));
+    expect(btn1.focus).toHaveBeenCalled();
+  });
+
+  it("slots not in tabWithinSlots cycle immediately", () => {
+    const container = createContainer();
+    const titleInput = createSlot("input");
+    const contentDiv = document.createElement("div");
+    const btn1 = document.createElement("button");
+    vi.spyOn(btn1, "focus");
+    contentDiv.appendChild(btn1);
+    container.appendChild(titleInput);
+    container.appendChild(contentDiv);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title: titleInput, content: contentDiv }),
+      cycleOrder: ["title", "content"],
+      tabWithinSlots: ["content"], // title is NOT in the list
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Enter trap - focus lands on title
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: container });
+      document.dispatchEvent(event);
+    });
+
+    // On title, Tab should jump to content slot's first focusable (not tab within title)
+    Object.defineProperty(document, "activeElement", {
+      value: titleInput,
+      configurable: true,
+    });
+
+    act(() => pressKey("Tab"));
+    // Content is a tabWithinSlot, so first focusable child is focused
+    expect(btn1.focus).toHaveBeenCalled();
+  });
+
   it("cleans up listener on unmount", () => {
     const container = createContainer();
     const strategy = makeStrategy();

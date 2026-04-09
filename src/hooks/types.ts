@@ -33,6 +33,10 @@ export interface FocusTrapStrategy {
   announceEnter?: string;
   announceExit?: string;
 
+  /** Slots where Tab navigates through focusable children before cycling to the next slot.
+   *  Slots not listed cycle immediately on Tab. Default: [] (all slots cycle immediately). */
+  tabWithinSlots?: string[];
+
   /** Elements outside the container DOM that are part of the trap (e.g., portaled toolbars). */
   getExternalElements?: () => HTMLElement[];
 }

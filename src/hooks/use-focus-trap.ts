@@ -18,6 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { getVisibleFocusables } from "./dom-utils";
 import { useAccessibilityContext } from "./provider";
 import type { FocusTrapConfig } from "./types";
 import { useStableId } from "./use-stable-id";
@@ -100,14 +101,31 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
     setTimeout(() => el.remove(), 1000);
   }, []);
 
-  // Focus a specific slot by name
+  // Focus a specific slot by name.
+  // For tabWithinSlots, focus the first (or last if reverse) focusable child.
   const focusSlot = useCallback(
-    (slotName: string) => {
+    (slotName: string, reverse = false) => {
       if (!strategy) return;
       const contentSlot = strategy.contentSlot ?? "content";
       if (slotName === contentSlot && strategy.focusContent?.()) return;
       const elements = strategy.getElements();
-      elements[slotName]?.focus();
+      const slotEl = elements[slotName];
+      if (!slotEl) return;
+
+      // For tabWithinSlots, focus the first/last focusable child
+      const tabWithinSlots = strategy.tabWithinSlots ?? [];
+      if (tabWithinSlots.includes(slotName)) {
+        const focusables = getVisibleFocusables(slotEl);
+        if (focusables.length > 0) {
+          const target = reverse
+            ? focusables[focusables.length - 1]
+            : focusables[0];
+          target.focus();
+          return;
+        }
+      }
+
+      slotEl.focus();
     },
     [strategy],
   );
@@ -241,12 +259,38 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
       }
 
       if (e.key === "Tab") {
+        // Check if we should Tab within the current slot first
+        const currentSlotName = cycleOrder[slotIndexRef.current];
+        const tabWithinSlots = strategy.tabWithinSlots ?? [];
+
+        if (tabWithinSlots.includes(currentSlotName)) {
+          const elements = strategy.getElements();
+          const slotElement = elements[currentSlotName];
+
+          if (slotElement) {
+            const focusables = getVisibleFocusables(slotElement);
+            const activeEl = document.activeElement as HTMLElement;
+            const currentIdx = focusables.indexOf(activeEl);
+
+            if (currentIdx !== -1) {
+              const nextIdx = e.shiftKey ? currentIdx - 1 : currentIdx + 1;
+              if (nextIdx >= 0 && nextIdx < focusables.length) {
+                e.preventDefault();
+                focusables[nextIdx].focus();
+                return; // stayed within slot
+              }
+            }
+          }
+        }
+
+        // At boundary or slot not in tabWithinSlots - cycle to next slot
         e.preventDefault();
-        const direction: 1 | -1 = e.shiftKey ? -1 : 1;
+        const reverse = e.shiftKey;
+        const direction: 1 | -1 = reverse ? -1 : 1;
         const nextIndex = findNextSlot(slotIndexRef.current, direction);
         slotIndexRef.current = nextIndex;
         const slotName = cycleOrder[nextIndex];
-        focusSlot(slotName);
+        focusSlot(slotName, reverse);
         debugCtx?.reportFocusTrapEvent(instanceId, {
           type: "cycle",
           slot: slotName,

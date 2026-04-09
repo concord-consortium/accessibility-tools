@@ -90,6 +90,10 @@ interface FocusTrapStrategy {
   // Default: ["title", "toolbar", "content"]
   cycleOrder?: string[];
 
+  // Slots where Tab navigates through focusable children before cycling
+  // to the next slot. Unlisted slots cycle immediately. Default: []
+  tabWithinSlots?: string[];
+
   // Screen reader announcements
   announceEnter?: string;
   announceExit?: string;
