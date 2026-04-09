@@ -17,7 +17,7 @@
  * Shift+Tab ignoring tabindex=-1 on native elements).
  */
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccessibilityContext } from "./provider";
 import type { FocusTrapConfig } from "./types";
 import { useStableId } from "./use-stable-id";
@@ -47,6 +47,11 @@ function findNextFocusableOutside(
 
 export function useFocusTrap(config: FocusTrapConfig | undefined) {
   const isTrappedRef = useRef(false);
+  const [isTrapped, setIsTrapped] = useState(false);
+  const setTrapped = useCallback((value: boolean) => {
+    isTrappedRef.current = value;
+    setIsTrapped(value);
+  }, []);
   const slotIndexRef = useRef(0);
   const instanceId = useStableId();
   const debugCtx = useAccessibilityContext();
@@ -99,7 +104,8 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
   const focusSlot = useCallback(
     (slotName: string) => {
       if (!strategy) return;
-      if (slotName === "content" && strategy.focusContent?.()) return;
+      const contentSlot = strategy.contentSlot ?? "content";
+      if (slotName === contentSlot && strategy.focusContent?.()) return;
       const elements = strategy.getElements();
       elements[slotName]?.focus();
     },
@@ -185,7 +191,7 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
         // Enter on the container: activate trap
         if (e.key === "Enter" && isOnContainer) {
           e.preventDefault();
-          isTrappedRef.current = true;
+          setTrapped(true);
           restoreChildrenTabbable();
           strategy.onEnter?.();
           announce(strategy.announceEnter);
@@ -222,7 +228,7 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
       if (e.key === "Escape") {
         e.preventDefault();
         e.stopPropagation();
-        isTrappedRef.current = false;
+        setTrapped(false);
         setChildrenNonTabbable();
         strategy.onExit?.();
         announce(strategy.announceExit);
@@ -270,6 +276,7 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
     isInsideTrap,
     setChildrenNonTabbable,
     restoreChildrenTabbable,
+    setTrapped,
     debugCtx,
     instanceId,
   ]);
@@ -299,12 +306,10 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
   if (!config) return null;
 
   return {
-    get isTrapped() {
-      return isTrappedRef.current;
-    },
+    isTrapped,
     enterTrap: () => {
       if (!strategy) return;
-      isTrappedRef.current = true;
+      setTrapped(true);
       restoreChildrenTabbable();
       strategy.onEnter?.();
       announce(strategy.announceEnter);
@@ -320,7 +325,7 @@ export function useFocusTrap(config: FocusTrapConfig | undefined) {
     },
     exitTrap: () => {
       if (!strategy) return;
-      isTrappedRef.current = false;
+      setTrapped(false);
       setChildrenNonTabbable();
       strategy.onExit?.();
       announce(strategy.announceExit);

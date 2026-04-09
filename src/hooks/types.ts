@@ -16,8 +16,11 @@ export interface FocusTrapStrategy {
   /** Elements in the trap, keyed by slot name (e.g., "title", "toolbar", "content"). */
   getElements: () => Record<string, HTMLElement | undefined>;
 
-  /** Custom focus for complex editors (Slate, CodeMirror, etc.). Return true to skip default .focus(). */
+  /** Custom focus for complex editors (Slate, CodeMirror, etc.). Return true to skip default .focus(). Called only for the slot named by contentSlot. */
   focusContent?: () => boolean;
+
+  /** Which slot name focusContent applies to. Default: "content". */
+  contentSlot?: string;
 
   /** Called when entering/exiting the trap. */
   onEnter?: () => void;

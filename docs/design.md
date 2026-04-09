@@ -76,7 +76,11 @@ interface FocusTrapStrategy {
   getElements: () => Record<string, HTMLElement | undefined>;
 
   // Custom focus method for complex editors (Slate, CodeMirror, etc.)
+  // Called only for the slot named by contentSlot. Return true to skip default .focus().
   focusContent?: () => boolean;
+
+  // Which slot name focusContent applies to (default: "content")
+  contentSlot?: string;
 
   // Lifecycle: called when entering/exiting the trap
   onEnter?: () => void;
