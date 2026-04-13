@@ -39,6 +39,14 @@ export interface FocusTrapStrategy {
 
   /** Elements outside the container DOM that are part of the trap (e.g., portaled toolbars). */
   getExternalElements?: () => HTMLElement[];
+
+  /** Called when Tab is pressed but the trap is not active (enabled=false or not yet entered).
+   *  Return true to prevent default Tab behavior. */
+  onTabWhenInactive?: (e: KeyboardEvent, reverse: boolean) => boolean;
+
+  /** Called when focus enters the container from outside via a non-Tab event (e.g., mouse click).
+   *  Use this to select/activate the tile so it becomes part of the keyboard navigation flow. */
+  onFocusEnter?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -48,6 +56,10 @@ export interface FocusTrapStrategy {
 export interface FocusTrapConfig {
   containerRef: RefObject<HTMLElement | null>;
   strategy: FocusTrapStrategy;
+  /** When false, the trap is dormant — no Tab interception, no Enter activation.
+   *  When true, Tab cycles within slots and Enter on the container enters the trap.
+   *  Defaults to true. */
+  enabled?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -107,9 +119,16 @@ export interface ResizableResult {
   resizeHandleProps: Record<string, unknown>;
 }
 
+export interface FocusTrapResult {
+  isTrapped: boolean;
+  enterTrap: () => void;
+  exitTrap: () => void;
+}
+
 export interface AccessibilityResult {
   navigation: NavigationResult | null;
   resizable: ResizableResult | null;
+  focusTrap: FocusTrapResult | null;
   debug: AccessibilityDebugHandle | null;
 }
 

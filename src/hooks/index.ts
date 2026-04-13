@@ -4,6 +4,7 @@ export {
   type AccessibilityProviderProps,
 } from "./provider";
 export { useFocusTrap } from "./use-focus-trap";
+export { FocusTrapController } from "./focus-trap-controller";
 export { useKeyboardNav } from "./use-keyboard-nav";
 export { useKeyboardResize } from "./use-keyboard-resize";
 export { useSelectionAnnouncer } from "./use-selection-announcer";
@@ -13,6 +14,7 @@ export { useAccessibility } from "./use-accessibility";
 export type {
   FocusTrapStrategy,
   FocusTrapConfig,
+  FocusTrapResult,
   AccessibilityOptions,
   AccessibilityResult,
   AccessibilityDebugHandle,

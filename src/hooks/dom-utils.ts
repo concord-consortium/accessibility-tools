@@ -23,6 +23,11 @@ export function getVisibleFocusables(
     container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
   ).filter((el) => {
     if (el.getAttribute("aria-hidden") === "true") return false;
+    // SVG elements fail checkVisibility (no own rendering box) — use bounding rect instead
+    if (el instanceof SVGElement) {
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 || rect.height > 0;
+    }
     // checkVisibility is the modern API
     if (typeof el.checkVisibility === "function") {
       return el.checkVisibility();

@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getVisibleFocusables } from "./dom-utils";
 import { useAccessibilityContext } from "./provider";
-import type { FocusTrapConfig } from "./types";
+import type { FocusTrapConfig, FocusTrapResult } from "./types";
 import { useStableId } from "./use-stable-id";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
@@ -46,7 +46,9 @@ function findNextFocusableOutside(
   return all[idx + 1] ?? all[0] ?? null;
 }
 
-export function useFocusTrap(config: FocusTrapConfig | undefined) {
+export function useFocusTrap(
+  config: FocusTrapConfig | undefined,
+): FocusTrapResult | null {
   const isTrappedRef = useRef(false);
   const [isTrapped, setIsTrapped] = useState(false);
   const setTrapped = useCallback((value: boolean) => {

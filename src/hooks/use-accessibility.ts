@@ -26,7 +26,7 @@ export function useAccessibility(
   options: AccessibilityOptions,
 ): AccessibilityResult {
   // Always call all hooks (Rules of Hooks) - they no-op when config is undefined
-  useFocusTrap(options.focusTrap);
+  const focusTrap = useFocusTrap(options.focusTrap);
   const navigation = useKeyboardNav(options.navigation);
   const resizable = useKeyboardResize(options.resize);
 
@@ -70,6 +70,7 @@ export function useAccessibility(
   return {
     navigation,
     resizable,
+    focusTrap,
     debug,
   };
 }
