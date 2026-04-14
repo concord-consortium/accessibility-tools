@@ -28,9 +28,14 @@ export function getVisibleFocusables(
       const rect = el.getBoundingClientRect();
       return rect.width > 0 || rect.height > 0;
     }
-    // checkVisibility is the modern API
+    // checkVisibility is the modern API. Pass checkOpacity and checkVisibilityCSS
+    // so elements hidden via `visibility: hidden` or `opacity: 0` (e.g. Chakra's
+    // closed menus) are correctly filtered out.
     if (typeof el.checkVisibility === "function") {
-      return el.checkVisibility();
+      return el.checkVisibility({
+        checkOpacity: true,
+        checkVisibilityCSS: true,
+      });
     }
     // Fall back to bounding rect; in jsdom all rects are zero,
     // so also check if the element is connected to the DOM
