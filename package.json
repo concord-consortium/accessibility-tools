@@ -4,6 +4,17 @@
   "author": "Doug Martin",
   "license": "MIT",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/concord-consortium/accessibility-tools.git"
+  },
+  "bugs": {
+    "url": "https://github.com/concord-consortium/accessibility-tools/issues"
+  },
+  "homepage": "https://github.com/concord-consortium/accessibility-tools#readme",
   "engines": {
     "node": ">=18"
   },
