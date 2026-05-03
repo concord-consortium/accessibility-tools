@@ -1,6 +1,6 @@
 {
   "name": "@concord-consortium/accessibility-tools",
-  "version": "0.0.1",
+  "version": "0.0.1-pre.0",
   "author": "Doug Martin",
   "license": "MIT",
   "type": "module",
