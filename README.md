@@ -144,6 +144,25 @@ yalc add @concord-consortium/accessibility-tools
 yalc publish --push
 ```
 
+## React Hooks
+
+> **Pre-release:** The hooks API is in active development and the surface is still in flux. It is not recommended for use outside of Concord Consortium projects at this time. Expect breaking changes between releases until the API stabilizes.
+
+A set of composable React hooks (and a context provider) for building accessible components. They are exported from `@concord-consortium/accessibility-tools/hooks`.
+
+| Export | Purpose |
+|---|---|
+| `AccessibilityProvider` / `useAccessibilityContext` | App-level provider for shared accessibility settings and announcements |
+| `useAccessibility` | Top-level hook composing navigation, announcements, and resizing for a component |
+| `useFocusTrap` / `FocusTrapController` | Trap focus within a region, with pluggable strategies and lifecycle hooks |
+| `useKeyboardNav` | Arrow-key / Home / End navigation across a set of focusable items |
+| `useKeyboardResize` | Keyboard-driven resizing for resizable UI elements |
+| `useSelectionAnnouncer` | Announce selection changes to assistive tech via a live region |
+| `useDropdown` | Accessible dropdown/menu behavior (focus, keyboard, dismissal) |
+| `getVisibleFocusables` | Utility for finding visible, focusable descendants of an element |
+
+Because the API is still evolving, refer to the source in [src/hooks/](src/hooks/) and the kitchen sink demo for current usage patterns.
+
 ## Package Entry Points
 
 | Entry point | Description |
