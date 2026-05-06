@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getVisibleFocusables } from "./dom-utils";
+import { getVisibleFocusables, pickSlotEntryTarget } from "./dom-utils";
 import { useAccessibilityContext } from "./provider";
 import type { FocusTrapConfig, FocusTrapResult } from "./types";
 import { useStableId } from "./use-stable-id";
@@ -117,11 +117,8 @@ export function useFocusTrap(
       // For tabWithinSlots, focus the first/last focusable child
       const tabWithinSlots = strategy.tabWithinSlots ?? [];
       if (tabWithinSlots.includes(slotName)) {
-        const focusables = getVisibleFocusables(slotEl);
-        if (focusables.length > 0) {
-          const target = reverse
-            ? focusables[focusables.length - 1]
-            : focusables[0];
+        const target = pickSlotEntryTarget(slotEl, reverse);
+        if (target) {
           target.focus();
           return;
         }
