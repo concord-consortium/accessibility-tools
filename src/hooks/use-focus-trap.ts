@@ -18,33 +18,17 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getVisibleFocusables } from "./dom-utils";
+import {
+  findFocusableIndex,
+  findNextFocusableOutside,
+  getVisibleFocusables,
+  pickSlotEntryTarget,
+} from "./dom-utils";
 import { useAccessibilityContext } from "./provider";
 import type { FocusTrapConfig, FocusTrapResult } from "./types";
 import { useStableId } from "./use-stable-id";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-/**
- * Find the next focusable element outside the container in tab order.
- */
-function findNextFocusableOutside(
-  container: HTMLElement,
-  reverse: boolean,
-): HTMLElement | null {
-  const all = Array.from(
-    document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-  ).filter((el) => !container.contains(el) || el === container);
-  const idx = all.indexOf(container);
-  if (idx === -1) return all[0] ?? null;
-  if (reverse) {
-    return all[idx - 1] ?? all[all.length - 1] ?? null;
-  }
-  return all[idx + 1] ?? all[0] ?? null;
-}
 
 export function useFocusTrap(
   config: FocusTrapConfig | undefined,
@@ -117,11 +101,8 @@ export function useFocusTrap(
       // For tabWithinSlots, focus the first/last focusable child
       const tabWithinSlots = strategy.tabWithinSlots ?? [];
       if (tabWithinSlots.includes(slotName)) {
-        const focusables = getVisibleFocusables(slotEl);
-        if (focusables.length > 0) {
-          const target = reverse
-            ? focusables[focusables.length - 1]
-            : focusables[0];
+        const target = pickSlotEntryTarget(slotEl, reverse);
+        if (target) {
           target.focus();
           return;
         }
@@ -271,8 +252,10 @@ export function useFocusTrap(
 
           if (slotElement) {
             const focusables = getVisibleFocusables(slotElement);
-            const activeEl = document.activeElement as HTMLElement;
-            const currentIdx = focusables.indexOf(activeEl);
+            const currentIdx = findFocusableIndex(
+              focusables,
+              document.activeElement,
+            );
 
             if (currentIdx !== -1) {
               const nextIdx = e.shiftKey ? currentIdx - 1 : currentIdx + 1;

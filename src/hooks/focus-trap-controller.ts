@@ -21,31 +21,14 @@
  *   this.trap.destroy();
  */
 
-import { getVisibleFocusables } from "./dom-utils";
+import {
+  findFocusableIndex,
+  getVisibleFocusables,
+  pickSlotEntryTarget,
+} from "./dom-utils";
 import type { FocusTrapStrategy } from "./types";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
-
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-/**
- * Find the next focusable element outside the container in tab order.
- */
-function findNextFocusableOutside(
-  container: HTMLElement,
-  reverse: boolean,
-): HTMLElement | null {
-  const all = Array.from(
-    document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-  ).filter((el) => !container.contains(el) || el === container);
-  const idx = all.indexOf(container);
-  if (idx === -1) return all[0] ?? null;
-  if (reverse) {
-    return all[idx - 1] ?? all[all.length - 1] ?? null;
-  }
-  return all[idx + 1] ?? all[0] ?? null;
-}
 
 function announce(text: string | undefined) {
   if (!text) return;
@@ -313,6 +296,15 @@ export class FocusTrapController {
     if (!this.trapped) return;
 
     if (e.key === "Tab") {
+      // Re-derive slotIndex from where focus actually is. slotIndex is only
+      // updated on Tab cycles and on focus-in from outside, so it can go stale
+      // when something else moves focus inside the trap (e.g. a click on a
+      // toolbar button, or a programmatic .focus() inside a composite widget).
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLElement) {
+        this.updateSlotIndexFromFocus(activeEl);
+      }
+
       const currentSlotName = this.cycleOrder[this.slotIndex];
       const tabWithinSlots = this.strategy.tabWithinSlots ?? [];
 
@@ -322,8 +314,7 @@ export class FocusTrapController {
         const slotElement = elements[currentSlotName];
         if (slotElement) {
           const focusables = getVisibleFocusables(slotElement);
-          const activeEl = document.activeElement as HTMLElement;
-          const currentIdx = focusables.indexOf(activeEl);
+          const currentIdx = findFocusableIndex(focusables, activeEl);
 
           if (currentIdx !== -1) {
             const nextIdx = e.shiftKey ? currentIdx - 1 : currentIdx + 1;
@@ -356,11 +347,8 @@ export class FocusTrapController {
 
     const tabWithinSlots = this.strategy.tabWithinSlots ?? [];
     if (tabWithinSlots.includes(slotName)) {
-      const focusables = getVisibleFocusables(slotEl);
-      if (focusables.length > 0) {
-        const target = reverse
-          ? focusables[focusables.length - 1]
-          : focusables[0];
+      const target = pickSlotEntryTarget(slotEl, reverse);
+      if (target) {
         target.focus();
         return;
       }
@@ -371,11 +359,8 @@ export class FocusTrapController {
     if (document.activeElement === slotEl) return;
 
     // If the slot element isn't focusable (e.g., toolbar div), focus its first focusable child
-    const focusables = getVisibleFocusables(slotEl);
-    if (focusables.length > 0) {
-      const target = reverse
-        ? focusables[focusables.length - 1]
-        : focusables[0];
+    const target = pickSlotEntryTarget(slotEl, reverse);
+    if (target) {
       target.focus();
     }
   }
