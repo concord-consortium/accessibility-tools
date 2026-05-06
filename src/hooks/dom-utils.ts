@@ -91,8 +91,31 @@ export function pickSlotEntryTarget(
   // elements with tabindex="-1" (e.g. a toolbar mid-cycle, or composite-widget
   // descendants). Programmatic focus works on those, so prefer them over
   // letting the slot fail silently.
-  const fallback = slotEl.querySelector<HTMLElement>(
-    'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [role="button"]',
+  const candidates = slotEl.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable]:not([contenteditable="false"]), [role="button"]',
   );
-  return fallback;
+  if (candidates.length === 0) return null;
+  return reverse ? candidates[candidates.length - 1] : candidates[0];
+}
+
+/**
+ * Find the next/previous focusable element outside `container` in document tab
+ * order. Used to "skip past" a focus-trap container when the trap is enabled
+ * but not yet entered.
+ */
+export function findNextFocusableOutside(
+  container: HTMLElement,
+  reverse: boolean,
+): HTMLElement | null {
+  // getVisibleFocusables filters negative tabindex and hidden elements, so the
+  // result reflects what the browser would actually focus on a Tab press.
+  const all = getVisibleFocusables(document.body).filter(
+    (el) => !container.contains(el) || el === container,
+  );
+  const idx = all.indexOf(container);
+  if (idx === -1) return all[0] ?? null;
+  if (reverse) {
+    return all[idx - 1] ?? all[all.length - 1] ?? null;
+  }
+  return all[idx + 1] ?? all[0] ?? null;
 }

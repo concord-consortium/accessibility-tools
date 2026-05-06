@@ -30,27 +30,6 @@ import type { FocusTrapStrategy } from "./types";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
 
-const FOCUSABLE_SELECTOR =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-/**
- * Find the next focusable element outside the container in tab order.
- */
-function findNextFocusableOutside(
-  container: HTMLElement,
-  reverse: boolean,
-): HTMLElement | null {
-  const all = Array.from(
-    document.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
-  ).filter((el) => !container.contains(el) || el === container);
-  const idx = all.indexOf(container);
-  if (idx === -1) return all[0] ?? null;
-  if (reverse) {
-    return all[idx - 1] ?? all[all.length - 1] ?? null;
-  }
-  return all[idx + 1] ?? all[0] ?? null;
-}
-
 function announce(text: string | undefined) {
   if (!text) return;
   const el = document.createElement("div");
