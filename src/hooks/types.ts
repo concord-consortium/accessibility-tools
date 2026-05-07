@@ -40,6 +40,11 @@ export interface FocusTrapStrategy {
   /** Elements outside the container DOM that are part of the trap (e.g., portaled toolbars). */
   getExternalElements?: () => HTMLElement[];
 
+  /** Slot name (in cycleOrder) that getExternalElements() belongs to. Used to
+   *  resolve slotIndex when focus enters an external element (e.g. a portaled
+   *  toolbar). If omitted, focus into externals leaves slotIndex unchanged. */
+  externalElementsSlot?: string;
+
   /** Called when Tab is pressed but the trap is not active (enabled=false or not yet entered).
    *  Return true to prevent default Tab behavior. */
   onTabWhenInactive?: (e: KeyboardEvent, reverse: boolean) => boolean;
