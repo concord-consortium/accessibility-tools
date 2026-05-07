@@ -114,18 +114,30 @@ export function pickSlotEntryTarget(
  * Find the next/previous focusable element outside `container` in document tab
  * order. Used to "skip past" a focus-trap container when the trap is enabled
  * but not yet entered.
+ *
+ * Note on perf: this runs on every Tab keypress while the trap is enabled but
+ * not entered. The container-descendant filter runs *before* `isVisible`, so
+ * trap-internal focusables (often the bulk on a tile-heavy page) skip the
+ * checkVisibility() call.
  */
 export function findNextFocusableOutside(
   container: HTMLElement,
   reverse: boolean,
 ): HTMLElement | null {
-  // getVisibleFocusables filters negative tabindex and hidden elements, so the
-  // result reflects what the browser would actually focus on a Tab press.
-  const all = getVisibleFocusables(document.body).filter(
-    (el) => !container.contains(el) || el === container,
-  );
+  const all = Array.from(
+    document.body.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter((el) => {
+    if (container.contains(el) && el !== container) return false;
+    const tabindex = el.getAttribute("tabindex");
+    if (tabindex !== null && Number.parseInt(tabindex, 10) < 0) return false;
+    return isVisible(el);
+  });
   const idx = all.indexOf(container);
-  if (idx === -1) return all[0] ?? null;
+  if (idx === -1) {
+    // Container isn't in the list (e.g. it has no tabindex). Pick the
+    // direction-appropriate end so Shift+Tab moves backward and Tab forward.
+    return reverse ? (all[all.length - 1] ?? null) : (all[0] ?? null);
+  }
   if (reverse) {
     return all[idx - 1] ?? all[all.length - 1] ?? null;
   }

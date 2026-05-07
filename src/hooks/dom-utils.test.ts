@@ -204,4 +204,12 @@ describe("findNextFocusableOutside", () => {
     expect(findNextFocusableOutside(container, false)).toBe(after2);
     expect(findNextFocusableOutside(container, true)).toBe(before);
   });
+
+  it("picks direction-appropriate end when the container isn't focusable itself", () => {
+    const { before, container, after } = makeFixture();
+    // Container with no tabindex isn't in the focusables list at all.
+    container.removeAttribute("tabindex");
+    expect(findNextFocusableOutside(container, false)).toBe(before);
+    expect(findNextFocusableOutside(container, true)).toBe(after);
+  });
 });
