@@ -138,6 +138,27 @@ describe("pickSlotEntryTarget", () => {
     expect(pickSlotEntryTarget(slot, false)?.textContent).toBe("edit me");
   });
 
+  it('includes tabindex="-1" non-native interactive elements in the fallback', () => {
+    // Covers <div role="menuitem" tabindex="-1">, <div role="link" tabindex="-1">,
+    // and any other ARIA role wired up to be programmatically focusable.
+    const slot = makeContainer('<div role="menuitem" tabindex="-1">menu</div>');
+    expect(pickSlotEntryTarget(slot, false)?.textContent).toBe("menu");
+  });
+
+  it('does not pick a role="button" element with no tabindex (not focusable)', () => {
+    // Without tabindex, <div role="button"> can't actually receive .focus().
+    const slot = makeContainer('<div role="button">unfocusable</div>');
+    expect(pickSlotEntryTarget(slot, false)).toBeNull();
+  });
+
+  it("skips aria-hidden candidates in the fallback", () => {
+    const slot = makeContainer(
+      '<button tabindex="-1" aria-hidden="true">hidden</button>' +
+        '<button tabindex="-1">visible</button>',
+    );
+    expect(pickSlotEntryTarget(slot, false)?.textContent).toBe("visible");
+  });
+
   it("returns null when no interactive descendants exist", () => {
     const slot = makeContainer("<span>just text</span>");
     expect(pickSlotEntryTarget(slot, false)).toBeNull();

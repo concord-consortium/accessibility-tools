@@ -13,8 +13,36 @@ const FOCUSABLE_SELECTOR = [
 ].join(", ");
 
 /**
+ * Returns true if `el` is currently rendered/visible. Handles aria-hidden,
+ * SVG elements (which may fail checkVisibility), the modern checkVisibility
+ * API (filters opacity:0 / visibility:hidden / display:none), and a
+ * bounding-rect + connected fallback for environments without checkVisibility.
+ */
+function isVisible(el: HTMLElement): boolean {
+  if (el.getAttribute("aria-hidden") === "true") return false;
+  // SVG elements fail checkVisibility (no own rendering box) — use bounding rect instead
+  if (el instanceof SVGElement) {
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 || rect.height > 0;
+  }
+  // checkVisibility is the modern API. Pass checkOpacity and checkVisibilityCSS
+  // so elements hidden via `visibility: hidden` or `opacity: 0` are correctly
+  // filtered out.
+  if (typeof el.checkVisibility === "function") {
+    return el.checkVisibility({
+      checkOpacity: true,
+      checkVisibilityCSS: true,
+    });
+  }
+  // Fall back to bounding rect; in jsdom all rects are zero,
+  // so also check if the element is connected to the DOM
+  const rect = el.getBoundingClientRect();
+  if (rect.width > 0 || rect.height > 0) return true;
+  return el.isConnected;
+}
+
+/**
  * Returns all visible, focusable elements within a container, in DOM order.
- * Handles SVG elements (which may fail checkVisibility) via bounding rect fallback.
  */
 export function getVisibleFocusables(
   container: HTMLElement | Element,
@@ -27,26 +55,7 @@ export function getVisibleFocusables(
     // those elements are programmatically focusable but not in the Tab cycle.
     const tabindex = el.getAttribute("tabindex");
     if (tabindex !== null && Number.parseInt(tabindex, 10) < 0) return false;
-    if (el.getAttribute("aria-hidden") === "true") return false;
-    // SVG elements fail checkVisibility (no own rendering box) — use bounding rect instead
-    if (el instanceof SVGElement) {
-      const rect = el.getBoundingClientRect();
-      return rect.width > 0 || rect.height > 0;
-    }
-    // checkVisibility is the modern API. Pass checkOpacity and checkVisibilityCSS
-    // so elements hidden via `visibility: hidden` or `opacity: 0` (e.g. Chakra's
-    // closed menus) are correctly filtered out.
-    if (typeof el.checkVisibility === "function") {
-      return el.checkVisibility({
-        checkOpacity: true,
-        checkVisibilityCSS: true,
-      });
-    }
-    // Fall back to bounding rect; in jsdom all rects are zero,
-    // so also check if the element is connected to the DOM
-    const rect = el.getBoundingClientRect();
-    if (rect.width > 0 || rect.height > 0) return true;
-    return el.isConnected;
+    return isVisible(el);
   });
 }
 
@@ -90,10 +99,13 @@ export function pickSlotEntryTarget(
   // Nothing in the Tab cycle — but the slot may still hold interactive
   // elements with tabindex="-1" (e.g. a toolbar mid-cycle, or composite-widget
   // descendants). Programmatic focus works on those, so prefer them over
-  // letting the slot fail silently.
-  const candidates = slotEl.querySelectorAll<HTMLElement>(
-    'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable]:not([contenteditable="false"]), [role="button"]',
-  );
+  // letting the slot fail silently. Use the same visibility filter as the
+  // primary path to avoid focusing hidden elements.
+  const candidates = Array.from(
+    slotEl.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [contenteditable]:not([contenteditable="false"]), [tabindex="-1"]',
+    ),
+  ).filter(isVisible);
   if (candidates.length === 0) return null;
   return reverse ? candidates[candidates.length - 1] : candidates[0];
 }
