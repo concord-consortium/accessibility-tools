@@ -393,19 +393,17 @@ export class FocusTrapController {
         return;
       }
     }
-    // Also check external elements (toolbar)
+    // Target may be inside a portaled element (e.g. a floating toolbar).
+    // Map it to the slot the strategy declares for externals; if none is
+    // declared, leave slotIndex alone rather than guess at a slot.
     const externals = this.strategy.getExternalElements?.() ?? [];
-    for (let i = 0; i < order.length; i++) {
-      const slotEl = elements[order[i]];
-      if (!slotEl) continue;
-      for (const ext of externals) {
-        if (ext.contains(target)) {
-          // External element — find which slot it maps to.
-          // Toolbar is typically the slot that's in getExternalElements.
-          this.slotIndex = i;
-          return;
-        }
-      }
+    if (externals.length === 0) return;
+    const externalsSlot = this.strategy.externalElementsSlot;
+    if (!externalsSlot) return;
+    if (!externals.some((ext) => ext.contains(target))) return;
+    const externalsIdx = order.indexOf(externalsSlot);
+    if (externalsIdx !== -1) {
+      this.slotIndex = externalsIdx;
     }
   }
 

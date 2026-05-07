@@ -199,6 +199,74 @@ describe("FocusTrapController", () => {
     expect(btn1.focus).toHaveBeenCalled();
   });
 
+  it("Tab from a portaled external element advances from externalElementsSlot", () => {
+    // External (portaled) toolbar: the trap reaches into a DOM region outside
+    // the container via getExternalElements. The strategy declares which slot
+    // those externals belong to via externalElementsSlot, so Tab from a button
+    // inside the portal advances from that slot, not from the first defined
+    // slot in cycleOrder (the previous broken behavior).
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.append(title, content);
+    const portalToolbar = document.createElement("div");
+    const portalBtn = document.createElement("button");
+    portalToolbar.appendChild(portalBtn);
+    document.body.appendChild(portalToolbar);
+    vi.spyOn(title, "focus");
+    vi.spyOn(content, "focus");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, toolbar: undefined, content }),
+      cycleOrder: ["title", "toolbar", "content"],
+      getExternalElements: () => [portalToolbar],
+      externalElementsSlot: "toolbar",
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+    expect(title.focus).toHaveBeenCalled();
+
+    // Focus is in the portal toolbar; Tab should advance toolbar -> content.
+    setActiveElement(portalBtn);
+    pressKey("Tab");
+    expect(content.focus).toHaveBeenCalled();
+  });
+
+  it("Tab from a portaled external leaves slotIndex unchanged when externalElementsSlot is omitted", () => {
+    // No externalElementsSlot declared: the trap has no information to map the
+    // external to a slot, so it shouldn't guess. Tab continues to advance from
+    // whatever slot the trap was last on.
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.append(title, content);
+    const portal = document.createElement("div");
+    const portalBtn = document.createElement("button");
+    portal.appendChild(portalBtn);
+    document.body.appendChild(portal);
+    vi.spyOn(title, "focus");
+    vi.spyOn(content, "focus");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      getExternalElements: () => [portal],
+      // externalElementsSlot intentionally omitted
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+    // Trap entered at title (slotIndex=0). Without externalElementsSlot, Tab
+    // from the portal should treat the slot as still "title" and advance to
+    // content, not jump back to title.
+    expect(title.focus).toHaveBeenCalled();
+
+    setActiveElement(portalBtn);
+    pressKey("Tab");
+    expect(content.focus).toHaveBeenCalled();
+  });
+
   it("exits trap on Escape", () => {
     const container = makeContainer();
     vi.spyOn(container, "focus");
