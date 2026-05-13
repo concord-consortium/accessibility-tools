@@ -18,12 +18,30 @@ export type TabHandlerResult = "handled" | "exit";
 // future handler types diverge. Can be unified if a third clone appears.
 export type EscapeHandlerResult = "handled" | "exit";
 
+export type FocusContentContext = {
+  /**
+   * How the trap is entering the content slot.
+   * - "forward": cycling forward (Tab from previous slot, or initial entry).
+   * - "reverse": cycling backward (Shift+Tab from next slot).
+   *
+   * Additional modes (e.g. "restore" for re-entering the last-focused element
+   * when the trap is re-engaged) may be added later; clients are expected to
+   * treat unknown modes as "forward".
+   */
+  entryMode: "forward" | "reverse";
+};
+
 export interface FocusTrapStrategy {
   /** Elements in the trap, keyed by slot name (e.g., "title", "toolbar", "content"). */
   getElements: () => Record<string, HTMLElement | undefined>;
 
-  /** Custom focus for complex editors (Slate, CodeMirror, etc.). Return true to skip default .focus(). Called only for the slot named by contentSlot. */
-  focusContent?: () => boolean;
+  /**
+   * Custom focus-the-content callback. Called when the trap enters the
+   * content slot. Receives a context object describing how the slot is being
+   * entered; the field is a discriminated string so new modes (e.g. "restore")
+   * can be added without a breaking change.
+   */
+  focusContent?: (context: FocusContentContext) => boolean;
 
   /** Which slot name focusContent applies to. Default: "content". */
   contentSlot?: string;

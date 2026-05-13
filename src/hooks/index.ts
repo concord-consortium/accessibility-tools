@@ -15,6 +15,7 @@ export type {
   FocusTrapStrategy,
   FocusTrapConfig,
   FocusTrapResult,
+  FocusContentContext,
   TabHandlerResult,
   EscapeHandlerResult,
   AccessibilityOptions,

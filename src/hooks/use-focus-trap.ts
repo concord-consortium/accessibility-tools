@@ -93,7 +93,9 @@ export function useFocusTrap(
     (slotName: string, reverse = false) => {
       if (!strategy) return;
       const contentSlot = strategy.contentSlot ?? "content";
-      if (slotName === contentSlot && strategy.focusContent?.()) return;
+      const entryMode = reverse ? "reverse" : "forward";
+      if (slotName === contentSlot && strategy.focusContent?.({ entryMode }))
+        return;
       const elements = strategy.getElements();
       const slotEl = elements[slotName];
       if (!slotEl) return;

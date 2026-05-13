@@ -441,4 +441,35 @@ describe("FocusTrapController", () => {
     expect(onExit).toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(true);
   });
+
+  it("passes { entryMode } context to focusContent", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    const toolbar = document.createElement("button");
+    container.appendChild(title);
+    container.appendChild(content);
+    container.appendChild(toolbar);
+    vi.spyOn(title, "focus");
+    vi.spyOn(toolbar, "focus");
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content, toolbar }),
+      cycleOrder: ["title", "content", "toolbar"],
+      focusContent,
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+    // Forward entry into content from title:
+    setActiveElement(title);
+    pressKey("Tab");
+    expect(focusContent).toHaveBeenLastCalledWith({ entryMode: "forward" });
+
+    // Reverse entry into content from toolbar:
+    setActiveElement(toolbar);
+    pressKey("Tab", { shiftKey: true });
+    expect(focusContent).toHaveBeenLastCalledWith({ entryMode: "reverse" });
+  });
 });
