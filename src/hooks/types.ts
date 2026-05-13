@@ -12,6 +12,8 @@ import type { RefObject } from "react";
 // Focus Trap Strategy (provided by consuming apps)
 // ---------------------------------------------------------------------------
 
+export type TabHandlerResult = "handled" | "exit";
+
 export interface FocusTrapStrategy {
   /** Elements in the trap, keyed by slot name (e.g., "title", "toolbar", "content"). */
   getElements: () => Record<string, HTMLElement | undefined>;
@@ -44,6 +46,18 @@ export interface FocusTrapStrategy {
    *  resolve slotIndex when focus enters an external element (e.g. a portaled
    *  toolbar). If omitted, focus into externals leaves slotIndex unchanged. */
   externalElementsSlot?: string;
+
+  /**
+   * Per-slot custom Tab handler. Called from the controller's keydown listener
+   * when Tab is pressed and focus is in this slot. Return "handled" to take
+   * over (the handler is responsible for preventDefault and focus movement);
+   * return "exit" to let the controller advance to the next slot.
+   * Takes precedence over `tabWithinSlots` for slots that have both.
+   */
+  tabHandlers?: Record<
+    string,
+    (event: KeyboardEvent, reverse: boolean) => TabHandlerResult
+  >;
 
   /** Called when Tab is pressed but the trap is not active (enabled=false or not yet entered).
    *  Return true to prevent default Tab behavior. */

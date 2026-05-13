@@ -306,6 +306,22 @@ export class FocusTrapController {
       }
 
       const currentSlotName = this.cycleOrder[this.slotIndex];
+
+      // Per-slot tab handler takes precedence over tabWithinSlots.
+      const tabHandler = this.strategy.tabHandlers?.[currentSlotName];
+      if (tabHandler) {
+        const result = tabHandler(e, e.shiftKey);
+        if (result === "handled") return;
+        // result === "exit": advance to the next slot.
+        e.preventDefault();
+        const reverse = e.shiftKey;
+        const direction: 1 | -1 = reverse ? -1 : 1;
+        const nextIndex = this.findNextSlot(this.slotIndex, direction);
+        this.slotIndex = nextIndex;
+        this.focusSlot(this.cycleOrder[nextIndex], reverse);
+        return;
+      }
+
       const tabWithinSlots = this.strategy.tabWithinSlots ?? [];
 
       // Try Tab within current slot first

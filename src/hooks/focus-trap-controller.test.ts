@@ -312,4 +312,83 @@ describe("FocusTrapController", () => {
       true,
     );
   });
+
+  it("invokes tabHandlers for the current slot and skips slot advance when it returns 'handled'", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+    vi.spyOn(title, "focus");
+    vi.spyOn(content, "focus");
+
+    const handler = vi.fn().mockReturnValue("handled");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { title: handler },
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+    expect(title.focus).toHaveBeenCalled();
+
+    setActiveElement(title);
+    const event = pressKey("Tab");
+
+    expect(handler).toHaveBeenCalledWith(event, false);
+    expect(content.focus).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("advances slot when tabHandlers returns 'exit'", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+    vi.spyOn(content, "focus");
+
+    const handler = vi.fn().mockReturnValue("exit");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { title: handler },
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+
+    setActiveElement(title);
+    const event = pressKey("Tab");
+
+    expect(handler).toHaveBeenCalledWith(event, false);
+    expect(content.focus).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("falls back to tabWithinSlots when tabHandlers has no entry for the current slot", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+    vi.spyOn(content, "focus");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: {
+        /* none for title */
+      },
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+
+    setActiveElement(title);
+    pressKey("Tab");
+
+    expect(content.focus).toHaveBeenCalled();
+  });
 });
