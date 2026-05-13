@@ -391,4 +391,54 @@ describe("FocusTrapController", () => {
 
     expect(content.focus).toHaveBeenCalled();
   });
+
+  it("invokes escapeHandlers for the current slot and skips exit when it returns 'handled'", () => {
+    const container = makeContainer();
+    const content = document.createElement("textarea");
+    container.appendChild(content);
+    const onExit = vi.fn();
+
+    const handler = vi.fn().mockReturnValue("handled");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content }),
+      cycleOrder: ["content"],
+      escapeHandlers: { content: handler },
+      onExit,
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+
+    setActiveElement(content);
+    const event = pressKey("Escape");
+
+    expect(handler).toHaveBeenCalledWith(event);
+    expect(onExit).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("exits trap when escapeHandlers returns 'exit'", () => {
+    const container = makeContainer();
+    const content = document.createElement("textarea");
+    container.appendChild(content);
+    const onExit = vi.fn();
+
+    const handler = vi.fn().mockReturnValue("exit");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content }),
+      cycleOrder: ["content"],
+      escapeHandlers: { content: handler },
+      onExit,
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+
+    setActiveElement(content);
+    const event = pressKey("Escape");
+
+    expect(handler).toHaveBeenCalledWith(event);
+    expect(onExit).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
 });

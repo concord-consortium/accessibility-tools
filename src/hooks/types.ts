@@ -14,6 +14,10 @@ import type { RefObject } from "react";
 
 export type TabHandlerResult = "handled" | "exit";
 
+// Same shape as TabHandlerResult; left as a distinct type for now in case
+// future handler types diverge. Can be unified if a third clone appears.
+export type EscapeHandlerResult = "handled" | "exit";
+
 export interface FocusTrapStrategy {
   /** Elements in the trap, keyed by slot name (e.g., "title", "toolbar", "content"). */
   getElements: () => Record<string, HTMLElement | undefined>;
@@ -57,6 +61,16 @@ export interface FocusTrapStrategy {
   tabHandlers?: Record<
     string,
     (event: KeyboardEvent, reverse: boolean) => TabHandlerResult
+  >;
+
+  /**
+   * Per-slot custom Escape handler. Return "handled" to suppress the trap's
+   * default exit (the handler is responsible for whatever should happen);
+   * return "exit" to fall through to the controller's standard exit logic.
+   */
+  escapeHandlers?: Record<
+    string,
+    (event: KeyboardEvent) => EscapeHandlerResult
   >;
 
   /** Called when Tab is pressed but the trap is not active (enabled=false or not yet entered).

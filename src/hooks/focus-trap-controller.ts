@@ -284,8 +284,15 @@ export class FocusTrapController {
     // --- Trapped or enabled with focus inside ---
     if (!this.isInsideTrap(document.activeElement)) return;
 
-    // Escape: exit trap when either trapped or enabled (click put focus inside)
+    // Escape: per-slot escapeHandlers can opt out of the default exit
+    // (e.g. cell editor cancel). Otherwise exit the trap.
     if (e.key === "Escape") {
+      const escSlotName = this.cycleOrder[this.slotIndex];
+      const escapeHandler = this.strategy.escapeHandlers?.[escSlotName];
+      if (escapeHandler) {
+        const result = escapeHandler(e);
+        if (result === "handled") return;
+      }
       e.preventDefault();
       e.stopPropagation();
       this.exitTrap();
