@@ -287,6 +287,13 @@ export class FocusTrapController {
     // Escape: per-slot escapeHandlers can opt out of the default exit
     // (e.g. cell editor cancel). Otherwise exit the trap.
     if (e.key === "Escape") {
+      // Re-derive slotIndex from where focus actually is. slotIndex can go stale
+      // when focus moves via click or programmatic .focus() while already trapped
+      // (handleFocusIn returns early when trapped=true). Mirrors Tab handling.
+      const activeElForEsc = document.activeElement;
+      if (activeElForEsc instanceof HTMLElement) {
+        this.updateSlotIndexFromFocus(activeElForEsc);
+      }
       const escSlotName = this.cycleOrder[this.slotIndex];
       const escapeHandler = this.strategy.escapeHandlers?.[escSlotName];
       if (escapeHandler) {
