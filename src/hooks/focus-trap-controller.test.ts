@@ -472,4 +472,138 @@ describe("FocusTrapController", () => {
     pressKey("Tab", { shiftKey: true });
     expect(focusContent).toHaveBeenLastCalledWith({ entryMode: "reverse" });
   });
+
+  it("does not mutate tabindex on a managed slot's element when setChildrenNonTabbable runs", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    content.setAttribute("tabindex", "5");
+    container.appendChild(title);
+    container.appendChild(content);
+
+    const handler = vi.fn().mockReturnValue("exit");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { content: handler },
+    };
+    controller = new FocusTrapController(container, strategy);
+    // setEnabled(false) when not previously enabled triggers setChildrenNonTabbable
+    controller.setEnabled(false);
+
+    // The non-managed slot element gets tabindex=-1 ...
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    // ... but the managed slot element keeps its original tabindex.
+    expect(content.getAttribute("tabindex")).toBe("5");
+  });
+
+  it("does not mutate tabindex on descendants of a managed slot (preserves a roving pattern)", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("div");
+    // Roving pattern inside the content slot: one cell tabbable, others not.
+    const cellA = document.createElement("button");
+    const cellB = document.createElement("button");
+    const cellC = document.createElement("button");
+    cellA.setAttribute("tabindex", "0");
+    cellB.setAttribute("tabindex", "-1");
+    cellC.setAttribute("tabindex", "-1");
+    content.append(cellA, cellB, cellC);
+    container.append(title, content);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { content: vi.fn().mockReturnValue("exit") },
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(false);
+
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    // The roving pattern survives intact — none of the cells were touched.
+    expect(cellA.getAttribute("tabindex")).toBe("0");
+    expect(cellB.getAttribute("tabindex")).toBe("-1");
+    expect(cellC.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("still mutates tabindex on non-managed slots when other slots are managed", () => {
+    const container = makeContainer();
+    const titleBtn = document.createElement("button");
+    const content = document.createElement("textarea");
+    container.append(titleBtn, content);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title: titleBtn, content }),
+      cycleOrder: ["title", "content"],
+      // Only `content` is managed; `title` should still be set non-tabbable.
+      tabHandlers: { content: vi.fn().mockReturnValue("exit") },
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(false);
+
+    expect(titleBtn.getAttribute("tabindex")).toBe("-1");
+    // content is managed, so it should NOT have been touched (default no tabindex)
+    expect(content.getAttribute("tabindex")).toBeNull();
+  });
+
+  it("mutates every focusable when the strategy has no tabHandlers (backwards compatibility)", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.append(title, content);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      // No tabHandlers field at all.
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(false);
+
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    expect(content.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("respects a managed slot element that appears between setChildrenNonTabbable calls", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    container.append(title);
+
+    // The managed slot element is initially undefined (e.g. ref not yet attached
+    // because the slot hasn't mounted). It will be assigned later.
+    let contentEl: HTMLElement | undefined = undefined;
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({
+        title,
+        ...(contentEl ? { content: contentEl } : {}),
+      }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { content: vi.fn().mockReturnValue("exit") },
+    };
+    controller = new FocusTrapController(container, strategy);
+
+    // First call: content slot doesn't exist, so its descendants — none yet —
+    // can't be skipped. (No assertion needed here; this just exercises the path.)
+    controller.setEnabled(false);
+    expect(title.getAttribute("tabindex")).toBe("-1");
+
+    // Now mount the managed slot with a roving pattern child.
+    const content = document.createElement("div");
+    const cell = document.createElement("button");
+    cell.setAttribute("tabindex", "0");
+    content.append(cell);
+    container.append(content);
+    contentEl = content;
+
+    // Second call: now content is registered, so its descendants are skipped.
+    // Re-trigger setChildrenNonTabbable by toggling enabled state.
+    controller.setEnabled(true);
+    controller.setEnabled(false);
+
+    // The previously-mutated `title` stays at -1 (already saved & set).
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    // The newly-mounted managed cell is NOT touched.
+    expect(cell.getAttribute("tabindex")).toBe("0");
+  });
 });

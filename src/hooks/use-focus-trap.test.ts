@@ -528,4 +528,151 @@ describe("useFocusTrap", () => {
       true,
     );
   });
+
+  it("does not mutate tabindex on a managed slot's element when the trap mounts", () => {
+    const container = createContainer();
+    const title = createSlot("input");
+    const content = createSlot("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+    content.setAttribute("tabindex", "5");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { content: vi.fn().mockReturnValue("exit") },
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // The non-managed slot element gets tabindex=-1 from the mount-time
+    // setChildrenNonTabbable call ...
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    // ... but the managed slot element keeps its original tabindex.
+    expect(content.getAttribute("tabindex")).toBe("5");
+  });
+
+  it("does not mutate tabindex on descendants of a managed slot (preserves a roving pattern)", () => {
+    const container = createContainer();
+    const title = createSlot("input");
+    const content = createSlot();
+    // Roving pattern inside the content slot.
+    const cellA = document.createElement("button");
+    const cellB = document.createElement("button");
+    const cellC = document.createElement("button");
+    cellA.setAttribute("tabindex", "0");
+    cellB.setAttribute("tabindex", "-1");
+    cellC.setAttribute("tabindex", "-1");
+    content.append(cellA, cellB, cellC);
+    // createSlot appends to document.body; re-parent into the trap container
+    // so setChildrenNonTabbable's querySelectorAll actually visits these nodes.
+    container.append(title, content);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { content: vi.fn().mockReturnValue("exit") },
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    expect(cellA.getAttribute("tabindex")).toBe("0");
+    expect(cellB.getAttribute("tabindex")).toBe("-1");
+    expect(cellC.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("still mutates tabindex on non-managed slots when other slots are managed", () => {
+    const container = createContainer();
+    const title = document.createElement("button");
+    const content = createSlot("textarea");
+    // Re-parent the managed slot into the container so the assertion below
+    // (that its distinctive tabindex survives) is load-bearing -- otherwise
+    // setChildrenNonTabbable's querySelectorAll never visits it.
+    container.appendChild(title);
+    container.appendChild(content);
+    // Use a distinctive value (not -1) so we can tell the managed slot was
+    // genuinely skipped, not just coincidentally already at -1.
+    content.setAttribute("tabindex", "7");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { content: vi.fn().mockReturnValue("exit") },
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Non-managed slot is still mutated to -1.
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    // Managed slot keeps its distinctive tabindex.
+    expect(content.getAttribute("tabindex")).toBe("7");
+  });
+
+  it("mutates every focusable when the strategy has no tabHandlers (backwards compatibility)", () => {
+    const container = createContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.append(title, content);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      // No tabHandlers field at all.
+    };
+    const ref = { current: container };
+
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    expect(title.getAttribute("tabindex")).toBe("-1");
+    expect(content.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("respects a managed slot element that appears across re-renders", () => {
+    const container = createContainer();
+    const title = document.createElement("input");
+    container.append(title);
+
+    // The managed slot element starts as undefined and gets assigned later.
+    let contentEl: HTMLElement | undefined = undefined;
+    const getElements = () => ({
+      title,
+      ...(contentEl ? { content: contentEl } : {}),
+    });
+    const tabHandlers = { content: vi.fn().mockReturnValue("exit") };
+
+    const buildStrategy = (): FocusTrapStrategy => ({
+      getElements,
+      cycleOrder: ["title", "content"],
+      tabHandlers,
+    });
+
+    const ref = { current: container };
+
+    const { rerender } = renderHook(
+      ({ strategy }: { strategy: FocusTrapStrategy }) =>
+        useFocusTrap({ containerRef: ref, strategy }),
+      { initialProps: { strategy: buildStrategy() } },
+    );
+
+    expect(title.getAttribute("tabindex")).toBe("-1");
+
+    // Mount the managed slot with a roving pattern child.
+    const content = document.createElement("div");
+    const cell = document.createElement("button");
+    cell.setAttribute("tabindex", "0");
+    content.append(cell);
+    container.append(content);
+    contentEl = content;
+
+    // Pass a fresh strategy reference so the useEffect dep changes and the
+    // hook re-runs setChildrenNonTabbable.
+    rerender({ strategy: buildStrategy() });
+
+    // The newly-mounted managed cell is NOT touched.
+    expect(cell.getAttribute("tabindex")).toBe("0");
+  });
 });

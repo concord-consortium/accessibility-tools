@@ -54,13 +54,31 @@ export function useFocusTrap(
     const focusable = container.querySelectorAll<HTMLElement>(
       "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]",
     );
+    // A slot is "managed" iff strategy.tabHandlers has an entry for it. Managed
+    // slot elements + descendants are off-limits to tabindex mutation — the
+    // slot has its own focus management (e.g. roving tabindex) that the trap
+    // must not perturb.
+    const handlers = strategy?.tabHandlers;
+    const elements = strategy?.getElements();
+    const managedSlotEls: HTMLElement[] = [];
+    if (handlers && elements) {
+      for (const slotName of Object.keys(handlers)) {
+        const slotEl = elements[slotName];
+        if (slotEl) managedSlotEls.push(slotEl);
+      }
+    }
+    const isInsideManagedSlot = (el: HTMLElement): boolean => {
+      // contains() returns true when slotEl === el, which is the behavior we want.
+      return managedSlotEls.some((slotEl) => slotEl.contains(el));
+    };
     savedTabIndices.current.clear();
     for (const el of focusable) {
       if (el === container) continue;
+      if (isInsideManagedSlot(el)) continue;
       savedTabIndices.current.set(el, el.getAttribute("tabindex"));
       el.setAttribute("tabindex", "-1");
     }
-  }, [containerRef]);
+  }, [containerRef, strategy]);
 
   const restoreChildrenTabbable = useCallback(() => {
     for (const [el, saved] of savedTabIndices.current) {

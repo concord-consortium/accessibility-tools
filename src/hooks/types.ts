@@ -75,6 +75,12 @@ export interface FocusTrapStrategy {
    * over (the handler is responsible for preventDefault and focus movement);
    * return "exit" to let the controller advance to the next slot.
    * Takes precedence over `tabWithinSlots` for slots that have both.
+   *
+   * **Managed-for-tabindex semantic:** any slot present in `tabHandlers` is
+   * treated as managing its own tabindex. The trap's mount-time
+   * `setChildrenNonTabbable` will not mutate `tabindex` on the slot's element
+   * or its descendants — the slot is responsible for whatever roving /
+   * tabindex pattern it uses internally (e.g. RDG, custom widgets).
    */
   tabHandlers?: Record<
     string,

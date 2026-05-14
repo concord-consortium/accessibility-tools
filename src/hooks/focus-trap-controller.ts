@@ -432,6 +432,24 @@ export class FocusTrapController {
     }
   }
 
+  /**
+   * A slot is "managed" iff it has an entry in `strategy.tabHandlers`. Managed
+   * slot elements + their descendants are off-limits to the trap's tabindex
+   * machinery — the slot has its own focus management (e.g. roving tabindex)
+   * that the trap must not perturb.
+   */
+  private isInsideManagedSlot(el: HTMLElement): boolean {
+    const handlers = this.strategy.tabHandlers;
+    if (!handlers) return false;
+    const elements = this.strategy.getElements();
+    for (const slotName of Object.keys(handlers)) {
+      const slotEl = elements[slotName];
+      // contains() returns true when slotEl === el, which is the behavior we want.
+      if (slotEl?.contains(el)) return true;
+    }
+    return false;
+  }
+
   private setChildrenNonTabbable(): void {
     const focusable = this.container.querySelectorAll<HTMLElement>(
       "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]",
@@ -445,6 +463,7 @@ export class FocusTrapController {
     // Only save original tabindex if not already saved (preserve originals across multiple calls)
     for (const el of focusable) {
       if (el === this.container) continue;
+      if (this.isInsideManagedSlot(el)) continue;
       if (!this.savedTabIndices.has(el)) {
         this.savedTabIndices.set(el, el.getAttribute("tabindex"));
       }
