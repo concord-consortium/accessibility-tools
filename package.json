@@ -1,6 +1,6 @@
 {
   "name": "@concord-consortium/accessibility-tools",
-  "version": "0.0.1-pre.1",
+  "version": "0.0.0-development",
   "author": "Doug Martin",
   "license": "MIT",
   "type": "module",
@@ -44,6 +44,11 @@
       "import": "./dist/audit/index.js",
       "require": "./dist/audit/index.cjs"
     },
+    "./version": {
+      "types": "./dist/version.d.ts",
+      "import": "./dist/version.js",
+      "require": "./dist/version.cjs"
+    },
     "./styles": "./dist/styles/index.css",
     "./styles/mixins": "./dist/styles/_mixins.scss"
   },
@@ -57,6 +62,9 @@
       ],
       "audit": [
         "dist/audit/index.d.ts"
+      ],
+      "version": [
+        "dist/version.d.ts"
       ]
     }
   },

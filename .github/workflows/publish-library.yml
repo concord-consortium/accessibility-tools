@@ -1,0 +1,69 @@
+name: Publish to npm
+
+# Publishes @concord-consortium/accessibility-tools when a `v*` git tag is
+# pushed (e.g. `v0.1.0`, `v1.2.3-pre.0`). The committed package.json version
+# is always `0.0.0-development`; the real version is parsed from the tag and
+# stamped into package.json + src/version.ts by this workflow before publishing.
+#
+# The dist-tag is `next` when the version contains a `-` (prerelease), else
+# `latest`. (`next` matches the package's existing prerelease tag on npm.)
+#
+# Authentication uses npm trusted publishing (OIDC). No NPM_TOKEN secret is
+# required, but the npm package must list this repo + workflow under "Trusted
+# Publishers" in its settings.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Upgrade npm to a version with OIDC trusted publishing support
+        # OIDC trusted publishing was added in npm 11.5+. Node 20 ships with
+        # npm 10.x, so upgrade explicitly. Pinned to 11.5.x (rather than
+        # `latest`) so the release pipeline is reproducible — a future npm
+        # change can't break the publish without a deliberate bump here.
+        run: npm install -g npm@11.5
+      - name: Install dependencies
+        run: npm ci
+      - name: Check (biome + tsc)
+        run: npm run check
+      - name: Run tests
+        run: npm test
+      - name: Resolve version and dist-tag from git tag
+        id: meta
+        # The `v*` trigger glob matches any suffix; guard against malformed
+        # tags (empty, non-semver) before stamping anything or attempting
+        # to publish. Pattern allows X.Y.Z and X.Y.Z-prerelease.
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "::error::Tag version '$VERSION' is not valid semver (expected X.Y.Z or X.Y.Z-prerelease)"
+            exit 1
+          fi
+          if [[ "$VERSION" == *-* ]]; then
+            DIST_TAG=next
+          else
+            DIST_TAG=latest
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION under dist-tag $DIST_TAG"
+      - name: Stamp version into package.json
+        run: npm version --no-git-tag-version "${{ steps.meta.outputs.version }}"
+      - name: Stamp version into src/version.ts
+        run: sed -i 's/export const version = "0[.]0[.]0-development"/export const version = "${{ steps.meta.outputs.version }}"/' src/version.ts
+      - name: Publish to npm
+        run: npm publish --access public --tag "${{ steps.meta.outputs.dist_tag }}" --provenance
