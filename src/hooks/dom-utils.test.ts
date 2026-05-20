@@ -1,10 +1,14 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   findFocusableIndex,
   findNextFocusableOutside,
+  findNextSlot,
+  findSlotIndexFromFocus,
+  getManagedSlotElements,
   getVisibleFocusables,
   pickSlotEntryTarget,
 } from "./dom-utils";
+import type { FocusTrapStrategy } from "./types";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -211,5 +215,142 @@ describe("findNextFocusableOutside", () => {
     container.removeAttribute("tabindex");
     expect(findNextFocusableOutside(container, false)).toBe(before);
     expect(findNextFocusableOutside(container, true)).toBe(after);
+  });
+});
+
+describe("findSlotIndexFromFocus", () => {
+  it("returns the index of the slot when target is the slot root", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+    };
+    expect(
+      findSlotIndexFromFocus(content, strategy, ["title", "content"]),
+    ).toBe(1);
+  });
+
+  it("returns the index of the slot when target is a descendant", () => {
+    const content = document.createElement("div");
+    const inner = document.createElement("button");
+    content.appendChild(inner);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content }),
+    };
+    expect(findSlotIndexFromFocus(inner, strategy, ["content"])).toBe(0);
+  });
+
+  it("returns null when target is unrelated to any slot", () => {
+    const title = document.createElement("div");
+    const stray = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+    };
+    expect(findSlotIndexFromFocus(stray, strategy, ["title"])).toBeNull();
+  });
+
+  it("returns the externals-slot index when target is in an external and externalElementsSlot is declared", () => {
+    const title = document.createElement("div");
+    const portaled = document.createElement("div");
+    const portaledChild = document.createElement("button");
+    portaled.appendChild(portaledChild);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      getExternalElements: () => [portaled],
+      externalElementsSlot: "title",
+    };
+    expect(findSlotIndexFromFocus(portaledChild, strategy, ["title"])).toBe(0);
+  });
+
+  it("returns null when target is in an external but no externalElementsSlot is declared", () => {
+    const title = document.createElement("div");
+    const portaled = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      getExternalElements: () => [portaled],
+    };
+    expect(findSlotIndexFromFocus(portaled, strategy, ["title"])).toBeNull();
+  });
+});
+
+describe("findNextSlot", () => {
+  it("advances forward to the next populated slot", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+    };
+    expect(findNextSlot(0, 1, ["title", "content"], strategy)).toBe(1);
+  });
+
+  it("wraps around to the start when going forward past the end", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+    };
+    expect(findNextSlot(1, 1, ["title", "content"], strategy)).toBe(0);
+  });
+
+  it("wraps around to the end when going backward past the start", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+    };
+    expect(findNextSlot(0, -1, ["title", "content"], strategy)).toBe(1);
+  });
+
+  it("skips slots whose element is undefined", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, toolbar: undefined, content }),
+    };
+    expect(findNextSlot(0, 1, ["title", "toolbar", "content"], strategy)).toBe(
+      2,
+    );
+  });
+
+  it("returns fromIndex when only the current slot is populated", () => {
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title: undefined, content }),
+    };
+    expect(findNextSlot(1, 1, ["title", "content"], strategy)).toBe(1);
+  });
+});
+
+describe("getManagedSlotElements", () => {
+  it("returns elements for every slot named in tabHandlers", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      tabHandlers: {
+        title: vi.fn().mockReturnValue("exit"),
+        content: vi.fn().mockReturnValue("exit"),
+      },
+    };
+    expect(getManagedSlotElements(strategy)).toEqual([title, content]);
+  });
+
+  it("returns [] when tabHandlers is absent", () => {
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title: document.createElement("div") }),
+    };
+    expect(getManagedSlotElements(strategy)).toEqual([]);
+  });
+
+  it("skips slots whose element is undefined", () => {
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title: undefined, content }),
+      tabHandlers: {
+        title: vi.fn().mockReturnValue("exit"),
+        content: vi.fn().mockReturnValue("exit"),
+      },
+    };
+    expect(getManagedSlotElements(strategy)).toEqual([content]);
   });
 });

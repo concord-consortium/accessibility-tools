@@ -23,6 +23,9 @@
 
 import {
   findFocusableIndex,
+  findNextSlot,
+  findSlotIndexFromFocus,
+  getManagedSlotElements,
   getVisibleFocusables,
   pickSlotEntryTarget,
 } from "./dom-utils";
@@ -398,14 +401,7 @@ export class FocusTrapController {
   }
 
   private findNextSlot(fromIndex: number, direction: 1 | -1): number {
-    const elements = this.strategy.getElements();
-    const order = this.cycleOrder;
-    const len = order.length;
-    for (let i = 1; i <= len; i++) {
-      const idx = (fromIndex + i * direction + len * len) % len;
-      if (elements[order[idx]]) return idx;
-    }
-    return fromIndex;
+    return findNextSlot(fromIndex, direction, this.cycleOrder, this.strategy);
   }
 
   private isInsideTrap(el: Element | null): boolean {
@@ -416,45 +412,8 @@ export class FocusTrapController {
   }
 
   private updateSlotIndexFromFocus(target: HTMLElement): void {
-    const elements = this.strategy.getElements();
-    const order = this.cycleOrder;
-    for (let i = 0; i < order.length; i++) {
-      const slotEl = elements[order[i]];
-      if (slotEl && (slotEl === target || slotEl.contains(target))) {
-        this.slotIndex = i;
-        return;
-      }
-    }
-    // Target may be inside a portaled element (e.g. a floating toolbar).
-    // Map it to the slot the strategy declares for externals; if none is
-    // declared, leave slotIndex alone rather than guess at a slot.
-    const externals = this.strategy.getExternalElements?.() ?? [];
-    if (externals.length === 0) return;
-    const externalsSlot = this.strategy.externalElementsSlot;
-    if (!externalsSlot) return;
-    if (!externals.some((ext) => ext.contains(target))) return;
-    const externalsIdx = order.indexOf(externalsSlot);
-    if (externalsIdx !== -1) {
-      this.slotIndex = externalsIdx;
-    }
-  }
-
-  /**
-   * A slot is "managed" iff it has an entry in `strategy.tabHandlers`. Managed
-   * slot elements + their descendants are off-limits to the trap's tabindex
-   * machinery — the slot has its own focus management (e.g. roving tabindex)
-   * that the trap must not perturb.
-   */
-  private isInsideManagedSlot(el: HTMLElement): boolean {
-    const handlers = this.strategy.tabHandlers;
-    if (!handlers) return false;
-    const elements = this.strategy.getElements();
-    for (const slotName of Object.keys(handlers)) {
-      const slotEl = elements[slotName];
-      // contains() returns true when slotEl === el, which is the behavior we want.
-      if (slotEl?.contains(el)) return true;
-    }
-    return false;
+    const idx = findSlotIndexFromFocus(target, this.strategy, this.cycleOrder);
+    if (idx !== null) this.slotIndex = idx;
   }
 
   private setChildrenNonTabbable(): void {
@@ -467,10 +426,11 @@ export class FocusTrapController {
         this.savedTabIndices.delete(el);
       }
     }
+    const managedSlotEls = getManagedSlotElements(this.strategy);
     // Only save original tabindex if not already saved (preserve originals across multiple calls)
     for (const el of focusable) {
       if (el === this.container) continue;
-      if (this.isInsideManagedSlot(el)) continue;
+      if (managedSlotEls.some((s) => s.contains(el))) continue;
       if (!this.savedTabIndices.has(el)) {
         this.savedTabIndices.set(el, el.getAttribute("tabindex"));
       }

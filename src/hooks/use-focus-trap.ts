@@ -21,6 +21,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   findFocusableIndex,
   findNextFocusableOutside,
+  findNextSlot,
+  findSlotIndexFromFocus,
+  getManagedSlotElements,
   getVisibleFocusables,
   pickSlotEntryTarget,
 } from "./dom-utils";
@@ -54,27 +57,11 @@ export function useFocusTrap(
     const focusable = container.querySelectorAll<HTMLElement>(
       "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]",
     );
-    // A slot is "managed" iff strategy.tabHandlers has an entry for it. Managed
-    // slot elements + descendants are off-limits to tabindex mutation — the
-    // slot has its own focus management (e.g. roving tabindex) that the trap
-    // must not perturb.
-    const handlers = strategy?.tabHandlers;
-    const elements = strategy?.getElements();
-    const managedSlotEls: HTMLElement[] = [];
-    if (handlers && elements) {
-      for (const slotName of Object.keys(handlers)) {
-        const slotEl = elements[slotName];
-        if (slotEl) managedSlotEls.push(slotEl);
-      }
-    }
-    const isInsideManagedSlot = (el: HTMLElement): boolean => {
-      // contains() returns true when slotEl === el, which is the behavior we want.
-      return managedSlotEls.some((slotEl) => slotEl.contains(el));
-    };
+    const managedSlotEls = strategy ? getManagedSlotElements(strategy) : [];
     savedTabIndices.current.clear();
     for (const el of focusable) {
       if (el === container) continue;
-      if (isInsideManagedSlot(el)) continue;
+      if (managedSlotEls.some((s) => s.contains(el))) continue;
       savedTabIndices.current.set(el, el.getAttribute("tabindex"));
       el.setAttribute("tabindex", "-1");
     }
@@ -133,22 +120,6 @@ export function useFocusTrap(
     [strategy],
   );
 
-  // Find the next valid slot index (skipping undefined elements)
-  const findNextSlot = useCallback(
-    (fromIndex: number, direction: 1 | -1): number => {
-      if (!strategy) return fromIndex;
-      const elements = strategy.getElements();
-      const len = cycleOrder.length;
-      for (let i = 1; i <= len; i++) {
-        const idx = (fromIndex + i * direction + len * len) % len;
-        const slotName = cycleOrder[idx];
-        if (elements[slotName]) return idx;
-      }
-      return fromIndex;
-    },
-    [strategy, cycleOrder],
-  );
-
   // Check if an element is "inside" the trap (container or external elements)
   const isInsideTrap = useCallback(
     (el: Element | null): boolean => {
@@ -200,6 +171,16 @@ export function useFocusTrap(
       container.focus();
     };
 
+    // Re-derive slotIndex from current focus. slotIndex is only updated on
+    // Tab cycles and on initial enter, so it can go stale when something else
+    // moves focus inside the trap (e.g. a click on a toolbar button, or a
+    // programmatic .focus() inside a composite widget).
+    const updateSlotIndexFromFocus = (target: HTMLElement) => {
+      if (!strategy) return;
+      const idx = findSlotIndexFromFocus(target, strategy, cycleOrder);
+      if (idx !== null) slotIndexRef.current = idx;
+    };
+
     // Capture-phase keydown handler
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!strategy) return;
@@ -247,6 +228,20 @@ export function useFocusTrap(
       if (!isInsideTrap(document.activeElement)) return;
 
       if (e.key === "Escape") {
+        // Per-slot escapeHandlers can opt out of the default exit (e.g. cell
+        // editor cancel). Re-derive slotIndex from focus first — it can go
+        // stale when focus moves via click or programmatic .focus() while
+        // already trapped.
+        const activeElForEsc = document.activeElement;
+        if (activeElForEsc instanceof HTMLElement) {
+          updateSlotIndexFromFocus(activeElForEsc);
+        }
+        const escSlotName = cycleOrder[slotIndexRef.current];
+        const escapeHandler = strategy.escapeHandlers?.[escSlotName];
+        if (escapeHandler) {
+          const result = escapeHandler(e);
+          if (result === "handled") return;
+        }
         e.preventDefault();
         e.stopPropagation();
         setTrapped(false);
@@ -262,8 +257,41 @@ export function useFocusTrap(
       }
 
       if (e.key === "Tab") {
-        // Check if we should Tab within the current slot first
+        // Re-derive slotIndex from focus before dispatching to handlers —
+        // focus may have moved into a different slot via click or programmatic
+        // .focus() since the last Tab cycle.
+        const activeEl = document.activeElement;
+        if (activeEl instanceof HTMLElement) {
+          updateSlotIndexFromFocus(activeEl);
+        }
         const currentSlotName = cycleOrder[slotIndexRef.current];
+
+        // Per-slot tab handler takes precedence over tabWithinSlots.
+        const tabHandler = strategy.tabHandlers?.[currentSlotName];
+        if (tabHandler) {
+          const result = tabHandler(e, e.shiftKey);
+          if (result === "handled") return;
+          // result === "exit": advance to the next slot.
+          e.preventDefault();
+          const reverse = e.shiftKey;
+          const direction: 1 | -1 = reverse ? -1 : 1;
+          const nextIndex = findNextSlot(
+            slotIndexRef.current,
+            direction,
+            cycleOrder,
+            strategy,
+          );
+          slotIndexRef.current = nextIndex;
+          const slotName = cycleOrder[nextIndex];
+          focusSlot(slotName, reverse);
+          debugCtx?.reportFocusTrapEvent(instanceId, {
+            type: "cycle",
+            slot: slotName,
+            timestamp: Date.now(),
+          });
+          return;
+        }
+
         const tabWithinSlots = strategy.tabWithinSlots ?? [];
 
         if (tabWithinSlots.includes(currentSlotName)) {
@@ -292,7 +320,12 @@ export function useFocusTrap(
         e.preventDefault();
         const reverse = e.shiftKey;
         const direction: 1 | -1 = reverse ? -1 : 1;
-        const nextIndex = findNextSlot(slotIndexRef.current, direction);
+        const nextIndex = findNextSlot(
+          slotIndexRef.current,
+          direction,
+          cycleOrder,
+          strategy,
+        );
         slotIndexRef.current = nextIndex;
         const slotName = cycleOrder[nextIndex];
         focusSlot(slotName, reverse);
@@ -321,7 +354,6 @@ export function useFocusTrap(
     cycleOrder,
     announce,
     focusSlot,
-    findNextSlot,
     isInsideTrap,
     setChildrenNonTabbable,
     restoreChildrenTabbable,

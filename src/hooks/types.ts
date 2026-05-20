@@ -24,9 +24,10 @@ export type FocusContentContext = {
    * - "forward": cycling forward (Tab from previous slot, or initial entry).
    * - "reverse": cycling backward (Shift+Tab from next slot).
    *
-   * Additional modes (e.g. "restore" for re-entering the last-focused element
-   * when the trap is re-engaged) may be added later; clients are expected to
-   * treat unknown modes as "forward".
+   * Additional values (e.g. "restore" for re-entering the last-focused
+   * element when the trap is re-engaged) may be added in the future.
+   * Clients using exhaustive switches over this union will see a type
+   * error and need to add a case.
    */
   entryMode: "forward" | "reverse";
 };
@@ -37,9 +38,8 @@ export interface FocusTrapStrategy {
 
   /**
    * Custom focus-the-content callback. Called when the trap enters the
-   * content slot. Receives a context object describing how the slot is being
-   * entered; the field is a discriminated string so new modes (e.g. "restore")
-   * can be added without a breaking change.
+   * content slot. Receives a context object (see FocusContentContext) so
+   * additional fields can be added over time.
    */
   focusContent?: (context: FocusContentContext) => boolean;
 
