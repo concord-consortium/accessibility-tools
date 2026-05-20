@@ -2,6 +2,7 @@ import { MoonIcon, SunIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { useAccessibilityContext } from "../hooks/provider";
+import { version } from "../version";
 import { CCLogo } from "./cc-logo";
 import {
   toggleContrastOverlay,
@@ -22,7 +23,6 @@ import {
 } from "./sidebar-data";
 import { injectStyles } from "./styles";
 import { removeHighlight, setSidebarRoot } from "./utils";
-import { VERSION } from "./version";
 
 export interface AccessibilityDebugSidebarProps {
   theme?: "light" | "dark";
@@ -191,7 +191,7 @@ export function AccessibilityDebugSidebar({
             <SunIcon className="a11y-theme-toggle-icon" />
           )}
         </button>
-        <span className="a11y-sidebar-version">v{VERSION}</span>
+        <span className="a11y-sidebar-version">v{version}</span>
       </div>
 
       {/* Category tabs */}

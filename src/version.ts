@@ -1,5 +1,6 @@
-// Stamped by .github/workflows/publish-library.yml at publish time.
-// Local/dev builds (and yalc-published copies) keep the "0.0.0-development"
-// default — matches the committed package.json version. Consumers can use
-// this to detect "I'm running against a dev build."
-export const version = "0.0.0-development";
+// Single source of truth for the library version. The committed package.json
+// version is "0.0.0-development"; .github/workflows/publish-library.yml stamps
+// the real version from the git tag at publish time.
+import pkg from "../package.json";
+
+export const version: string = pkg.version;

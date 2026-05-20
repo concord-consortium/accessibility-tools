@@ -3,7 +3,9 @@ name: Publish to npm
 # Publishes @concord-consortium/accessibility-tools when a `v*` git tag is
 # pushed (e.g. `v0.1.0`, `v1.2.3-pre.0`). The committed package.json version
 # is always `0.0.0-development`; the real version is parsed from the tag and
-# stamped into package.json + src/version.ts by this workflow before publishing.
+# stamped into package.json by this workflow before publishing. src/version.ts
+# imports the version from package.json, so the inlined value in the built
+# bundle picks up the stamped version automatically.
 #
 # The dist-tag is `next` when the version contains a `-` (prerelease), else
 # `latest`. (`next` matches the package's existing prerelease tag on npm.)
@@ -63,7 +65,5 @@ jobs:
           echo "Publishing $VERSION under dist-tag $DIST_TAG"
       - name: Stamp version into package.json
         run: npm version --no-git-tag-version "${{ steps.meta.outputs.version }}"
-      - name: Stamp version into src/version.ts
-        run: sed -i 's/export const version = "0[.]0[.]0-development"/export const version = "${{ steps.meta.outputs.version }}"/' src/version.ts
       - name: Publish to npm
         run: npm publish --access public --tag "${{ steps.meta.outputs.dist_tag }}" --provenance
