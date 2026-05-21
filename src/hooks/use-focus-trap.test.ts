@@ -511,6 +511,217 @@ describe("useFocusTrap", () => {
     expect(btn1.focus).toHaveBeenCalled();
   });
 
+  it("invokes tabHandlers for the current slot and skips slot advance when it returns 'handled'", () => {
+    const container = createContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+    vi.spyOn(title, "focus");
+    vi.spyOn(content, "focus");
+
+    const handler = vi.fn().mockReturnValue("handled");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { title: handler },
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    act(() => result.current?.enterTrap());
+    expect(title.focus).toHaveBeenCalled();
+
+    Object.defineProperty(document, "activeElement", {
+      value: title,
+      configurable: true,
+    });
+
+    const event = pressKey("Tab");
+
+    expect(handler).toHaveBeenCalledWith(event, false);
+    expect(content.focus).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("advances slot when tabHandlers returns 'exit'", () => {
+    const container = createContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+    vi.spyOn(content, "focus");
+
+    const handler = vi.fn().mockReturnValue("exit");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { title: handler },
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    act(() => result.current?.enterTrap());
+
+    Object.defineProperty(document, "activeElement", {
+      value: title,
+      configurable: true,
+    });
+
+    const event = pressKey("Tab");
+
+    expect(handler).toHaveBeenCalledWith(event, false);
+    expect(content.focus).toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("invokes escapeHandlers for the current slot and skips exit when it returns 'handled'", () => {
+    const container = createContainer();
+    const content = document.createElement("textarea");
+    container.appendChild(content);
+    const onExit = vi.fn();
+
+    const handler = vi.fn().mockReturnValue("handled");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content }),
+      cycleOrder: ["content"],
+      escapeHandlers: { content: handler },
+      onExit,
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    act(() => result.current?.enterTrap());
+
+    Object.defineProperty(document, "activeElement", {
+      value: content,
+      configurable: true,
+    });
+
+    const event = pressKey("Escape");
+
+    expect(handler).toHaveBeenCalledWith(event);
+    expect(onExit).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("exits trap when escapeHandlers returns 'exit'", () => {
+    const container = createContainer();
+    const content = document.createElement("textarea");
+    container.appendChild(content);
+    const onExit = vi.fn();
+
+    const handler = vi.fn().mockReturnValue("exit");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content }),
+      cycleOrder: ["content"],
+      escapeHandlers: { content: handler },
+      onExit,
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    act(() => result.current?.enterTrap());
+
+    Object.defineProperty(document, "activeElement", {
+      value: content,
+      configurable: true,
+    });
+
+    let event: KeyboardEvent;
+    act(() => {
+      event = pressKey("Escape");
+    });
+
+    // biome-ignore lint/style/noNonNullAssertion: assigned synchronously inside act
+    expect(handler).toHaveBeenCalledWith(event!);
+    expect(onExit).toHaveBeenCalled();
+    // biome-ignore lint/style/noNonNullAssertion: assigned synchronously inside act
+    expect(event!.defaultPrevented).toBe(true);
+  });
+
+  it("re-derives slotIndex from current focus before dispatching tabHandlers", () => {
+    // The trap enters at title (slotIndex=0). A click moves focus into content
+    // (slotIndex remains stale at 0). On Tab, the content slot's tabHandler
+    // should fire — not the title slot's handler.
+    const container = createContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+
+    const titleHandler = vi.fn().mockReturnValue("handled");
+    const contentHandler = vi.fn().mockReturnValue("handled");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { title: titleHandler, content: contentHandler },
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    act(() => result.current?.enterTrap());
+
+    // Click-style focus move into content while slotIndex stays at 0
+    Object.defineProperty(document, "activeElement", {
+      value: content,
+      configurable: true,
+    });
+
+    pressKey("Tab");
+
+    expect(contentHandler).toHaveBeenCalled();
+    expect(titleHandler).not.toHaveBeenCalled();
+  });
+
+  it("re-derives slotIndex from current focus before dispatching escapeHandlers", () => {
+    const container = createContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.appendChild(title);
+    container.appendChild(content);
+
+    const titleHandler = vi.fn().mockReturnValue("handled");
+    const contentHandler = vi.fn().mockReturnValue("handled");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      escapeHandlers: { title: titleHandler, content: contentHandler },
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    act(() => result.current?.enterTrap());
+
+    Object.defineProperty(document, "activeElement", {
+      value: content,
+      configurable: true,
+    });
+
+    pressKey("Escape");
+
+    expect(contentHandler).toHaveBeenCalled();
+    expect(titleHandler).not.toHaveBeenCalled();
+  });
+
   it("cleans up listener on unmount", () => {
     const container = createContainer();
     const strategy = makeStrategy();

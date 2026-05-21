@@ -2,6 +2,8 @@
  * DOM utilities for focus management.
  */
 
+import type { FocusTrapStrategy } from "./types";
+
 const FOCUSABLE_SELECTOR = [
   "a[href]",
   "button:not([disabled])",
@@ -120,6 +122,77 @@ export function pickSlotEntryTarget(
  * trap-internal focusables (often the bulk on a tile-heavy page) skip the
  * checkVisibility() call.
  */
+/**
+ * Returns the cycleOrder index of the slot containing `target` (the slot's
+ * root element or any descendant), or the externals-slot index if `target`
+ * lives in a portaled external element and the strategy declares
+ * `externalElementsSlot`. Returns null when the target maps to no known slot.
+ */
+export function findSlotIndexFromFocus(
+  target: HTMLElement,
+  strategy: FocusTrapStrategy,
+  cycleOrder: string[],
+): number | null {
+  const elements = strategy.getElements();
+  for (let i = 0; i < cycleOrder.length; i++) {
+    const slotEl = elements[cycleOrder[i]];
+    if (slotEl && (slotEl === target || slotEl.contains(target))) {
+      return i;
+    }
+  }
+  const externals = strategy.getExternalElements?.() ?? [];
+  if (externals.length === 0) return null;
+  const externalsSlot = strategy.externalElementsSlot;
+  if (!externalsSlot) return null;
+  if (!externals.some((ext) => ext.contains(target))) return null;
+  const externalsIdx = cycleOrder.indexOf(externalsSlot);
+  return externalsIdx !== -1 ? externalsIdx : null;
+}
+
+/**
+ * Find the next slot index (in `direction`) whose element is present in
+ * `strategy.getElements()`. Wraps. Returns `fromIndex` if no other slot has
+ * an element (e.g. the trap has only one populated slot).
+ */
+export function findNextSlot(
+  fromIndex: number,
+  direction: 1 | -1,
+  cycleOrder: string[],
+  strategy: FocusTrapStrategy,
+): number {
+  const elements = strategy.getElements();
+  const len = cycleOrder.length;
+  for (let i = 1; i <= len; i++) {
+    const idx = (fromIndex + i * direction + len * len) % len;
+    if (elements[cycleOrder[idx]]) return idx;
+  }
+  return fromIndex;
+}
+
+/**
+ * Returns the root element of each "managed" slot — a slot with an entry in
+ * `strategy.tabHandlers`. Managed slot elements + their descendants are
+ * off-limits to the trap's tabindex machinery, since the slot has its own
+ * focus management (e.g. roving tabindex) that the trap must not perturb.
+ *
+ * Caller pattern (loop-friendly): hoist this out of the per-element loop,
+ * then check `managedSlotEls.some((s) => s.contains(el))`. `contains` returns
+ * true when `s === el`, covering the "managed slot root itself" case.
+ */
+export function getManagedSlotElements(
+  strategy: FocusTrapStrategy,
+): HTMLElement[] {
+  const handlers = strategy.tabHandlers;
+  if (!handlers) return [];
+  const elements = strategy.getElements();
+  const result: HTMLElement[] = [];
+  for (const slotName of Object.keys(handlers)) {
+    const slotEl = elements[slotName];
+    if (slotEl) result.push(slotEl);
+  }
+  return result;
+}
+
 export function findNextFocusableOutside(
   container: HTMLElement,
   reverse: boolean,
