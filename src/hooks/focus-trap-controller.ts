@@ -23,6 +23,9 @@
 
 import {
   findFocusableIndex,
+  findNextSlot,
+  findSlotIndexFromFocus,
+  getManagedSlotElements,
   getVisibleFocusables,
   pickSlotEntryTarget,
 } from "./dom-utils";
@@ -284,8 +287,22 @@ export class FocusTrapController {
     // --- Trapped or enabled with focus inside ---
     if (!this.isInsideTrap(document.activeElement)) return;
 
-    // Escape: exit trap when either trapped or enabled (click put focus inside)
+    // Escape: per-slot escapeHandlers can opt out of the default exit
+    // (e.g. cell editor cancel). Otherwise exit the trap.
     if (e.key === "Escape") {
+      // Re-derive slotIndex from where focus actually is. slotIndex can go stale
+      // when focus moves via click or programmatic .focus() while already trapped
+      // (handleFocusIn returns early when trapped=true). Mirrors Tab handling.
+      const activeElForEsc = document.activeElement;
+      if (activeElForEsc instanceof HTMLElement) {
+        this.updateSlotIndexFromFocus(activeElForEsc);
+      }
+      const escSlotName = this.cycleOrder[this.slotIndex];
+      const escapeHandler = this.strategy.escapeHandlers?.[escSlotName];
+      if (escapeHandler) {
+        const result = escapeHandler(e);
+        if (result === "handled") return;
+      }
       e.preventDefault();
       e.stopPropagation();
       this.exitTrap();
@@ -306,6 +323,22 @@ export class FocusTrapController {
       }
 
       const currentSlotName = this.cycleOrder[this.slotIndex];
+
+      // Per-slot tab handler takes precedence over tabWithinSlots.
+      const tabHandler = this.strategy.tabHandlers?.[currentSlotName];
+      if (tabHandler) {
+        const result = tabHandler(e, e.shiftKey);
+        if (result === "handled") return;
+        // result === "exit": advance to the next slot.
+        e.preventDefault();
+        const reverse = e.shiftKey;
+        const direction: 1 | -1 = reverse ? -1 : 1;
+        const nextIndex = this.findNextSlot(this.slotIndex, direction);
+        this.slotIndex = nextIndex;
+        this.focusSlot(this.cycleOrder[nextIndex], reverse);
+        return;
+      }
+
       const tabWithinSlots = this.strategy.tabWithinSlots ?? [];
 
       // Try Tab within current slot first
@@ -339,7 +372,9 @@ export class FocusTrapController {
 
   private focusSlot(slotName: string, reverse = false): void {
     const contentSlot = this.strategy.contentSlot ?? "content";
-    if (slotName === contentSlot && this.strategy.focusContent?.()) return;
+    const entryMode = reverse ? "reverse" : "forward";
+    if (slotName === contentSlot && this.strategy.focusContent?.({ entryMode }))
+      return;
 
     const elements = this.strategy.getElements();
     const slotEl = elements[slotName];
@@ -366,14 +401,7 @@ export class FocusTrapController {
   }
 
   private findNextSlot(fromIndex: number, direction: 1 | -1): number {
-    const elements = this.strategy.getElements();
-    const order = this.cycleOrder;
-    const len = order.length;
-    for (let i = 1; i <= len; i++) {
-      const idx = (fromIndex + i * direction + len * len) % len;
-      if (elements[order[idx]]) return idx;
-    }
-    return fromIndex;
+    return findNextSlot(fromIndex, direction, this.cycleOrder, this.strategy);
   }
 
   private isInsideTrap(el: Element | null): boolean {
@@ -384,27 +412,8 @@ export class FocusTrapController {
   }
 
   private updateSlotIndexFromFocus(target: HTMLElement): void {
-    const elements = this.strategy.getElements();
-    const order = this.cycleOrder;
-    for (let i = 0; i < order.length; i++) {
-      const slotEl = elements[order[i]];
-      if (slotEl && (slotEl === target || slotEl.contains(target))) {
-        this.slotIndex = i;
-        return;
-      }
-    }
-    // Target may be inside a portaled element (e.g. a floating toolbar).
-    // Map it to the slot the strategy declares for externals; if none is
-    // declared, leave slotIndex alone rather than guess at a slot.
-    const externals = this.strategy.getExternalElements?.() ?? [];
-    if (externals.length === 0) return;
-    const externalsSlot = this.strategy.externalElementsSlot;
-    if (!externalsSlot) return;
-    if (!externals.some((ext) => ext.contains(target))) return;
-    const externalsIdx = order.indexOf(externalsSlot);
-    if (externalsIdx !== -1) {
-      this.slotIndex = externalsIdx;
-    }
+    const idx = findSlotIndexFromFocus(target, this.strategy, this.cycleOrder);
+    if (idx !== null) this.slotIndex = idx;
   }
 
   private setChildrenNonTabbable(): void {
@@ -417,9 +426,11 @@ export class FocusTrapController {
         this.savedTabIndices.delete(el);
       }
     }
+    const managedSlotEls = getManagedSlotElements(this.strategy);
     // Only save original tabindex if not already saved (preserve originals across multiple calls)
     for (const el of focusable) {
       if (el === this.container) continue;
+      if (managedSlotEls.some((s) => s.contains(el))) continue;
       if (!this.savedTabIndices.has(el)) {
         this.savedTabIndices.set(el, el.getAttribute("tabindex"));
       }

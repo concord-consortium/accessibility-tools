@@ -12,12 +12,36 @@ import type { RefObject } from "react";
 // Focus Trap Strategy (provided by consuming apps)
 // ---------------------------------------------------------------------------
 
+export type TabHandlerResult = "handled" | "exit";
+
+// Same shape as TabHandlerResult; left as a distinct type for now in case
+// future handler types diverge. Can be unified if a third clone appears.
+export type EscapeHandlerResult = "handled" | "exit";
+
+export type FocusContentContext = {
+  /**
+   * How the trap is entering the content slot.
+   * - "forward": cycling forward (Tab from previous slot, or initial entry).
+   * - "reverse": cycling backward (Shift+Tab from next slot).
+   *
+   * Additional values (e.g. "restore" for re-entering the last-focused
+   * element when the trap is re-engaged) may be added in the future.
+   * Clients using exhaustive switches over this union will see a type
+   * error and need to add a case.
+   */
+  entryMode: "forward" | "reverse";
+};
+
 export interface FocusTrapStrategy {
   /** Elements in the trap, keyed by slot name (e.g., "title", "toolbar", "content"). */
   getElements: () => Record<string, HTMLElement | undefined>;
 
-  /** Custom focus for complex editors (Slate, CodeMirror, etc.). Return true to skip default .focus(). Called only for the slot named by contentSlot. */
-  focusContent?: () => boolean;
+  /**
+   * Custom focus-the-content callback. Called when the trap enters the
+   * content slot. Receives a context object (see FocusContentContext) so
+   * additional fields can be added over time.
+   */
+  focusContent?: (context: FocusContentContext) => boolean;
 
   /** Which slot name focusContent applies to. Default: "content". */
   contentSlot?: string;
@@ -44,6 +68,34 @@ export interface FocusTrapStrategy {
    *  resolve slotIndex when focus enters an external element (e.g. a portaled
    *  toolbar). If omitted, focus into externals leaves slotIndex unchanged. */
   externalElementsSlot?: string;
+
+  /**
+   * Per-slot custom Tab handler. Called from the controller's keydown listener
+   * when Tab is pressed and focus is in this slot. Return "handled" to take
+   * over (the handler is responsible for preventDefault and focus movement);
+   * return "exit" to let the controller advance to the next slot.
+   * Takes precedence over `tabWithinSlots` for slots that have both.
+   *
+   * **Managed-for-tabindex semantic:** any slot present in `tabHandlers` is
+   * treated as managing its own tabindex. The trap's mount-time
+   * `setChildrenNonTabbable` will not mutate `tabindex` on the slot's element
+   * or its descendants — the slot is responsible for whatever roving /
+   * tabindex pattern it uses internally (e.g. RDG, custom widgets).
+   */
+  tabHandlers?: Record<
+    string,
+    (event: KeyboardEvent, reverse: boolean) => TabHandlerResult
+  >;
+
+  /**
+   * Per-slot custom Escape handler. Return "handled" to suppress the trap's
+   * default exit (the handler is responsible for whatever should happen);
+   * return "exit" to fall through to the controller's standard exit logic.
+   */
+  escapeHandlers?: Record<
+    string,
+    (event: KeyboardEvent) => EscapeHandlerResult
+  >;
 
   /** Called when Tab is pressed but the trap is not active (enabled=false or not yet entered).
    *  Return true to prevent default Tab behavior. */
