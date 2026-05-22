@@ -6,6 +6,7 @@ export default defineConfig([
       "hooks/index": "src/hooks/index.ts",
       "debug/index": "src/debug/index.ts",
       "audit/index": "src/audit/index.ts",
+      version: "src/version.ts",
     },
     format: ["esm", "cjs"],
     dts: {
