@@ -213,9 +213,9 @@ Responsibilities:
   `relatedTarget`. The redirect is synchronous; the sentinel never rests on the
   exit path.
 - **Provide `focusContent(ctx)`** in one of two modes, selected by a trigger the
-  trap passes in `FocusContentContext` (keydown cycling ⇒ positioner;
-  `cycleToAdjacentSlot` ⇒ landing) — so the choice never relies on inferring
-  intent from a focus event:
+  trap passes in `FocusContentContext` (live Tab keydown cycling ⇒ positioner;
+  programmatic entry — `enterTrap` or `cycleToAdjacentSlot` ⇒ landing) — so the
+  choice never relies on inferring intent from a focus event:
   - **Positioner mode** (called during a live Tab keydown, via the trap's
     `nativeTabSlots` path): forward → focus before-sentinel, reverse → focus
     after-sentinel; keep the sentinel silent and invisible; return `true`. The
@@ -337,9 +337,14 @@ interface FocusTrapResult {
 `findNextSlot` + `focusSlot` machinery so behavior is identical to a Tab cycle,
 including wrap-around.
 
-`cycleToAdjacentSlot` is the **programmatic** entry point, so when it lands on an
+`cycleToAdjacentSlot` is a **programmatic** entry point, so when it lands on an
 iframe-slot it invokes `focusContent` in **landing** mode (§3/§4); the trap's own
-keydown cycling invokes it in **positioner** mode. The trap signals this by
+live Tab keydown cycling invokes it in **positioner** mode. `enterTrap` is
+**also** programmatic — it has no pending Tab default to descend with — so the
+initial slot focus it performs likewise enters a content slot in **landing**
+mode; otherwise focus would rest silently on the invisible before-sentinel with
+no hint. (The live-Tab *engage* paths don't run through `enterTrap`, so
+positioner there is unaffected.) The trap signals positioner vs landing by
 extending `FocusContentContext` with the trigger (e.g. `viaKeydown: boolean`)
 alongside the existing `entryMode`.
 
