@@ -14,6 +14,7 @@ import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { deriveIntercept } from "./dom-utils";
 import type { FocusTransport } from "./focus-messages";
 import { IframeSlot } from "./iframe-slot";
+import type { IframeSlotRegistry } from "./iframe-slot-registry";
 import type { FocusContentContext, FocusTrapStrategy } from "./types";
 
 export interface UseIframeSlotOptions {
@@ -32,6 +33,12 @@ export interface UseIframeSlotOptions {
   onRequestExit?: () => void;
   /** Optional cooperating-path channel. */
   transport?: FocusTransport;
+  /**
+   * Optional shared registry (createIframeSlotRegistry) so this slot sees its
+   * sibling iframe-slots for intercept derivation (§4). Omit for the
+   * single-iframe-content-slot case.
+   */
+  registry?: IframeSlotRegistry;
   /** Visible-hint label, e.g. "Press Tab to enter " + interactiveName. */
   enterLabel?: string;
 }
@@ -56,6 +63,7 @@ export function useIframeSlot(
     onExit,
     onRequestExit,
     transport,
+    registry,
     enterLabel,
   } = options;
 
@@ -68,10 +76,22 @@ export function useIframeSlot(
   const onRequestExitRef = useRef(onRequestExit);
   onRequestExitRef.current = onRequestExit;
 
-  // Intercept derivation closes over current cycleOrder/getElements. v1 reports
-  // only this slot as an iframe-slot ⇒ neighbors are normal/boundary ⇒
-  // intercept both directions. Multi-iframe coordination is out of v1 scope.
+  // Intercept derivation closes over first-render cycleOrder/getElements/registry.
+  // These must be stable references across renders (registry is created once by
+  // the host; cycleOrder/getElements are stable in correct usage). registry.getIframeSlots()
+  // is read live each call so multi-iframe neighbors are always current.
   const getIntercept = () => {
+    if (registry) {
+      // Multi-iframe: derive from the full set of registered iframe-slots.
+      return deriveIntercept({
+        slotName,
+        cycleOrder,
+        getElements,
+        iframeSlots: registry.getIframeSlots(),
+      });
+    }
+    // Single-iframe fallback: report only self ⇒ neighbors look like normal
+    // slots ⇒ intercept both directions.
     const iframe = iframeRef.current;
     const enterable = iframe ? iframe.getAttribute("tabindex") !== "-1" : true;
     return deriveIntercept({
@@ -105,6 +125,27 @@ export function useIframeSlot(
     slot?.attach();
     return () => slot?.detach();
   }, []);
+
+  // Register with the shared registry (if any) so siblings see this slot, and
+  // refresh our own intercept whenever membership / enterable state changes.
+  useEffect(() => {
+    if (!registry) return;
+    const unregister = registry.register(slotName, {
+      isEnterable: () =>
+        iframeRef.current
+          ? iframeRef.current.getAttribute("tabindex") !== "-1"
+          : true,
+    });
+    const unsubscribe = registry.onChange(() =>
+      slotRef.current?.refreshIntercept(),
+    );
+    // Recompute now that membership may include neighbors that mounted first.
+    slotRef.current?.refreshIntercept();
+    return () => {
+      unregister();
+      unsubscribe();
+    };
+  }, [registry, slotName, iframeRef]);
 
   const strategyFragment = useMemo<Partial<FocusTrapStrategy>>(
     () => ({
