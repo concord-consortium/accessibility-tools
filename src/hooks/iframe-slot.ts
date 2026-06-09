@@ -7,6 +7,7 @@
  */
 
 import type { FocusTransport } from "./focus-messages";
+import type { FocusContentContext } from "./types";
 
 export interface IframeSlotOptions {
   /** The slot's name in the strategy's cycleOrder (e.g. "content"). */
@@ -102,6 +103,7 @@ export class IframeSlot {
 
   private handleIframeFocus(): void {
     this.inside = true;
+    this.clearLanding();
     this.applyTabindex();
   }
 
@@ -117,5 +119,58 @@ export class IframeSlot {
     // A focusin while OUTSIDE is a landing rest — leave it alone (§3).
     if (!this.inside) return;
     this.options.onExit(direction);
+  }
+
+  getSentinels(): { before: HTMLElement | null; after: HTMLElement | null } {
+    return {
+      before: this.options.getBeforeSentinel(),
+      after: this.options.getAfterSentinel(),
+    };
+  }
+
+  /** Mark the cooperating capability (also set by inbound capability message). */
+  notifyCapability(focusProtocol: boolean): void {
+    this.cooperating = focusProtocol;
+  }
+
+  focusContent(ctx: FocusContentContext): boolean {
+    const before = this.options.getBeforeSentinel();
+    const after = this.options.getAfterSentinel();
+    const target = ctx.entryMode === "reverse" ? after : before;
+
+    if (ctx.viaKeydown) {
+      // Positioner: silent invisible sentinel; the pending Tab default descends.
+      this.clearLanding();
+      target?.focus();
+      return true;
+    }
+
+    // Programmatic (landing). Cooperating ⇒ precise placement via the protocol.
+    if (this.cooperating && this.options.transport) {
+      const mode = ctx.entryMode === "reverse" ? "reverse" : "forward";
+      this.options.transport.send({ type: "focusEnter", mode });
+      return true;
+    }
+
+    // Non-cooperating ⇒ visible labeled landing hint; user's next Tab descends.
+    this.clearLanding();
+    if (target) {
+      target.setAttribute("data-landing", "");
+      if (this.options.enterLabel) {
+        target.setAttribute("aria-label", this.options.enterLabel);
+      }
+      target.focus();
+    }
+    return true;
+  }
+
+  private clearLanding(): void {
+    for (const el of [
+      this.options.getBeforeSentinel(),
+      this.options.getAfterSentinel(),
+    ]) {
+      el?.removeAttribute("data-landing");
+      el?.removeAttribute("aria-label");
+    }
   }
 }
