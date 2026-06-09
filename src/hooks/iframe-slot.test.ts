@@ -53,3 +53,33 @@ describe("IframeSlot focusInsideIframe tracking", () => {
     expect(slot.focusInsideIframe).toBe(true);
   });
 });
+
+describe("IframeSlot sentinel tabindex toggling", () => {
+  it("sentinels rest at -1 when focus is outside the iframe", () => {
+    const { before, after } = setup();
+    expect(before.getAttribute("tabindex")).toBe("-1");
+    expect(after.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("intercepted directions go to 0 while focus is inside", () => {
+    const { iframe, before, after } = setup({
+      getIntercept: () => ({ forward: true, reverse: true }),
+    });
+    iframe.dispatchEvent(new FocusEvent("focus"));
+    expect(before.getAttribute("tabindex")).toBe("0"); // reverse intercept
+    expect(after.getAttribute("tabindex")).toBe("0"); // forward intercept
+    iframe.dispatchEvent(new FocusEvent("blur"));
+    expect(before.getAttribute("tabindex")).toBe("-1");
+    expect(after.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("a native-flow direction stays -1 even while focus is inside", () => {
+    const { iframe, before, after } = setup({
+      // forward flows to an adjacent enterable iframe; reverse is intercepted.
+      getIntercept: () => ({ forward: false, reverse: true }),
+    });
+    iframe.dispatchEvent(new FocusEvent("focus"));
+    expect(after.getAttribute("tabindex")).toBe("-1"); // native flow forward
+    expect(before.getAttribute("tabindex")).toBe("0"); // intercept reverse
+  });
+});
