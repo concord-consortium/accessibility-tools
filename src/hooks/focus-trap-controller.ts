@@ -119,13 +119,16 @@ export class FocusTrapController {
     this.strategy.onEnter?.();
     announce(this.strategy.announceEnter);
 
-    // Focus the first available slot
+    // Focus the first available slot. enterTrap is a programmatic entry (no
+    // pending Tab default to descend with), so a content slot must enter in
+    // landing mode (viaKeydown = false) rather than positioner mode — otherwise
+    // focus would rest silently on the invisible sentinel with no hint.
     const elements = this.strategy.getElements();
     const order = this.cycleOrder;
     for (let i = 0; i < order.length; i++) {
       if (elements[order[i]]) {
         this.slotIndex = i;
-        this.focusSlot(order[i]);
+        this.focusSlot(order[i], false, false);
         break;
       }
     }

@@ -1121,3 +1121,32 @@ describe("useFocusTrap nativeTabSlots", () => {
     expect(title.focus).toHaveBeenCalled(); // cycled to next slot
   });
 });
+
+describe("useFocusTrap enterTrap landing mode", () => {
+  it("enters a content slot in landing mode (programmatic, not positioner)", () => {
+    const container = createContainer();
+    const content = createSlot("div");
+    container.append(content);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+    };
+    const ref = { current: container };
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    // enterTrap is programmatic (no pending Tab default) ⇒ landing, not positioner.
+    act(() => result.current?.enterTrap());
+
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      viaKeydown: false,
+    });
+  });
+});

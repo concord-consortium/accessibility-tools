@@ -438,12 +438,15 @@ export function useFocusTrap(
       restoreChildrenTabbable();
       strategy.onEnter?.();
       announce(strategy.announceEnter);
+      // enterTrap is a programmatic entry (no pending Tab default), so a content
+      // slot must enter in landing mode (viaKeydown = false), not positioner —
+      // otherwise focus rests silently on the invisible sentinel with no hint.
       const elements = strategy.getElements();
       for (let i = 0; i < cycleOrder.length; i++) {
         const slotName = cycleOrder[i];
         if (elements[slotName]) {
           slotIndexRef.current = i;
-          focusSlot(slotName);
+          focusSlot(slotName, false, false);
           break;
         }
       }
