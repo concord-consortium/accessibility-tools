@@ -65,6 +65,7 @@ export class IframeSlot {
     this.options
       .getAfterSentinel()
       ?.addEventListener("focusin", this.boundAfterFocusIn);
+    this.applyTabindex();
   }
 
   detach(): void {
@@ -83,12 +84,30 @@ export class IframeSlot {
     this.unsubscribeTransport = null;
   }
 
+  /** Re-apply sentinel tabindex from current inside-state + intercept flags. */
+  refreshIntercept(): void {
+    this.applyTabindex();
+  }
+
+  private applyTabindex(): void {
+    const before = this.options.getBeforeSentinel();
+    const after = this.options.getAfterSentinel();
+    const intercept = this.options.getIntercept();
+    // before-sentinel guards the REVERSE exit; after-sentinel the FORWARD exit.
+    const beforeTabbable = this.inside && intercept.reverse;
+    const afterTabbable = this.inside && intercept.forward;
+    before?.setAttribute("tabindex", beforeTabbable ? "0" : "-1");
+    after?.setAttribute("tabindex", afterTabbable ? "0" : "-1");
+  }
+
   private handleIframeFocus(): void {
     this.inside = true;
+    this.applyTabindex();
   }
 
   private handleIframeBlur(): void {
     this.inside = false;
+    this.applyTabindex();
   }
 
   // Placeholder; fully implemented in Task 10.
