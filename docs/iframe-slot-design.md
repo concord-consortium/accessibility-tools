@@ -31,11 +31,17 @@ all within one document. An iframe is opaque to all of it:
 - **`relatedTarget` is nulled across a cross-origin boundary**, so focus events
   on the parent side can't name where focus came from inside the iframe.
 
-The one signal the parent *can* observe is the iframe element's own
-`focus`/`blur`, which fire whenever the iframe's document gains or loses focus.
-Everything here is built on that signal plus DOM elements the parent fully
-controls (sentinels), with an optional message channel (the transport) layered
-on top for the things neither can do alone.
+What the parent *can* observe is focus-related events plus DOM elements it fully
+controls (sentinels), with an optional message channel (the transport) layered on
+top for the things neither can do alone. But observing **when focus is inside the
+iframe** is subtler than it first looks. The iframe *element*'s own `focus`/`blur`
+fire only for **click** and **programmatic** (`iframe.focus()`) entry — **not**
+for a native Tab that descends across the boundary, where the element silently
+becomes `document.activeElement` with no event dispatched. Native descent is
+instead observed on the **top window**: focus entering the subframe blurs the
+window and focus returning to the host focuses it, after which the parent re-reads
+`document.activeElement` to confirm which side holds focus. The core combines both
+signals — see [§3](#3-the-iframe-slot-core-framework-agnostic).
 
 What is **not** a gap: sequential Tab and Shift+Tab cross iframe boundaries
 natively. A forward Tab into an iframe lands on its first focusable; a Tab past
@@ -192,10 +198,22 @@ interface IframeSlotOptions {
 
 Responsibilities:
 
-- **Track `focusInsideIframe`** from the iframe element's `focus`/`blur`. These
-  fire whether focus arrived via native Tab, a click inside the iframe, or
-  programmatic `iframe.focus()`, so click and programmatic changes keep the flag
-  correct with no special handling.
+- **Track `focusInsideIframe`** from two complementary signals, because no single
+  one covers every entry path:
+  - The iframe *element*'s `focus`/`blur` catch **click** and **programmatic**
+    `iframe.focus()` entry/exit — those paths do dispatch element-level events.
+  - A native **Tab** across the boundary does **not** fire `focus`/`blur` on the
+    iframe element (it silently becomes, or ceases to be, `document.activeElement`),
+    so element-level listeners miss it. The reliable cross-origin signal is on the
+    **top window**: focus entering the subframe blurs the window; focus returning
+    to the host focuses it. On either window event the core re-reads
+    `document.activeElement` on a **deferred tick** (some browsers update it just
+    after the event fires) and flips the flag when `activeElement === the iframe`
+    changes. That deferred read is the single source of truth, so window `blur` and
+    `focus` share one handler.
+
+  Either way the flag ends up correct, so the rest of the core (sentinel toggling,
+  exit detection, landing-clear) needs no special-casing per entry path.
 - **Toggle each sentinel's `tabindex` `0` ↔ `-1`** on that transition. A
   sentinel is `tabindex=0` only while `focusInsideIframe === true` **and** that
   direction must be intercepted (`getIntercept().forward` for the after-sentinel,
@@ -297,9 +315,13 @@ When the neighbor *is* a DOM-adjacent, enterable iframe-slot, both in-between
 sentinels stay `-1` and native traversal flows across in one keystroke. The trap
 derives the per-direction `intercept` flags from `cycleOrder` + DOM order (via
 `compareDocumentPosition`) and recomputes them when the strategy or slot elements
-change. Each iframe-slot tracks its own `focusInsideIframe`, so "focus moved A→B"
-needs no central detection — B's own `focus` event flips B's flag and A's `blur`
-clears A's.
+change. Each iframe-slot tracks its own `focusInsideIframe` independently, so
+"focus moved A→B" needs no central detection: on the boundary crossing each slot's
+own window-`blur`/`focus` + deferred `document.activeElement` re-read settles its
+flag (A sees `activeElement` is no longer its iframe and clears; B sees it is now
+its iframe and sets). For click / programmatic moves the iframe elements' own
+`focus`/`blur` do the same. Either way the two flags converge with no shared
+state.
 
 **Note on AP's close control.** AP-108 mandates a host-rendered, keyboard-focusable
 **close control** in the overlay. As a *normal* slot in the cycle it is itself a
@@ -481,8 +503,12 @@ In-repo (jsdom) unit tests:
 
 - `nativeTabSlots` entry calls `focusContent` and **skips** `preventDefault`;
   non-`nativeTab` slots still `preventDefault`. (Assert via a spy on the event.)
-- `focusInsideIframe` tracking: dispatched `focus`/`blur` on the iframe element
-  flip the flag.
+- `focusInsideIframe` tracking, both signal paths: dispatched `focus`/`blur` on
+  the iframe element flip the flag (click / programmatic entry); and a dispatched
+  top-window `blur`/`focus`, followed by the deferred `document.activeElement`
+  re-read, flips the flag for native Tab descent (stub `activeElement` to the
+  iframe, advance the timer, assert the flag — jsdom dispatches no real cross-frame
+  focus events).
 - Sentinel `tabindex` toggling is gated by `focusInsideIframe` **and**
   `getIntercept`: an intercepted direction goes `0` while focus is inside; a
   native-flow direction (adjacent enterable iframe neighbor) stays `-1`.
@@ -524,6 +550,17 @@ browser harness here would mostly test the browser, not this library's code.
 
 ## Open questions / risks
 
+- **Window-focus inside-tracking is a heuristic.** Native Tab across the iframe
+  boundary dispatches no element-level `focus`/`blur`, so the core infers
+  inside/outside from the top window's `blur`/`focus` plus a deferred
+  `document.activeElement` re-read (§3). The deferred tick exists because some
+  browsers update `activeElement` just *after* the window event; the exact timing
+  is browser-dependent and the read — not the event — is the source of truth.
+  Edge cases to validate in the AP/testbed pass: focus leaving to another top-level
+  window or browser chrome (window `blur` with `activeElement` still the iframe),
+  and rapid Tab sequences that fire multiple window events before a tick settles
+  (the timer is debounced, so only the latest read wins). The synchronous
+  sentinel-`focusin` exit path is unaffected — it does not depend on this tracking.
 - **Sentinel screen-reader behavior, both modes.** Confirm screen readers do not
   dwell on the zero-size, unnamed sentinels in positioner/exit mode given the
   synchronous redirect; and confirm the **landing-mode** visible "Press Tab to
