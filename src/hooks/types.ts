@@ -206,6 +206,14 @@ export interface FocusTrapResult {
   isTrapped: boolean;
   enterTrap: () => void;
   exitTrap: () => void;
+  /**
+   * Advance the trap to the next (1) or previous (-1) slot from the current
+   * one and focus it — the same path Tab cycling uses, including wrap-around.
+   * Intended for self-managed slots (e.g. an iframe-slot) that detect a
+   * boundary crossing outside the keydown path. Programmatic: when it lands
+   * on a nativeTabSlot, focusContent runs in landing mode (viaKeydown=false).
+   */
+  cycleToAdjacentSlot: (direction: 1 | -1) => void;
 }
 
 export interface AccessibilityResult {

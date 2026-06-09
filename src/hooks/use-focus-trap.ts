@@ -456,5 +456,19 @@ export function useFocusTrap(
       announce(strategy.announceExit);
       containerRef?.current?.focus();
     },
+    cycleToAdjacentSlot: (direction: 1 | -1) => {
+      if (!strategy) return;
+      const reverse = direction === -1;
+      const nextIndex = findNextSlot(
+        slotIndexRef.current,
+        direction,
+        cycleOrder,
+        strategy,
+      );
+      slotIndexRef.current = nextIndex;
+      const slotName = cycleOrder[nextIndex];
+      // Programmatic entry: viaKeydown=false ⇒ a nativeTabSlot uses landing.
+      focusSlot(slotName, reverse, false);
+    },
   };
 }

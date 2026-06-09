@@ -888,6 +888,83 @@ describe("useFocusTrap", () => {
   });
 });
 
+describe("useFocusTrap cycleToAdjacentSlot", () => {
+  it("advances to the next slot and focuses it (programmatic, landing)", () => {
+    const container = createContainer();
+    const title = createSlot("input");
+    const content = createSlot("textarea");
+    container.append(title, content);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      contentSlot: "content",
+      focusContent,
+    };
+    const ref = { current: container };
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    Object.defineProperty(document, "activeElement", {
+      value: container,
+      configurable: true,
+    });
+    act(() => {
+      const e = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(e, "target", { value: container });
+      document.dispatchEvent(e);
+    });
+
+    act(() => {
+      result.current?.cycleToAdjacentSlot(1);
+    });
+    expect(focusContent).toHaveBeenLastCalledWith({
+      entryMode: "forward",
+      viaKeydown: false,
+    });
+  });
+
+  it("wraps from the last slot back to the first on +1", () => {
+    const container = createContainer();
+    const title = createSlot("input");
+    const content = createSlot("textarea");
+    container.append(title, content);
+    const ref = { current: container };
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+    };
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    Object.defineProperty(document, "activeElement", {
+      value: container,
+      configurable: true,
+    });
+    act(() => {
+      const e = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(e, "target", { value: container });
+      document.dispatchEvent(e);
+    });
+    act(() => result.current?.cycleToAdjacentSlot(1));
+    (content.focus as ReturnType<typeof vi.fn>).mockClear();
+    (title.focus as ReturnType<typeof vi.fn>).mockClear();
+    act(() => result.current?.cycleToAdjacentSlot(1));
+    expect(title.focus).toHaveBeenCalled();
+  });
+});
+
 describe("useFocusTrap nativeTabSlots", () => {
   function setActive(el: Element) {
     Object.defineProperty(document, "activeElement", {
