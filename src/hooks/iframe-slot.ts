@@ -6,7 +6,7 @@
  * owns their behavior. See docs/iframe-slot-design.md.
  */
 
-import type { FocusTransport } from "./focus-messages";
+import type { FocusMessage, FocusTransport } from "./focus-messages";
 import type { FocusContentContext } from "./types";
 
 export interface IframeSlotOptions {
@@ -67,6 +67,12 @@ export class IframeSlot {
       .getAfterSentinel()
       ?.addEventListener("focusin", this.boundAfterFocusIn);
     this.applyTabindex();
+    const transport = this.options.transport;
+    if (transport && !this.unsubscribeTransport) {
+      this.unsubscribeTransport = transport.onMessage((msg) =>
+        this.handleMessage(msg),
+      );
+    }
   }
 
   detach(): void {
@@ -172,5 +178,29 @@ export class IframeSlot {
       el?.removeAttribute("data-landing");
       el?.removeAttribute("aria-label");
     }
+  }
+
+  private handleMessage(msg: FocusMessage): void {
+    switch (msg.type) {
+      case "focusExit":
+        if (msg.mode === "escape") this.options.onRequestExit?.();
+        else this.options.onExit(msg.mode === "reverse" ? -1 : 1);
+        break;
+      case "capability":
+        this.notifyCapability(msg.focusProtocol);
+        break;
+      default:
+        // focusEnter / trapStateChanged / focusReady are not host-inbound here.
+        break;
+    }
+  }
+
+  requestRestore(): void {
+    if (this.cooperating && this.options.transport) {
+      this.options.transport.send({ type: "focusEnter", mode: "restore" });
+      return;
+    }
+    // Non-cooperating: re-enter via a forward landing hint.
+    this.focusContent({ entryMode: "forward", viaKeydown: false });
   }
 }
