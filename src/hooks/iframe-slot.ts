@@ -39,12 +39,16 @@ export class IframeSlot {
   private attached = false;
   private cooperating = false;
   private unsubscribeTransport: (() => void) | null = null;
+  private insideSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Bound listeners for clean add/remove.
   private boundIframeFocus = () => this.handleIframeFocus();
   private boundIframeBlur = () => this.handleIframeBlur();
   private boundBeforeFocusIn = () => this.handleSentinelFocusIn(-1);
   private boundAfterFocusIn = () => this.handleSentinelFocusIn(1);
+  // Native Tab descent does NOT fire focus/blur on the iframe ELEMENT, so we
+  // also track entry/exit from the top window's blur/focus (§ below).
+  private boundWindowFocusChange = () => this.scheduleInsideSync();
 
   constructor(options: IframeSlotOptions) {
     this.options = options;
@@ -66,6 +70,10 @@ export class IframeSlot {
     this.options
       .getAfterSentinel()
       ?.addEventListener("focusin", this.boundAfterFocusIn);
+    if (typeof window !== "undefined") {
+      window.addEventListener("blur", this.boundWindowFocusChange);
+      window.addEventListener("focus", this.boundWindowFocusChange);
+    }
     this.applyTabindex();
     const transport = this.options.transport;
     if (transport && !this.unsubscribeTransport) {
@@ -87,6 +95,14 @@ export class IframeSlot {
     this.options
       .getAfterSentinel()
       ?.removeEventListener("focusin", this.boundAfterFocusIn);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("blur", this.boundWindowFocusChange);
+      window.removeEventListener("focus", this.boundWindowFocusChange);
+    }
+    if (this.insideSyncTimer !== null) {
+      clearTimeout(this.insideSyncTimer);
+      this.insideSyncTimer = null;
+    }
     this.unsubscribeTransport?.();
     this.unsubscribeTransport = null;
   }
@@ -116,6 +132,36 @@ export class IframeSlot {
   private handleIframeBlur(): void {
     this.inside = false;
     this.applyTabindex();
+  }
+
+  /**
+   * Track keyboard descent across the iframe boundary.
+   *
+   * In real browsers a native Tab into/out of an iframe does NOT dispatch
+   * focus/blur on the <iframe> ELEMENT — the element silently becomes (or
+   * ceases to be) document.activeElement, so the element-level listeners above
+   * only fire for click / programmatic entry. The reliable cross-origin signal
+   * is on the top window: focus entering the subframe blurs the window (and
+   * activeElement becomes the iframe), and focus returning to the host focuses
+   * the window. We re-read activeElement on a deferred tick because some
+   * browsers update it just after the window event fires. The read is the
+   * single source of truth, so window blur and focus share one handler.
+   */
+  private scheduleInsideSync(): void {
+    if (typeof window === "undefined") return;
+    if (this.insideSyncTimer !== null) clearTimeout(this.insideSyncTimer);
+    this.insideSyncTimer = setTimeout(() => {
+      this.insideSyncTimer = null;
+      this.syncInsideFromActiveElement();
+    }, 0);
+  }
+
+  private syncInsideFromActiveElement(): void {
+    if (!this.attached) return;
+    const nowInside = document.activeElement === this.options.getIframe();
+    if (nowInside === this.inside) return;
+    if (nowInside) this.handleIframeFocus();
+    else this.handleIframeBlur();
   }
 
   private handleSentinelFocusIn(direction: 1 | -1): void {

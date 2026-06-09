@@ -54,6 +54,111 @@ describe("IframeSlot focusInsideIframe tracking", () => {
   });
 });
 
+describe("IframeSlot native-Tab descent tracking (window blur/focus)", () => {
+  // Real browsers do NOT dispatch focus/blur on the <iframe> ELEMENT when
+  // keyboard Tab moves focus across the frame boundary; the element silently
+  // becomes/ceases to be document.activeElement. The element-level focus/blur
+  // listeners only fire for click / programmatic entry. To track keyboard
+  // descent the slot watches the top window's blur/focus and re-reads
+  // document.activeElement on a deferred tick.
+  it("window blur with activeElement on the iframe sets inside=true (deferred)", () => {
+    vi.useFakeTimers();
+    try {
+      const { slot, iframe, before, after } = setup();
+      vi.spyOn(document, "activeElement", "get").mockReturnValue(iframe);
+      window.dispatchEvent(new Event("blur"));
+      // Deferred: not applied synchronously (activeElement may settle a tick later).
+      expect(slot.focusInsideIframe).toBe(false);
+      vi.runAllTimers();
+      expect(slot.focusInsideIframe).toBe(true);
+      expect(before.getAttribute("tabindex")).toBe("0"); // reverse intercept
+      expect(after.getAttribute("tabindex")).toBe("0"); // forward intercept
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
+  it("window blur while activeElement is NOT the iframe does not enter", () => {
+    vi.useFakeTimers();
+    try {
+      const { slot } = setup();
+      // default activeElement is <body>, not the iframe
+      window.dispatchEvent(new Event("blur"));
+      vi.runAllTimers();
+      expect(slot.focusInsideIframe).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("returning focus to the host (window focus) clears inside", () => {
+    vi.useFakeTimers();
+    try {
+      const { slot, iframe, before } = setup();
+      const ae = vi.spyOn(document, "activeElement", "get");
+      ae.mockReturnValue(iframe);
+      window.dispatchEvent(new Event("blur"));
+      vi.runAllTimers();
+      expect(slot.focusInsideIframe).toBe(true);
+      ae.mockReturnValue(before); // focus moved back to a host element
+      window.dispatchEvent(new Event("focus"));
+      vi.runAllTimers();
+      expect(slot.focusInsideIframe).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
+  it("clears a landing hint when keyboard descent enters the iframe", () => {
+    vi.useFakeTimers();
+    try {
+      const { slot, iframe, before } = setup();
+      slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+      expect(before.hasAttribute("data-landing")).toBe(true);
+      vi.spyOn(document, "activeElement", "get").mockReturnValue(iframe);
+      window.dispatchEvent(new Event("blur"));
+      vi.runAllTimers();
+      expect(before.hasAttribute("data-landing")).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
+  it("after-sentinel focusin still exits when descent was tracked via the window", () => {
+    vi.useFakeTimers();
+    try {
+      const { slot, iframe, after, onExit } = setup();
+      vi.spyOn(document, "activeElement", "get").mockReturnValue(iframe);
+      window.dispatchEvent(new Event("blur"));
+      vi.runAllTimers();
+      expect(slot.focusInsideIframe).toBe(true);
+      after.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+      expect(onExit).toHaveBeenCalledWith(1);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops window tracking after detach", () => {
+    vi.useFakeTimers();
+    try {
+      const { slot, iframe } = setup();
+      slot.detach();
+      vi.spyOn(document, "activeElement", "get").mockReturnValue(iframe);
+      window.dispatchEvent(new Event("blur"));
+      vi.runAllTimers();
+      expect(slot.focusInsideIframe).toBe(false);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+});
+
 describe("IframeSlot sentinel tabindex toggling", () => {
   it("sentinels rest at -1 when focus is outside the iframe", () => {
     const { before, after } = setup();
