@@ -95,13 +95,13 @@ export function useFocusTrap(
   // Focus a specific slot by name.
   // For tabWithinSlots, focus the first (or last if reverse) focusable child.
   const focusSlot = useCallback(
-    (slotName: string, reverse = false) => {
+    (slotName: string, reverse = false, viaKeydown = true) => {
       if (!strategy) return;
       const contentSlot = strategy.contentSlot ?? "content";
       const entryMode = reverse ? "reverse" : "forward";
       if (
         slotName === contentSlot &&
-        strategy.focusContent?.({ entryMode, viaKeydown: true })
+        strategy.focusContent?.({ entryMode, viaKeydown })
       )
         return;
       const elements = strategy.getElements();
@@ -269,13 +269,47 @@ export function useFocusTrap(
         }
         const currentSlotName = cycleOrder[slotIndexRef.current];
 
+        // §3 resting-sentinel rule: if the current slot is a nativeTabSlot,
+        // focus is resting on one of its sentinels. Resolve the four cases.
+        const nativeTabSlots = strategy.nativeTabSlots ?? [];
+        if (nativeTabSlots.includes(currentSlotName)) {
+          const sentinels =
+            strategy.getNativeTabSlotSentinels?.(currentSlotName);
+          const active = document.activeElement;
+          const onBefore = !!sentinels && active === sentinels.before;
+          const onAfter = !!sentinels && active === sentinels.after;
+          const reverse = e.shiftKey;
+          const descend = (!reverse && onBefore) || (reverse && onAfter);
+          if (descend) {
+            // Let the browser's pending Tab default descend into the iframe.
+            return;
+          }
+          // Cycle (forward+after, reverse+before, or focus not on a sentinel).
+          e.preventDefault();
+          const direction: 1 | -1 = reverse ? -1 : 1;
+          const nextIndex = findNextSlot(
+            slotIndexRef.current,
+            direction,
+            cycleOrder,
+            strategy,
+          );
+          slotIndexRef.current = nextIndex;
+          const nextName = cycleOrder[nextIndex];
+          focusSlot(nextName, reverse, true);
+          debugCtx?.reportFocusTrapEvent(instanceId, {
+            type: "cycle",
+            slot: nextName,
+            timestamp: Date.now(),
+          });
+          return;
+        }
+
         // Per-slot tab handler takes precedence over tabWithinSlots.
         const tabHandler = strategy.tabHandlers?.[currentSlotName];
         if (tabHandler) {
           const result = tabHandler(e, e.shiftKey);
           if (result === "handled") return;
           // result === "exit": advance to the next slot.
-          e.preventDefault();
           const reverse = e.shiftKey;
           const direction: 1 | -1 = reverse ? -1 : 1;
           const nextIndex = findNextSlot(
@@ -286,7 +320,11 @@ export function useFocusTrap(
           );
           slotIndexRef.current = nextIndex;
           const slotName = cycleOrder[nextIndex];
-          focusSlot(slotName, reverse);
+          const enteringNative = (strategy.nativeTabSlots ?? []).includes(
+            slotName,
+          );
+          if (!enteringNative) e.preventDefault();
+          focusSlot(slotName, reverse, true);
           debugCtx?.reportFocusTrapEvent(instanceId, {
             type: "cycle",
             slot: slotName,
@@ -320,7 +358,6 @@ export function useFocusTrap(
         }
 
         // At boundary or slot not in tabWithinSlots - cycle to next slot
-        e.preventDefault();
         const reverse = e.shiftKey;
         const direction: 1 | -1 = reverse ? -1 : 1;
         const nextIndex = findNextSlot(
@@ -331,7 +368,11 @@ export function useFocusTrap(
         );
         slotIndexRef.current = nextIndex;
         const slotName = cycleOrder[nextIndex];
-        focusSlot(slotName, reverse);
+        const enteringNative = (strategy.nativeTabSlots ?? []).includes(
+          slotName,
+        );
+        if (!enteringNative) e.preventDefault();
+        focusSlot(slotName, reverse, true);
         debugCtx?.reportFocusTrapEvent(instanceId, {
           type: "cycle",
           slot: slotName,

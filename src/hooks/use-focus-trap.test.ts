@@ -887,3 +887,160 @@ describe("useFocusTrap", () => {
     expect(cell.getAttribute("tabindex")).toBe("0");
   });
 });
+
+describe("useFocusTrap nativeTabSlots", () => {
+  function setActive(el: Element) {
+    Object.defineProperty(document, "activeElement", {
+      value: el,
+      configurable: true,
+    });
+  }
+
+  it("skips preventDefault when cycling INTO a nativeTabSlot", () => {
+    const container = createContainer();
+    const title = createSlot("input");
+    const before = createSlot();
+    const iframeWrap = createSlot();
+    const after = createSlot();
+    // Sentinels must live inside iframeWrap for isInsideTrap / contains checks
+    iframeWrap.append(before, after);
+    container.append(title, iframeWrap);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content: iframeWrap }),
+      cycleOrder: ["title", "content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    const ref = { current: container };
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Enter the trap
+    setActive(container);
+    act(() => {
+      const e = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(e, "target", { value: container });
+      document.dispatchEvent(e);
+    });
+
+    // Now on the title slot; Tab forward → should cycle into nativeTabSlot
+    setActive(title);
+    let tabEvent!: KeyboardEvent;
+    act(() => {
+      tabEvent = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(tabEvent, "target", { value: title });
+      document.dispatchEvent(tabEvent);
+    });
+
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      viaKeydown: true,
+    });
+    expect(tabEvent.defaultPrevented).toBe(false); // native descent — no preventDefault
+  });
+
+  it("forward Tab on the before-sentinel descends (no preventDefault)", () => {
+    const container = createContainer();
+    const before = createSlot();
+    const iframeWrap = createSlot();
+    const after = createSlot();
+    iframeWrap.append(before, after);
+    container.append(iframeWrap);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: iframeWrap }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent: () => true,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    const ref = { current: container };
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Enter the trap
+    setActive(container);
+    act(() => {
+      const e = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(e, "target", { value: container });
+      document.dispatchEvent(e);
+    });
+
+    // Focus is resting on the before-sentinel; forward Tab should descend
+    setActive(before);
+    let tabEvent!: KeyboardEvent;
+    act(() => {
+      tabEvent = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(tabEvent, "target", { value: before });
+      document.dispatchEvent(tabEvent);
+    });
+    expect(tabEvent.defaultPrevented).toBe(false);
+  });
+
+  it("forward Tab on the after-sentinel cycles (preventDefault)", () => {
+    const container = createContainer();
+    const title = createSlot("input");
+    const before = createSlot();
+    const iframeWrap = createSlot();
+    const after = createSlot();
+    iframeWrap.append(before, after);
+    container.append(iframeWrap, title);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: iframeWrap, title }),
+      cycleOrder: ["content", "title"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent: () => true,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    const ref = { current: container };
+    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+
+    // Enter the trap
+    setActive(container);
+    act(() => {
+      const e = new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(e, "target", { value: container });
+      document.dispatchEvent(e);
+    });
+
+    // Focus is resting on the after-sentinel; forward Tab should cycle out
+    setActive(after);
+    let tabEvent!: KeyboardEvent;
+    act(() => {
+      tabEvent = new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(tabEvent, "target", { value: after });
+      document.dispatchEvent(tabEvent);
+    });
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(title.focus).toHaveBeenCalled(); // cycled to next slot
+  });
+});
