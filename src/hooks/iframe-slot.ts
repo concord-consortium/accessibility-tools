@@ -144,7 +144,7 @@ export class IframeSlot {
     const after = this.options.getAfterSentinel();
     const target = ctx.entryMode === "reverse" ? after : before;
 
-    if (ctx.viaKeydown) {
+    if (ctx.trigger === "sequentialNavigation") {
       // Positioner: silent invisible sentinel; the pending Tab default descends.
       this.clearLanding();
       target?.focus();
@@ -201,6 +201,6 @@ export class IframeSlot {
       return;
     }
     // Non-cooperating: re-enter via a forward landing hint.
-    this.focusContent({ entryMode: "forward", viaKeydown: false });
+    this.focusContent({ entryMode: "forward", trigger: "programmatic" });
   }
 }

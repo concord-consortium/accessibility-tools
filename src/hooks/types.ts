@@ -18,6 +18,19 @@ export type TabHandlerResult = "handled" | "exit";
 // future handler types diverge. Can be unified if a third clone appears.
 export type EscapeHandlerResult = "handled" | "exit";
 
+/**
+ * What triggered a focusContent call — the browser-navigation function behind
+ * the entry, NOT the literal key. See §3/§4 of iframe-slot-design.md.
+ * - "sequentialNavigation": a live sequential-focus-navigation keypress (the
+ *   Tab key's browser function) is being processed, so the browser has a
+ *   pending native focus advance to descend with ⇒ positioner mode.
+ * - "programmatic": entry with no pending native focus advance — enterTrap,
+ *   cycleToAdjacentSlot (wrap-around), or restore ⇒ landing mode. (Note an
+ *   Enter/click that engages the trap is a keydown but is still "programmatic"
+ *   here, because it carries no pending focus advance.)
+ */
+export type FocusContentTrigger = "sequentialNavigation" | "programmatic";
+
 export type FocusContentContext = {
   /**
    * Direction the trap is entering the content slot.
@@ -27,15 +40,14 @@ export type FocusContentContext = {
   entryMode: "forward" | "reverse";
 
   /**
-   * Whether this focusContent call is happening during a live Tab keydown
-   * (positioner mode) vs programmatically with no pending Tab default
-   * (landing mode). See §3/§4 of iframe-slot-design.md.
-   * - true  ⇒ positioner: focus the sentinel silently; the trap skips
-   *           preventDefault so the browser's pending Tab default descends.
-   * - false ⇒ landing: place a visible, labeled "Press Tab to enter …" hint
-   *           (non-cooperating) or send focusEnter (cooperating).
+   * Whether this call rides the browser's pending native focus advance
+   * ("sequentialNavigation" ⇒ positioner: focus the sentinel silently so the
+   * pending Tab default descends) or is a programmatic entry with no such
+   * advance ("programmatic" ⇒ landing: place a visible, labeled
+   * "Press Tab to enter …" hint (non-cooperating) or send focusEnter
+   * (cooperating)).
    */
-  viaKeydown: boolean;
+  trigger: FocusContentTrigger;
 };
 
 export interface FocusTrapStrategy {
@@ -211,7 +223,8 @@ export interface FocusTrapResult {
    * one and focus it — the same path Tab cycling uses, including wrap-around.
    * Intended for self-managed slots (e.g. an iframe-slot) that detect a
    * boundary crossing outside the keydown path. Programmatic: when it lands
-   * on a nativeTabSlot, focusContent runs in landing mode (viaKeydown=false).
+   * on a nativeTabSlot, focusContent runs in landing mode
+   * (trigger="programmatic").
    */
   cycleToAdjacentSlot: (direction: 1 | -1) => void;
 }

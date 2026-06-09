@@ -926,7 +926,7 @@ describe("useFocusTrap cycleToAdjacentSlot", () => {
     });
     expect(focusContent).toHaveBeenLastCalledWith({
       entryMode: "forward",
-      viaKeydown: false,
+      trigger: "programmatic",
     });
   });
 
@@ -1022,7 +1022,7 @@ describe("useFocusTrap nativeTabSlots", () => {
 
     expect(focusContent).toHaveBeenCalledWith({
       entryMode: "forward",
-      viaKeydown: true,
+      trigger: "sequentialNavigation",
     });
     expect(tabEvent.defaultPrevented).toBe(false); // native descent — no preventDefault
   });
@@ -1146,7 +1146,7 @@ describe("useFocusTrap enterTrap landing mode", () => {
 
     expect(focusContent).toHaveBeenCalledWith({
       entryMode: "forward",
-      viaKeydown: false,
+      trigger: "programmatic",
     });
   });
 });

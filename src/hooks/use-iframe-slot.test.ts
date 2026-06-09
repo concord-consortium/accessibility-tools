@@ -67,7 +67,7 @@ describe("useIframeSlot", () => {
     act(() => {
       result.current.strategyFragment.focusContent?.({
         entryMode: "forward",
-        viaKeydown: true,
+        trigger: "sequentialNavigation",
       });
     });
     expect(before.focus).toHaveBeenCalled();

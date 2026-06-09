@@ -28,7 +28,11 @@ import {
   pickSlotEntryTarget,
 } from "./dom-utils";
 import { useAccessibilityContext } from "./provider";
-import type { FocusTrapConfig, FocusTrapResult } from "./types";
+import type {
+  FocusContentTrigger,
+  FocusTrapConfig,
+  FocusTrapResult,
+} from "./types";
 import { useStableId } from "./use-stable-id";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
@@ -95,13 +99,17 @@ export function useFocusTrap(
   // Focus a specific slot by name.
   // For tabWithinSlots, focus the first (or last if reverse) focusable child.
   const focusSlot = useCallback(
-    (slotName: string, reverse = false, viaKeydown = true) => {
+    (
+      slotName: string,
+      reverse = false,
+      trigger: FocusContentTrigger = "sequentialNavigation",
+    ) => {
       if (!strategy) return;
       const contentSlot = strategy.contentSlot ?? "content";
       const entryMode = reverse ? "reverse" : "forward";
       if (
         slotName === contentSlot &&
-        strategy.focusContent?.({ entryMode, viaKeydown })
+        strategy.focusContent?.({ entryMode, trigger })
       )
         return;
       const elements = strategy.getElements();
@@ -295,7 +303,7 @@ export function useFocusTrap(
           );
           slotIndexRef.current = nextIndex;
           const nextName = cycleOrder[nextIndex];
-          focusSlot(nextName, reverse, true);
+          focusSlot(nextName, reverse, "sequentialNavigation");
           debugCtx?.reportFocusTrapEvent(instanceId, {
             type: "cycle",
             slot: nextName,
@@ -324,7 +332,7 @@ export function useFocusTrap(
             slotName,
           );
           if (!enteringNative) e.preventDefault();
-          focusSlot(slotName, reverse, true);
+          focusSlot(slotName, reverse, "sequentialNavigation");
           debugCtx?.reportFocusTrapEvent(instanceId, {
             type: "cycle",
             slot: slotName,
@@ -372,7 +380,7 @@ export function useFocusTrap(
           slotName,
         );
         if (!enteringNative) e.preventDefault();
-        focusSlot(slotName, reverse, true);
+        focusSlot(slotName, reverse, "sequentialNavigation");
         debugCtx?.reportFocusTrapEvent(instanceId, {
           type: "cycle",
           slot: slotName,
@@ -439,14 +447,14 @@ export function useFocusTrap(
       strategy.onEnter?.();
       announce(strategy.announceEnter);
       // enterTrap is a programmatic entry (no pending Tab default), so a content
-      // slot must enter in landing mode (viaKeydown = false), not positioner —
-      // otherwise focus rests silently on the invisible sentinel with no hint.
+      // slot must enter in landing mode (trigger "programmatic"), not positioner
+      // — otherwise focus rests silently on the invisible sentinel with no hint.
       const elements = strategy.getElements();
       for (let i = 0; i < cycleOrder.length; i++) {
         const slotName = cycleOrder[i];
         if (elements[slotName]) {
           slotIndexRef.current = i;
-          focusSlot(slotName, false, false);
+          focusSlot(slotName, false, "programmatic");
           break;
         }
       }
@@ -470,8 +478,8 @@ export function useFocusTrap(
       );
       slotIndexRef.current = nextIndex;
       const slotName = cycleOrder[nextIndex];
-      // Programmatic entry: viaKeydown=false ⇒ a nativeTabSlot uses landing.
-      focusSlot(slotName, reverse, false);
+      // Programmatic entry: trigger "programmatic" ⇒ a nativeTabSlot uses landing.
+      focusSlot(slotName, reverse, "programmatic");
     },
   };
 }
