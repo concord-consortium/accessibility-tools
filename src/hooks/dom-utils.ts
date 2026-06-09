@@ -182,11 +182,17 @@ export function findNextSlot(
 export function getManagedSlotElements(
   strategy: FocusTrapStrategy,
 ): HTMLElement[] {
-  const handlers = strategy.tabHandlers;
-  if (!handlers) return [];
   const elements = strategy.getElements();
+  // Managed slots are those with a custom tabHandler (own roving tabindex) OR
+  // those declared as nativeTabSlots (the iframe-slot, which has no tabHandler
+  // but still must be off-limits to the tabindex sweep — §8). Set preserves
+  // insertion order and de-dupes a slot listed in both.
+  const names = new Set<string>([
+    ...Object.keys(strategy.tabHandlers ?? {}),
+    ...(strategy.nativeTabSlots ?? []),
+  ]);
   const result: HTMLElement[] = [];
-  for (const slotName of Object.keys(handlers)) {
+  for (const slotName of names) {
     const slotEl = elements[slotName];
     if (slotEl) result.push(slotEl);
   }

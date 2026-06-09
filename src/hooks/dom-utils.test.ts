@@ -353,4 +353,27 @@ describe("getManagedSlotElements", () => {
     };
     expect(getManagedSlotElements(strategy)).toEqual([content]);
   });
+
+  it("includes elements of slots listed in nativeTabSlots", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      nativeTabSlots: ["content"],
+    };
+    expect(getManagedSlotElements(strategy)).toEqual([content]);
+  });
+
+  it("unions tabHandlers and nativeTabSlots without duplicates", () => {
+    const title = document.createElement("div");
+    const content = document.createElement("div");
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+      tabHandlers: { title: () => "exit" },
+      nativeTabSlots: ["content"],
+    };
+    expect(getManagedSlotElements(strategy)).toEqual([title, content]);
+  });
 });
