@@ -417,7 +417,10 @@ export class FocusTrapController {
   private focusSlot(slotName: string, reverse = false): void {
     const contentSlot = this.strategy.contentSlot ?? "content";
     const entryMode = reverse ? "reverse" : "forward";
-    if (slotName === contentSlot && this.strategy.focusContent?.({ entryMode }))
+    if (
+      slotName === contentSlot &&
+      this.strategy.focusContent?.({ entryMode, viaKeydown: true })
+    )
       return;
 
     const elements = this.strategy.getElements();

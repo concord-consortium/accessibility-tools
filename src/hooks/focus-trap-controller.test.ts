@@ -465,12 +465,18 @@ describe("FocusTrapController", () => {
     // Forward entry into content from title:
     setActiveElement(title);
     pressKey("Tab");
-    expect(focusContent).toHaveBeenLastCalledWith({ entryMode: "forward" });
+    expect(focusContent).toHaveBeenLastCalledWith({
+      entryMode: "forward",
+      viaKeydown: true,
+    });
 
     // Reverse entry into content from toolbar:
     setActiveElement(toolbar);
     pressKey("Tab", { shiftKey: true });
-    expect(focusContent).toHaveBeenLastCalledWith({ entryMode: "reverse" });
+    expect(focusContent).toHaveBeenLastCalledWith({
+      entryMode: "reverse",
+      viaKeydown: true,
+    });
   });
 
   it("does not mutate tabindex on a managed slot's element when setChildrenNonTabbable runs", () => {
