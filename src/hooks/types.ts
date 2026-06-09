@@ -20,16 +20,22 @@ export type EscapeHandlerResult = "handled" | "exit";
 
 export type FocusContentContext = {
   /**
-   * How the trap is entering the content slot.
+   * Direction the trap is entering the content slot.
    * - "forward": cycling forward (Tab from previous slot, or initial entry).
    * - "reverse": cycling backward (Shift+Tab from next slot).
-   *
-   * Additional values (e.g. "restore" for re-entering the last-focused
-   * element when the trap is re-engaged) may be added in the future.
-   * Clients using exhaustive switches over this union will see a type
-   * error and need to add a case.
    */
   entryMode: "forward" | "reverse";
+
+  /**
+   * Whether this focusContent call is happening during a live Tab keydown
+   * (positioner mode) vs programmatically with no pending Tab default
+   * (landing mode). See §3/§4 of iframe-slot-design.md.
+   * - true  ⇒ positioner: focus the sentinel silently; the trap skips
+   *           preventDefault so the browser's pending Tab default descends.
+   * - false ⇒ landing: place a visible, labeled "Press Tab to enter …" hint
+   *           (non-cooperating) or send focusEnter (cooperating).
+   */
+  viaKeydown: boolean;
 };
 
 export interface FocusTrapStrategy {
@@ -60,6 +66,26 @@ export interface FocusTrapStrategy {
   /** Slots where Tab navigates through focusable children before cycling to the next slot.
    *  Slots not listed cycle immediately on Tab. Default: [] (all slots cycle immediately). */
   tabWithinSlots?: string[];
+
+  /**
+   * Slot names whose entry hands off to the browser's native Tab traversal
+   * (§1). When the trap cycles INTO one of these slots it calls focusContent
+   * (the positioner) but does NOT call preventDefault, so the browser's
+   * default Tab action runs from the now-focused sentinel and descends into
+   * the iframe. Default: [].
+   */
+  nativeTabSlots?: string[];
+
+  /**
+   * For a slot in `nativeTabSlots`: the slot's before/after sentinel elements
+   * (§3). When a Tab keydown fires while the current slot is this slot, focus
+   * is resting on one of these sentinels; the trap uses these to resolve the
+   * "Tab from a resting sentinel" four cases. Returns nulls for unknown slots.
+   */
+  getNativeTabSlotSentinels?: (slotName: string) => {
+    before: HTMLElement | null;
+    after: HTMLElement | null;
+  };
 
   /** Elements outside the container DOM that are part of the trap (e.g., portaled toolbars). */
   getExternalElements?: () => HTMLElement[];
