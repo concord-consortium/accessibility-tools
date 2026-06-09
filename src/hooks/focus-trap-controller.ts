@@ -140,6 +140,15 @@ export class FocusTrapController {
     this.container.focus();
   }
 
+  cycleToAdjacentSlot(direction: 1 | -1): void {
+    if (this.destroyed) return;
+    const reverse = direction === -1;
+    const nextIndex = this.findNextSlot(this.slotIndex, direction);
+    this.slotIndex = nextIndex;
+    // Programmatic entry: viaKeydown=false ⇒ a nativeTabSlot uses landing.
+    this.focusSlot(this.cycleOrder[nextIndex], reverse, false);
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
@@ -324,18 +333,40 @@ export class FocusTrapController {
 
       const currentSlotName = this.cycleOrder[this.slotIndex];
 
+      // §3 resting-sentinel rule: if the current slot is a nativeTabSlot,
+      // focus is resting on one of its sentinels. Resolve the four cases.
+      const nativeTabSlots = this.strategy.nativeTabSlots ?? [];
+      if (nativeTabSlots.includes(currentSlotName)) {
+        const sentinels =
+          this.strategy.getNativeTabSlotSentinels?.(currentSlotName);
+        const active = document.activeElement;
+        const onBefore = !!sentinels && active === sentinels.before;
+        const onAfter = !!sentinels && active === sentinels.after;
+        const reverse = e.shiftKey;
+        const descend = (!reverse && onBefore) || (reverse && onAfter);
+        if (descend) return; // native descent — do not preventDefault
+        e.preventDefault();
+        const direction: 1 | -1 = reverse ? -1 : 1;
+        const nextIndex = this.findNextSlot(this.slotIndex, direction);
+        this.slotIndex = nextIndex;
+        this.focusSlot(this.cycleOrder[nextIndex], reverse, true);
+        return;
+      }
+
       // Per-slot tab handler takes precedence over tabWithinSlots.
       const tabHandler = this.strategy.tabHandlers?.[currentSlotName];
       if (tabHandler) {
         const result = tabHandler(e, e.shiftKey);
         if (result === "handled") return;
         // result === "exit": advance to the next slot.
-        e.preventDefault();
         const reverse = e.shiftKey;
         const direction: 1 | -1 = reverse ? -1 : 1;
         const nextIndex = this.findNextSlot(this.slotIndex, direction);
         this.slotIndex = nextIndex;
-        this.focusSlot(this.cycleOrder[nextIndex], reverse);
+        const nextName = this.cycleOrder[nextIndex];
+        if (!(this.strategy.nativeTabSlots ?? []).includes(nextName))
+          e.preventDefault();
+        this.focusSlot(nextName, reverse, true);
         return;
       }
 
@@ -361,21 +392,27 @@ export class FocusTrapController {
       }
 
       // At boundary or slot not in tabWithinSlots — cycle to next slot
-      e.preventDefault();
       const reverse = e.shiftKey;
       const direction: 1 | -1 = reverse ? -1 : 1;
       const nextIndex = this.findNextSlot(this.slotIndex, direction);
       this.slotIndex = nextIndex;
-      this.focusSlot(this.cycleOrder[nextIndex], reverse);
+      const nextName = this.cycleOrder[nextIndex];
+      if (!(this.strategy.nativeTabSlots ?? []).includes(nextName))
+        e.preventDefault();
+      this.focusSlot(nextName, reverse, true);
     }
   }
 
-  private focusSlot(slotName: string, reverse = false): void {
+  private focusSlot(
+    slotName: string,
+    reverse = false,
+    viaKeydown = true,
+  ): void {
     const contentSlot = this.strategy.contentSlot ?? "content";
     const entryMode = reverse ? "reverse" : "forward";
     if (
       slotName === contentSlot &&
-      this.strategy.focusContent?.({ entryMode, viaKeydown: true })
+      this.strategy.focusContent?.({ entryMode, viaKeydown })
     )
       return;
 

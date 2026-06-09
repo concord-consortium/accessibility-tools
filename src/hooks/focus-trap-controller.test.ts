@@ -613,3 +613,89 @@ describe("FocusTrapController", () => {
     expect(cell.getAttribute("tabindex")).toBe("0");
   });
 });
+
+describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
+  it("skips preventDefault cycling INTO a nativeTabSlot", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(title, wrap);
+    vi.spyOn(title, "focus");
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content: wrap }),
+      cycleOrder: ["title", "content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap(); // focus title
+
+    setActiveElement(title);
+    const e = pressKey("Tab");
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      viaKeydown: true,
+    });
+    expect(e.defaultPrevented).toBe(false);
+  });
+
+  it("resting-sentinel: forward Tab on after-sentinel cycles", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap, title);
+    vi.spyOn(title, "focus");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap, title }),
+      cycleOrder: ["content", "title"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent: () => true,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+
+    setActiveElement(after);
+    const e = pressKey("Tab");
+    expect(e.defaultPrevented).toBe(true);
+    expect(title.focus).toHaveBeenCalled();
+  });
+
+  it("cycleToAdjacentSlot advances and wraps like a Tab cycle", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.append(title, content);
+    vi.spyOn(title, "focus");
+    vi.spyOn(content, "focus");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap(); // title, index 0
+
+    controller.cycleToAdjacentSlot(1);
+    expect(content.focus).toHaveBeenCalled();
+
+    (title.focus as ReturnType<typeof vi.fn>).mockClear();
+    controller.cycleToAdjacentSlot(1); // wrap to title
+    expect(title.focus).toHaveBeenCalled();
+  });
+});
