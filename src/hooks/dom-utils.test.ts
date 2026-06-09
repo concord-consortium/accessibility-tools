@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  deriveIntercept,
   findFocusableIndex,
   findNextFocusableOutside,
   findNextSlot,
@@ -375,5 +376,61 @@ describe("getManagedSlotElements", () => {
       nativeTabSlots: ["content"],
     };
     expect(getManagedSlotElements(strategy)).toEqual([title, content]);
+  });
+});
+
+describe("deriveIntercept", () => {
+  // Build [a][b] siblings in DOM so compareDocumentPosition is meaningful.
+  function twoSlots() {
+    const a = document.createElement("div");
+    const b = document.createElement("div");
+    document.body.append(a, b); // a precedes b in DOM order
+    return { a, b };
+  }
+
+  it("intercepts both directions for a normal-slot / boundary neighbor", () => {
+    const { a, b } = twoSlots();
+    const cycleOrder = ["content", "toolbar"];
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: a, toolbar: b }),
+      cycleOrder,
+    };
+    const intercept = deriveIntercept({
+      slotName: "content",
+      cycleOrder,
+      getElements: strategy.getElements,
+      iframeSlots: { content: { enterable: true } }, // only self is an iframe
+    });
+    expect(intercept).toEqual({ forward: true, reverse: true });
+  });
+
+  it("does NOT intercept toward a DOM-adjacent enterable iframe neighbor", () => {
+    const { a, b } = twoSlots();
+    const intercept = deriveIntercept({
+      slotName: "iframeA",
+      cycleOrder: ["iframeA", "iframeB"],
+      getElements: () => ({ iframeA: a, iframeB: b }),
+      iframeSlots: {
+        iframeA: { enterable: true },
+        iframeB: { enterable: true },
+      },
+    });
+    // forward neighbor (iframeB) follows iframeA in DOM and is enterable →
+    // native flow; reverse neighbor wraps to iframeB (boundary) → intercept.
+    expect(intercept).toEqual({ forward: false, reverse: true });
+  });
+
+  it("intercepts toward a non-enterable (tabindex=-1) iframe neighbor", () => {
+    const { a, b } = twoSlots();
+    const intercept = deriveIntercept({
+      slotName: "iframeA",
+      cycleOrder: ["iframeA", "iframeB"],
+      getElements: () => ({ iframeA: a, iframeB: b }),
+      iframeSlots: {
+        iframeA: { enterable: true },
+        iframeB: { enterable: false }, // content-only / locked
+      },
+    });
+    expect(intercept).toEqual({ forward: true, reverse: true });
   });
 });
