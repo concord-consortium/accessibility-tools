@@ -199,6 +199,60 @@ export function getManagedSlotElements(
   return result;
 }
 
+/**
+ * Per-direction intercept flags for an iframe-slot's sentinels (§4).
+ *
+ * A direction is "not intercepted" (sentinel stays tabindex=-1, native flow
+ * passes straight through) ONLY when the directional neighbor in cycleOrder is
+ * also a DOM-adjacent, enterable iframe-slot. Otherwise it is intercepted
+ * (sentinel becomes tabindex=0 while focus is inside, so the trap redirects):
+ *   - trap boundary (neighbor wraps to the other DOM side),
+ *   - a non-iframe (normal) slot neighbor, or
+ *   - a non-DOM-adjacent or non-enterable iframe neighbor.
+ */
+export function deriveIntercept(params: {
+  slotName: string;
+  cycleOrder: string[];
+  getElements: () => Record<string, HTMLElement | undefined>;
+  /** Slot names that are iframe-slots, with current enterable state. */
+  iframeSlots: Record<string, { enterable: boolean } | undefined>;
+}): { forward: boolean; reverse: boolean } {
+  const { slotName, cycleOrder, getElements, iframeSlots } = params;
+  const elements = getElements();
+  const self = elements[slotName];
+
+  const neighborFlows = (direction: 1 | -1): boolean => {
+    if (!self) return false; // no element → safest is to intercept
+    const fakeStrategy = { getElements } as FocusTrapStrategy;
+    const fromIndex = cycleOrder.indexOf(slotName);
+    if (fromIndex === -1) return false;
+    const neighborIdx = findNextSlot(
+      fromIndex,
+      direction,
+      cycleOrder,
+      fakeStrategy,
+    );
+    const neighborName = cycleOrder[neighborIdx];
+    if (neighborName === slotName) return false; // single-slot trap → intercept
+    const neighbor = iframeSlots[neighborName];
+    if (!neighbor || !neighbor.enterable) return false; // normal / locked
+    const neighborEl = elements[neighborName];
+    if (!neighborEl) return false;
+    // DOM adjacency in the travel direction: forward neighbor must FOLLOW
+    // self in DOM; reverse neighbor must PRECEDE it. A wrap-boundary neighbor
+    // sits on the wrong DOM side and is therefore intercepted.
+    const pos = self.compareDocumentPosition(neighborEl);
+    const follows = (pos & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    const precedes = (pos & Node.DOCUMENT_POSITION_PRECEDING) !== 0;
+    return direction === 1 ? follows : precedes;
+  };
+
+  return {
+    forward: !neighborFlows(1),
+    reverse: !neighborFlows(-1),
+  };
+}
+
 export function findNextFocusableOutside(
   container: HTMLElement,
   reverse: boolean,
