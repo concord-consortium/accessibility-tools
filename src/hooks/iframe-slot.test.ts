@@ -158,3 +158,64 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     expect(slot.getSentinels()).toEqual({ before, after });
   });
 });
+
+describe("IframeSlot transport translation", () => {
+  function transportSetup() {
+    let handler: ((m: import("./focus-messages").FocusMessage) => void) | null =
+      null;
+    const send = vi.fn();
+    const transport = {
+      send,
+      onMessage: (cb: (m: import("./focus-messages").FocusMessage) => void) => {
+        handler = cb;
+        return () => {
+          handler = null;
+        };
+      },
+    };
+    const onRequestExit = vi.fn();
+    const base = setup({ transport, onRequestExit });
+    return {
+      ...base,
+      send,
+      onRequestExit,
+      emit: (m: import("./focus-messages").FocusMessage) => handler?.(m),
+    };
+  }
+
+  it("inbound focusExit forward/reverse → onExit(±1)", () => {
+    const { emit, onExit } = transportSetup();
+    emit({ type: "focusExit", mode: "forward" });
+    expect(onExit).toHaveBeenCalledWith(1);
+    emit({ type: "focusExit", mode: "reverse" });
+    expect(onExit).toHaveBeenCalledWith(-1);
+  });
+
+  it("inbound focusExit escape → onRequestExit", () => {
+    const { emit, onRequestExit } = transportSetup();
+    emit({ type: "focusExit", mode: "escape" });
+    expect(onRequestExit).toHaveBeenCalled();
+  });
+
+  it("inbound capability marks cooperating (focusContent sends focusEnter)", () => {
+    const { emit, slot, send } = transportSetup();
+    emit({ type: "capability", focusProtocol: true });
+    slot.focusContent({ entryMode: "reverse", viaKeydown: false });
+    expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "reverse" });
+  });
+
+  it("requestRestore sends focusEnter{restore} when cooperating", () => {
+    const { emit, slot, send } = transportSetup();
+    emit({ type: "capability", focusProtocol: true });
+    slot.requestRestore();
+    expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "restore" });
+  });
+
+  it("requestRestore falls back to forward landing when not cooperating", () => {
+    const { slot, before } = transportSetup();
+    vi.spyOn(before, "focus");
+    slot.requestRestore();
+    expect(before.getAttribute("data-landing")).toBe("");
+    expect(before.focus).toHaveBeenCalled();
+  });
+});
