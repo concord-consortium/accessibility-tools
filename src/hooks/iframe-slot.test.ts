@@ -83,3 +83,26 @@ describe("IframeSlot sentinel tabindex toggling", () => {
     expect(before.getAttribute("tabindex")).toBe("0"); // intercept reverse
   });
 });
+
+describe("IframeSlot sentinel focusin exit", () => {
+  it("after-sentinel focusin while inside → onExit(+1)", () => {
+    const { iframe, after, onExit } = setup();
+    iframe.dispatchEvent(new FocusEvent("focus")); // inside = true
+    after.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(onExit).toHaveBeenCalledWith(1);
+  });
+
+  it("before-sentinel focusin while inside → onExit(-1)", () => {
+    const { iframe, before, onExit } = setup();
+    iframe.dispatchEvent(new FocusEvent("focus"));
+    before.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(onExit).toHaveBeenCalledWith(-1);
+  });
+
+  it("sentinel focusin while OUTSIDE (landing rest) does NOT exit", () => {
+    const { before, onExit } = setup();
+    // inside is false (no iframe focus dispatched)
+    before.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(onExit).not.toHaveBeenCalled();
+  });
+});

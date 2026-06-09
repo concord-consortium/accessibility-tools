@@ -110,6 +110,12 @@ export class IframeSlot {
     this.applyTabindex();
   }
 
-  // Placeholder; fully implemented in Task 10.
-  private handleSentinelFocusIn(_direction: 1 | -1): void {}
+  private handleSentinelFocusIn(direction: 1 | -1): void {
+    // A sentinel firing while focus is INSIDE the iframe is an exit: native Tab
+    // walked out of the iframe and landed on the (tabbable) sentinel. Redirect
+    // synchronously via the trap. Direction is purely which sentinel fired.
+    // A focusin while OUTSIDE is a landing rest — leave it alone (§3).
+    if (!this.inside) return;
+    this.options.onExit(direction);
+  }
 }
