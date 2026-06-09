@@ -243,7 +243,13 @@ Responsibilities:
     with no live keydown): focus the directional sentinel and toggle it to its
     **visible + labeled** state (a `data-landing`/class the host styles, plus a
     host-supplied "Press Tab to enter …" label). Focus *rests*; the user's next
-    Tab descends (see the trap rule below). See [§4](#4-programmatic-entry-and-multiple-iframe-slots).
+    Tab descends (see the trap rule below). The hint is a "focus-is-here"
+    affordance, so it lives exactly as long as the sentinel holds focus: it is
+    cleared the moment focus leaves the sentinel — whether by descending into the
+    iframe (handled on iframe entry) **or** by leaving without descending (Escape /
+    trap exit, click away), which the slot catches with a `focusout` listener on
+    each sentinel. Without that, an Escape on a resting sentinel would leave the
+    hint stuck visible. See [§4](#4-programmatic-entry-and-multiple-iframe-slots).
 - **Drive the trap's "Tab from a resting sentinel" rule.** When a *parent* Tab
   keydown fires while the current slot is this iframe-slot, focus must be on one
   of its sentinels (the only parent-focusable elements it owns). The trap then
@@ -528,6 +534,9 @@ In-repo (jsdom) unit tests:
   `focusInsideIframe === false` (landing), a forward Tab skips `preventDefault`
   and clears `data-landing`; a forward Tab on the after-sentinel `preventDefault`s
   and cycles to the next slot; Shift+Tab mirrors both.
+- **Landing hint clears on focus-out:** after a landing sets `data-landing`, a
+  `focusout` dispatched on the sentinel (focus leaving without descent — Escape /
+  trap exit, click away) clears `data-landing`, on both before- and after-sentinels.
 - Transport translation against a **mock transport**: inbound `focusExit {
   forward | reverse | escape }` and `capability`; outbound `focusEnter { restore
   }` on `requestRestore()`.

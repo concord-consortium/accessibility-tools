@@ -46,6 +46,11 @@ export class IframeSlot {
   private boundIframeBlur = () => this.handleIframeBlur();
   private boundBeforeFocusIn = () => this.handleSentinelFocusIn(-1);
   private boundAfterFocusIn = () => this.handleSentinelFocusIn(1);
+  // The landing hint is a "focus rests here — press Tab to enter" affordance, so
+  // it must only show while a sentinel is focused. Clear it whenever focus
+  // leaves a sentinel for any reason other than descent (Escape/trap exit, click
+  // away). Descent also clears via handleIframeFocus, so this is idempotent.
+  private boundSentinelFocusOut = () => this.clearLanding();
   // Native Tab descent does NOT fire focus/blur on the iframe ELEMENT, so we
   // also track entry/exit from the top window's blur/focus (§ below).
   private boundWindowFocusChange = () => this.scheduleInsideSync();
@@ -64,12 +69,12 @@ export class IframeSlot {
     const iframe = this.options.getIframe();
     iframe?.addEventListener("focus", this.boundIframeFocus);
     iframe?.addEventListener("blur", this.boundIframeBlur);
-    this.options
-      .getBeforeSentinel()
-      ?.addEventListener("focusin", this.boundBeforeFocusIn);
-    this.options
-      .getAfterSentinel()
-      ?.addEventListener("focusin", this.boundAfterFocusIn);
+    const beforeSentinel = this.options.getBeforeSentinel();
+    const afterSentinel = this.options.getAfterSentinel();
+    beforeSentinel?.addEventListener("focusin", this.boundBeforeFocusIn);
+    afterSentinel?.addEventListener("focusin", this.boundAfterFocusIn);
+    beforeSentinel?.addEventListener("focusout", this.boundSentinelFocusOut);
+    afterSentinel?.addEventListener("focusout", this.boundSentinelFocusOut);
     if (typeof window !== "undefined") {
       window.addEventListener("blur", this.boundWindowFocusChange);
       window.addEventListener("focus", this.boundWindowFocusChange);
@@ -89,12 +94,12 @@ export class IframeSlot {
     const iframe = this.options.getIframe();
     iframe?.removeEventListener("focus", this.boundIframeFocus);
     iframe?.removeEventListener("blur", this.boundIframeBlur);
-    this.options
-      .getBeforeSentinel()
-      ?.removeEventListener("focusin", this.boundBeforeFocusIn);
-    this.options
-      .getAfterSentinel()
-      ?.removeEventListener("focusin", this.boundAfterFocusIn);
+    const beforeSentinel = this.options.getBeforeSentinel();
+    const afterSentinel = this.options.getAfterSentinel();
+    beforeSentinel?.removeEventListener("focusin", this.boundBeforeFocusIn);
+    afterSentinel?.removeEventListener("focusin", this.boundAfterFocusIn);
+    beforeSentinel?.removeEventListener("focusout", this.boundSentinelFocusOut);
+    afterSentinel?.removeEventListener("focusout", this.boundSentinelFocusOut);
     if (typeof window !== "undefined") {
       window.removeEventListener("blur", this.boundWindowFocusChange);
       window.removeEventListener("focus", this.boundWindowFocusChange);

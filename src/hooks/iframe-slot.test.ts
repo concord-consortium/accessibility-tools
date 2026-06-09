@@ -253,6 +253,24 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     expect(before.hasAttribute("data-landing")).toBe(false);
   });
 
+  it("clears the landing hint when focus leaves the sentinel (e.g. Escape / trap exit)", () => {
+    const { slot, before } = setup();
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(before.getAttribute("data-landing")).toBe("");
+    // Focus leaves the sentinel for a host element (trap exit, click away, …)
+    // WITHOUT descending into the iframe — the hint must not linger.
+    before.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    expect(before.hasAttribute("data-landing")).toBe(false);
+  });
+
+  it("clears the reverse landing hint on after-sentinel focusout", () => {
+    const { slot, after } = setup();
+    slot.focusContent({ entryMode: "reverse", trigger: "programmatic" });
+    expect(after.getAttribute("data-landing")).toBe("");
+    after.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    expect(after.hasAttribute("data-landing")).toBe(false);
+  });
+
   it("entering the iframe clears data-landing", () => {
     const { slot, iframe, before } = setup();
     slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
