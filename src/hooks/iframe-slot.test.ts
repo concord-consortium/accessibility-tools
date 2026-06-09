@@ -106,3 +106,55 @@ describe("IframeSlot sentinel focusin exit", () => {
     expect(onExit).not.toHaveBeenCalled();
   });
 });
+
+describe("IframeSlot focusContent modes + getSentinels", () => {
+  it("positioner mode focuses the before-sentinel and sets no landing", () => {
+    const { slot, before } = setup();
+    vi.spyOn(before, "focus");
+    const handled = slot.focusContent({
+      entryMode: "forward",
+      viaKeydown: true,
+    });
+    expect(handled).toBe(true);
+    expect(before.focus).toHaveBeenCalled();
+    expect(before.hasAttribute("data-landing")).toBe(false);
+  });
+
+  it("positioner reverse focuses the after-sentinel", () => {
+    const { slot, after } = setup();
+    vi.spyOn(after, "focus");
+    slot.focusContent({ entryMode: "reverse", viaKeydown: true });
+    expect(after.focus).toHaveBeenCalled();
+  });
+
+  it("landing mode (non-cooperating) focuses sentinel + sets data-landing", () => {
+    const { slot, before } = setup();
+    vi.spyOn(before, "focus");
+    slot.focusContent({ entryMode: "forward", viaKeydown: false });
+    expect(before.focus).toHaveBeenCalled();
+    expect(before.getAttribute("data-landing")).toBe("");
+  });
+
+  it("landing mode (cooperating) sends focusEnter and sets no landing", () => {
+    const send = vi.fn();
+    const transport = { send, onMessage: () => () => {} };
+    const { slot, before } = setup({ transport });
+    slot.notifyCapability(true); // mark cooperating
+    slot.focusContent({ entryMode: "forward", viaKeydown: false });
+    expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "forward" });
+    expect(before.hasAttribute("data-landing")).toBe(false);
+  });
+
+  it("entering the iframe clears data-landing", () => {
+    const { slot, iframe, before } = setup();
+    slot.focusContent({ entryMode: "forward", viaKeydown: false });
+    expect(before.hasAttribute("data-landing")).toBe(true);
+    iframe.dispatchEvent(new FocusEvent("focus"));
+    expect(before.hasAttribute("data-landing")).toBe(false);
+  });
+
+  it("getSentinels returns the before/after pair", () => {
+    const { slot, before, after } = setup();
+    expect(slot.getSentinels()).toEqual({ before, after });
+  });
+});
