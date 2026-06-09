@@ -87,5 +87,7 @@ export function useFocusTrap(
     isTrapped,
     enterTrap: () => controllerRef.current?.enterTrap(),
     exitTrap: () => controllerRef.current?.exitTrap(),
+    cycleToAdjacentSlot: (direction: 1 | -1) =>
+      controllerRef.current?.cycleToAdjacentSlot(direction),
   };
 }

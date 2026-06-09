@@ -467,7 +467,7 @@ describe("FocusTrapController", () => {
     pressKey("Tab");
     expect(focusContent).toHaveBeenLastCalledWith({
       entryMode: "forward",
-      viaKeydown: true,
+      trigger: "sequentialNavigation",
     });
 
     // Reverse entry into content from toolbar:
@@ -475,7 +475,7 @@ describe("FocusTrapController", () => {
     pressKey("Tab", { shiftKey: true });
     expect(focusContent).toHaveBeenLastCalledWith({
       entryMode: "reverse",
-      viaKeydown: true,
+      trigger: "sequentialNavigation",
     });
   });
 
@@ -642,7 +642,7 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
     const e = pressKey("Tab");
     expect(focusContent).toHaveBeenCalledWith({
       entryMode: "forward",
-      viaKeydown: true,
+      trigger: "sequentialNavigation",
     });
     expect(e.defaultPrevented).toBe(false);
   });
@@ -669,11 +669,11 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
     controller.enterTrap();
 
     // enterTrap is a programmatic entry (no pending Tab default), so entering a
-    // content slot must use landing mode (viaKeydown: false), not positioner —
+    // content slot must use landing mode (trigger: "programmatic"), not positioner —
     // otherwise focus rests silently on the invisible sentinel with no hint.
     expect(focusContent).toHaveBeenCalledWith({
       entryMode: "forward",
-      viaKeydown: false,
+      trigger: "programmatic",
     });
   });
 

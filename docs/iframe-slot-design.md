@@ -345,8 +345,11 @@ initial slot focus it performs likewise enters a content slot in **landing**
 mode; otherwise focus would rest silently on the invisible before-sentinel with
 no hint. (The live-Tab *engage* paths don't run through `enterTrap`, so
 positioner there is unaffected.) The trap signals positioner vs landing by
-extending `FocusContentContext` with the trigger (e.g. `viaKeydown: boolean`)
-alongside the existing `entryMode`.
+extending `FocusContentContext` with a `trigger`
+(`"sequentialNavigation" | "programmatic"`) alongside the existing `entryMode`.
+The name describes the browser-navigation function, not the literal key — an
+Enter/click that engages the trap is `"programmatic"`, because it carries no
+pending native focus advance to descend with.
 
 **React wiring and the build-order cycle.** The strategy passed to
 `useFocusTrap` must reference the iframe-slot's `focusContent`; the iframe-slot's
@@ -489,8 +492,9 @@ In-repo (jsdom) unit tests:
 - `getIntercept` derivation from `cycleOrder` + DOM order: adjacent enterable
   iframe neighbor → not intercepted; trap boundary, normal-slot neighbor, or
   `tabindex=-1` (content-only) iframe neighbor → intercepted.
-- **Positioner vs landing selection:** `focusContent` with `viaKeydown: true`
-  focuses the sentinel and leaves `data-landing` unset; `cycleToAdjacentSlot`
+- **Positioner vs landing selection:** `focusContent` with
+  `trigger: "sequentialNavigation"` focuses the sentinel and leaves
+  `data-landing` unset; `cycleToAdjacentSlot`
   into a non-cooperating iframe-slot focuses the directional sentinel and **sets**
   `data-landing` (the visible-hint state). Cooperating entry sends `focusEnter {
   forward | reverse | restore }` and sets no landing state.

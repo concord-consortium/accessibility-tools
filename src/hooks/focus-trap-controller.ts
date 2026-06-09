@@ -29,7 +29,11 @@ import {
   getVisibleFocusables,
   pickSlotEntryTarget,
 } from "./dom-utils";
-import type { FocusTrapEvent, FocusTrapStrategy } from "./types";
+import type {
+  FocusContentTrigger,
+  FocusTrapEvent,
+  FocusTrapStrategy,
+} from "./types";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
 
@@ -177,11 +181,11 @@ export class FocusTrapController {
     if (this.destroyed || !this.enabled) return;
     this.activateTrap({ announce: true });
     // enterTrap is a programmatic entry (no pending Tab default to descend
-    // with), so a content slot must enter in landing mode (viaKeydown = false)
-    // rather than positioner — otherwise focus rests silently on the invisible
-    // sentinel with no hint. Live-Tab engage paths use focusEntrySlot() with the
-    // positioner default and are unaffected.
-    this.focusEntrySlot(false, false);
+    // with), so a content slot must enter in landing mode (trigger
+    // "programmatic") rather than positioner — otherwise focus rests silently on
+    // the invisible sentinel with no hint. Live-Tab engage paths use
+    // focusEntrySlot() with the positioner default and are unaffected.
+    this.focusEntrySlot(false, "programmatic");
   }
 
   exitTrap(): void {
@@ -199,8 +203,8 @@ export class FocusTrapController {
     const reverse = direction === -1;
     const nextIndex = this.findNextSlot(this.slotIndex, direction);
     this.slotIndex = nextIndex;
-    // Programmatic entry: viaKeydown=false ⇒ a nativeTabSlot uses landing.
-    this.focusSlot(this.cycleOrder[nextIndex], reverse, false);
+    // Programmatic entry: trigger "programmatic" ⇒ a nativeTabSlot uses landing.
+    this.focusSlot(this.cycleOrder[nextIndex], reverse, "programmatic");
   }
 
   destroy(): void {
@@ -374,7 +378,11 @@ export class FocusTrapController {
         const direction: 1 | -1 = reverse ? -1 : 1;
         const nextIndex = this.findNextSlot(this.slotIndex, direction);
         this.slotIndex = nextIndex;
-        this.focusSlot(this.cycleOrder[nextIndex], reverse, true);
+        this.focusSlot(
+          this.cycleOrder[nextIndex],
+          reverse,
+          "sequentialNavigation",
+        );
         return;
       }
 
@@ -391,7 +399,7 @@ export class FocusTrapController {
         const nextSlotName = this.cycleOrder[nextIndex];
         if (!(this.strategy.nativeTabSlots ?? []).includes(nextSlotName))
           e.preventDefault();
-        this.focusSlot(nextSlotName, reverse, true);
+        this.focusSlot(nextSlotName, reverse, "sequentialNavigation");
         this.emit("cycle", nextSlotName);
         return;
       }
@@ -425,7 +433,7 @@ export class FocusTrapController {
       const nextSlotName = this.cycleOrder[nextIndex];
       if (!(this.strategy.nativeTabSlots ?? []).includes(nextSlotName))
         e.preventDefault();
-      this.focusSlot(nextSlotName, reverse, true);
+      this.focusSlot(nextSlotName, reverse, "sequentialNavigation");
       this.emit("cycle", nextSlotName);
     }
   }
@@ -435,7 +443,10 @@ export class FocusTrapController {
    * in cycle order, or the last when entering in reverse (Shift+Tab). Syncs
    * slotIndex to the chosen slot.
    */
-  private focusEntrySlot(reverse = false, viaKeydown = true): void {
+  private focusEntrySlot(
+    reverse = false,
+    trigger: FocusContentTrigger = "sequentialNavigation",
+  ): void {
     const elements = this.strategy.getElements();
     const order = this.cycleOrder;
     const start = reverse ? order.length - 1 : 0;
@@ -444,7 +455,7 @@ export class FocusTrapController {
     for (let i = start; i !== end; i += step) {
       if (elements[order[i]]) {
         this.slotIndex = i;
-        this.focusSlot(order[i], reverse, viaKeydown);
+        this.focusSlot(order[i], reverse, trigger);
         return;
       }
     }
@@ -453,13 +464,13 @@ export class FocusTrapController {
   private focusSlot(
     slotName: string,
     reverse = false,
-    viaKeydown = true,
+    trigger: FocusContentTrigger = "sequentialNavigation",
   ): void {
     const contentSlot = this.strategy.contentSlot ?? "content";
     const entryMode = reverse ? "reverse" : "forward";
     if (
       slotName === contentSlot &&
-      this.strategy.focusContent?.({ entryMode, viaKeydown })
+      this.strategy.focusContent?.({ entryMode, trigger })
     )
       return;
 

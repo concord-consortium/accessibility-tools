@@ -113,7 +113,7 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     vi.spyOn(before, "focus");
     const handled = slot.focusContent({
       entryMode: "forward",
-      viaKeydown: true,
+      trigger: "sequentialNavigation",
     });
     expect(handled).toBe(true);
     expect(before.focus).toHaveBeenCalled();
@@ -123,14 +123,17 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
   it("positioner reverse focuses the after-sentinel", () => {
     const { slot, after } = setup();
     vi.spyOn(after, "focus");
-    slot.focusContent({ entryMode: "reverse", viaKeydown: true });
+    slot.focusContent({
+      entryMode: "reverse",
+      trigger: "sequentialNavigation",
+    });
     expect(after.focus).toHaveBeenCalled();
   });
 
   it("landing mode (non-cooperating) focuses sentinel + sets data-landing", () => {
     const { slot, before } = setup();
     vi.spyOn(before, "focus");
-    slot.focusContent({ entryMode: "forward", viaKeydown: false });
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
     expect(before.focus).toHaveBeenCalled();
     expect(before.getAttribute("data-landing")).toBe("");
   });
@@ -140,14 +143,14 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     const transport = { send, onMessage: () => () => {} };
     const { slot, before } = setup({ transport });
     slot.notifyCapability(true); // mark cooperating
-    slot.focusContent({ entryMode: "forward", viaKeydown: false });
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
     expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "forward" });
     expect(before.hasAttribute("data-landing")).toBe(false);
   });
 
   it("entering the iframe clears data-landing", () => {
     const { slot, iframe, before } = setup();
-    slot.focusContent({ entryMode: "forward", viaKeydown: false });
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
     expect(before.hasAttribute("data-landing")).toBe(true);
     iframe.dispatchEvent(new FocusEvent("focus"));
     expect(before.hasAttribute("data-landing")).toBe(false);
@@ -200,7 +203,7 @@ describe("IframeSlot transport translation", () => {
   it("inbound capability marks cooperating (focusContent sends focusEnter)", () => {
     const { emit, slot, send } = transportSetup();
     emit({ type: "capability", focusProtocol: true });
-    slot.focusContent({ entryMode: "reverse", viaKeydown: false });
+    slot.focusContent({ entryMode: "reverse", trigger: "programmatic" });
     expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "reverse" });
   });
 
