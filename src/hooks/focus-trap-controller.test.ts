@@ -647,6 +647,36 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
     expect(e.defaultPrevented).toBe(false);
   });
 
+  it("enters a content slot in LANDING mode on enterTrap (programmatic, not positioner)", () => {
+    const container = makeContainer();
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+
+    // enterTrap is a programmatic entry (no pending Tab default), so entering a
+    // content slot must use landing mode (viaKeydown: false), not positioner —
+    // otherwise focus rests silently on the invisible sentinel with no hint.
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      viaKeydown: false,
+    });
+  });
+
   it("resting-sentinel: forward Tab on after-sentinel cycles", () => {
     const container = makeContainer();
     const title = document.createElement("input");

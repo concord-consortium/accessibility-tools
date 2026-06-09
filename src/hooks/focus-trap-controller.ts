@@ -176,7 +176,12 @@ export class FocusTrapController {
   enterTrap(): void {
     if (this.destroyed || !this.enabled) return;
     this.activateTrap({ announce: true });
-    this.focusEntrySlot();
+    // enterTrap is a programmatic entry (no pending Tab default to descend
+    // with), so a content slot must enter in landing mode (viaKeydown = false)
+    // rather than positioner — otherwise focus rests silently on the invisible
+    // sentinel with no hint. Live-Tab engage paths use focusEntrySlot() with the
+    // positioner default and are unaffected.
+    this.focusEntrySlot(false, false);
   }
 
   exitTrap(): void {
@@ -430,7 +435,7 @@ export class FocusTrapController {
    * in cycle order, or the last when entering in reverse (Shift+Tab). Syncs
    * slotIndex to the chosen slot.
    */
-  private focusEntrySlot(reverse = false): void {
+  private focusEntrySlot(reverse = false, viaKeydown = true): void {
     const elements = this.strategy.getElements();
     const order = this.cycleOrder;
     const start = reverse ? order.length - 1 : 0;
@@ -439,7 +444,7 @@ export class FocusTrapController {
     for (let i = start; i !== end; i += step) {
       if (elements[order[i]]) {
         this.slotIndex = i;
-        this.focusSlot(order[i], reverse);
+        this.focusSlot(order[i], reverse, viaKeydown);
         return;
       }
     }
