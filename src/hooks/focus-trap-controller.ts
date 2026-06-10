@@ -188,14 +188,25 @@ export class FocusTrapController {
     this.focusEntrySlot(false, "programmatic");
   }
 
-  exitTrap(): void {
+  /**
+   * Release the trap and fire `onExit`.
+   *
+   * By default focus is returned to the container — correct for a keyboard exit
+   * (Escape) where focus was inside the trap and must land somewhere visible.
+   * Pass `{ refocus: false }` when the host is releasing because focus has
+   * *already* left the container (e.g. the user clicked a control outside an
+   * inline, non-modal trap): refocusing would yank focus back from where the
+   * user just put it. Modality is the host's policy — see docs/trap-composition.md.
+   */
+  exitTrap(options?: { refocus?: boolean }): void {
     if (this.destroyed) return;
+    const refocus = options?.refocus ?? true;
     this.setTrapped(false);
     this.setChildrenNonTabbable();
     this.strategy.onExit?.();
     announce(this.strategy.announceExit);
     this.emit("exit");
-    this.container.focus();
+    if (refocus) this.container.focus();
   }
 
   cycleToAdjacentSlot(direction: 1 | -1): void {

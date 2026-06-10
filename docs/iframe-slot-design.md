@@ -69,6 +69,9 @@ detect when it crosses the boundary.
   focus-message vocabulary** (`FocusMessage`).
 - Extending `setChildrenNonTabbable` so the iframe-slot is excluded from the
   `tabindex` sweep.
+- An **opt-out of exit-refocus** (`exitTrap({ refocus: false })`) so a host can
+  release the trap without yanking focus back to the container when focus has
+  already legitimately left it (§9). Not iframe-specific, but it ships here.
 
 ### This library does not own (and must not depend on)
 
@@ -497,6 +500,39 @@ toggled `tabindex`. This keeps the AP-108 rule intact: the iframe element's
 `tabIndex` is set by static host properties (locked / content-only) and is never
 mutated by the focus system.
 
+### 9. Exit without refocus (host-driven release on outside click)
+
+> **Not iframe-specific.** This is a general trap-lifecycle change that rides
+> along in this PR because the same hosts hit it. Recorded here so the PR is
+> self-documenting; the underlying modality policy lives in
+> [trap-composition.md](trap-composition.md).
+
+`exitTrap()` historically did one thing on release: fire `onExit`, then
+`container.focus()` to pull focus back to the trap container. That is right for a
+**keyboard exit** (Escape) — focus was *inside* the trap, so on release it must
+land somewhere visible rather than vanish to `document.body`.
+
+It is **wrong** when the host releases the trap *because focus has already left
+the container* — the user clicked a control outside an inline, non-modal trap.
+That click is the host's to handle (the library never sees it), but the host must
+also tell the trap to stand down; if `exitTrap` then refocuses, it yanks focus
+back from exactly where the user just put it.
+
+**Change:** `exitTrap` takes an optional `{ refocus?: boolean }` (default `true`,
+preserving Escape behavior). The host passes `{ refocus: false }` when it is
+releasing in response to focus having moved out:
+
+```ts
+exitTrap(options?: { refocus?: boolean }): void;
+```
+
+Everything else — `trapped = false`, `setChildrenNonTabbable()`, `onExit`,
+`announceExit` — is unchanged; only the final `container.focus()` becomes
+conditional. Whether a given trap is modal (refocus / focus-guard) or inline
+(let focus leave) is the **host's** policy, not the library's. This lands on
+`FocusTrapController`; the `useFocusTrap` `exitTrap` can mirror the option if a
+hook consumer needs it.
+
 ## Testing
 
 `accessibility-tools` is tested with **vitest + jsdom**. jsdom cannot perform
@@ -544,6 +580,9 @@ In-repo (jsdom) unit tests:
   on both `useFocusTrap` and `FocusTrapController`.
 - `setChildrenNonTabbable` leaves the iframe-slot wrapper, the iframe, and the
   sentinels untouched.
+- **Exit refocus opt-out (§9):** `exitTrap()` releases and refocuses the container
+  (spy on `container.focus`); `exitTrap({ refocus: false })` releases and fires
+  `onExit` but does **not** refocus the container.
 - **React stability:** the library writes `tabindex`/`data-landing` via
   `setAttribute` (assert the host's render never sets them); and a host re-render
   while focus rests on a landing sentinel keeps the **same** DOM node
