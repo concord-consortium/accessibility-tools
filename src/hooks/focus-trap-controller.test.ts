@@ -291,6 +291,47 @@ describe("FocusTrapController", () => {
     expect(container.focus).toHaveBeenCalled();
   });
 
+  it("exitTrap({ refocus: false }) releases without refocusing the container", () => {
+    const container = makeContainer();
+    vi.spyOn(container, "focus");
+    const onExit = vi.fn();
+    const title = document.createElement("input");
+    container.appendChild(title);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      cycleOrder: ["title"],
+      onExit,
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+    expect(controller.isTrapped).toBe(true);
+
+    // The host releases the trap because focus has legitimately left the
+    // container (e.g. user clicked outside) — stealing focus back would be wrong.
+    controller.exitTrap({ refocus: false });
+
+    expect(controller.isTrapped).toBe(false);
+    expect(onExit).toHaveBeenCalledOnce();
+    expect(container.focus).not.toHaveBeenCalled();
+  });
+
+  it("exitTrap() still refocuses the container by default", () => {
+    const container = makeContainer();
+    vi.spyOn(container, "focus");
+    const title = document.createElement("input");
+    container.appendChild(title);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      cycleOrder: ["title"],
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+    controller.enterTrap();
+    controller.exitTrap();
+    expect(container.focus).toHaveBeenCalled();
+  });
+
   it("destroy removes listeners and cleans up", () => {
     const container = makeContainer();
     const strategy: FocusTrapStrategy = {
