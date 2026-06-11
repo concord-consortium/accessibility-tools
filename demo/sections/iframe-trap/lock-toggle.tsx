@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
 import { createIframeSlotRegistry } from "../../../src/hooks/iframe-slot-registry";
 import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
@@ -65,12 +65,16 @@ export function LockToggleScenario() {
   const trap = useFocusTrap({ containerRef, strategy });
   trapRef.current = trap;
 
-  const toggleLock = () => {
-    setLocked((v) => !v);
-    // The library reads tabindex live; tell the registry membership-state changed
-    // so each slot re-derives its intercept directions.
+  // Re-derive intercepts AFTER React commits the new iframe tabindex to the DOM
+  // (the registry reads tabindex live, so notifying synchronously in the click
+  // handler would read the stale value). `locked` drives the commit we react to,
+  // even though it isn't read inside the effect body.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: locked triggers the post-commit notify
+  useEffect(() => {
     registry.notifyChange();
-  };
+  }, [locked, registry]);
+
+  const toggleLock = () => setLocked((v) => !v);
 
   return (
     <section>
