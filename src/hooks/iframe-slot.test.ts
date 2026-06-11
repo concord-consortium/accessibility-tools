@@ -279,6 +279,30 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     expect(before.hasAttribute("data-landing")).toBe(false);
   });
 
+  it("keeps the landing hint when entering from an already-focused (leaving) sentinel", () => {
+    // Single-slot wrap: native Tab out lands on the after-sentinel, then the
+    // trap programmatically lands on the before-sentinel. Focusing the
+    // before-sentinel blurs the after-sentinel, firing after's focusout — which
+    // must NOT wipe the landing hint we just set on the before-sentinel.
+    const { slot, before, after } = setup();
+    after.focus();
+    expect(document.activeElement).toBe(after);
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(document.activeElement).toBe(before);
+    expect(before.getAttribute("data-landing")).toBe("");
+  });
+
+  it("does not read its own landing focus as an exit when inside is still true", () => {
+    // On a wrap the trap lands focus on a sentinel while `inside` is still true
+    // (the window-focus sync is deferred). The focusin from our own focus() must
+    // NOT be mistaken for another native exit.
+    const onExit = vi.fn();
+    const { slot, iframe } = setup({ onExit });
+    iframe.dispatchEvent(new FocusEvent("focus")); // inside = true
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(onExit).not.toHaveBeenCalled();
+  });
+
   it("getSentinels returns the before/after pair", () => {
     const { slot, before, after } = setup();
     expect(slot.getSentinels()).toEqual({ before, after });

@@ -40,6 +40,12 @@ export class IframeSlot {
   private cooperating = false;
   private unsubscribeTransport: (() => void) | null = null;
   private insideSyncTimer: ReturnType<typeof setTimeout> | null = null;
+  // True while WE are programmatically focusing a sentinel. The sentinel
+  // focusin/focusout handlers below react to USER/native focus changes (detect
+  // an exit; clear the landing hint) — they must ignore our own focus moves,
+  // which would otherwise wipe a landing hint as we set it (focusing the
+  // entering sentinel blurs the leaving one) or mis-read a self-inflicted exit.
+  private movingFocus = false;
 
   // Bound listeners for clean add/remove.
   private boundIframeFocus = () => this.handleIframeFocus();
@@ -50,7 +56,7 @@ export class IframeSlot {
   // it must only show while a sentinel is focused. Clear it whenever focus
   // leaves a sentinel for any reason other than descent (Escape/trap exit, click
   // away). Descent also clears via handleIframeFocus, so this is idempotent.
-  private boundSentinelFocusOut = () => this.clearLanding();
+  private boundSentinelFocusOut = () => this.handleSentinelFocusOut();
   // Native Tab descent does NOT fire focus/blur on the iframe ELEMENT, so we
   // also track entry/exit from the top window's blur/focus (§ below).
   private boundWindowFocusChange = () => this.scheduleInsideSync();
@@ -170,12 +176,38 @@ export class IframeSlot {
   }
 
   private handleSentinelFocusIn(direction: 1 | -1): void {
+    // Ignore the focusin caused by our own landing/positioner focus() — that is
+    // us placing focus, not the user walking out of the iframe.
+    if (this.movingFocus) return;
     // A sentinel firing while focus is INSIDE the iframe is an exit: native Tab
     // walked out of the iframe and landed on the (tabbable) sentinel. Redirect
     // synchronously via the trap. Direction is purely which sentinel fired.
     // A focusin while OUTSIDE is a landing rest — leave it alone (§3).
     if (!this.inside) return;
     this.options.onExit(direction);
+  }
+
+  private handleSentinelFocusOut(): void {
+    // Ignore the focusout caused by our own focus move between sentinels (we are
+    // establishing a landing, not leaving it). A genuine leave (Escape/trap
+    // exit, click away, descent) happens with movingFocus === false.
+    if (this.movingFocus) return;
+    this.clearLanding();
+  }
+
+  /**
+   * Focus a sentinel on the library's behalf. Brackets the synchronous focus
+   * events the `.focus()` dispatches (focusout on the previously-focused
+   * sentinel, focusin on this one) so the sentinel handlers don't treat our own
+   * move as a user exit or clear the landing hint we're in the middle of setting.
+   */
+  private focusSentinel(el: HTMLElement | null): void {
+    this.movingFocus = true;
+    try {
+      el?.focus();
+    } finally {
+      this.movingFocus = false;
+    }
   }
 
   getSentinels(): { before: HTMLElement | null; after: HTMLElement | null } {
@@ -198,7 +230,7 @@ export class IframeSlot {
     if (ctx.trigger === "sequentialNavigation") {
       // Positioner: silent invisible sentinel; the pending Tab default descends.
       this.clearLanding();
-      target?.focus();
+      this.focusSentinel(target);
       return true;
     }
 
@@ -216,7 +248,7 @@ export class IframeSlot {
       if (this.options.enterLabel) {
         target.setAttribute("aria-label", this.options.enterLabel);
       }
-      target.focus();
+      this.focusSentinel(target);
     }
     return true;
   }

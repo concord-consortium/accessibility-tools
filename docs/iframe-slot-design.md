@@ -168,9 +168,11 @@ substantial case; it is specified in [§4](#4-programmatic-entry-and-multiple-if
 **Consequence — capability timing is robust.** Sentinels work regardless of
 cooperation, so the trap's safe default *is* the non-cooperating path. A late or
 never-arriving `focusProtocol` handshake can't break entry/exit; declaring the
-capability only **adds** escape-to-exit and restore. `focusEnter { forward |
-reverse }` remains defined in the vocabulary for completeness and possible
-future precise-placement use, but is unused by v1's host slot.
+capability only **adds** precision on top of the working default — escape-to-exit,
+restore, and `focusEnter { forward | reverse }` for **programmatic** entry, which
+lets a cooperating iframe skip the visible landing sentinel (§4). What stays
+unused is `focusEnter` on the **live-Tab** path: there the positioner + native
+descent already place focus, so the host slot sends no message.
 
 ### 3. The iframe-slot core (framework-agnostic)
 
@@ -253,6 +255,20 @@ Responsibilities:
     trap exit, click away), which the slot catches with a `focusout` listener on
     each sentinel. Without that, an Escape on a resting sentinel would leave the
     hint stuck visible. See [§4](#4-programmatic-entry-and-multiple-iframe-slots).
+- **Distinguish the core's own focus moves from user/native ones.** Both
+  positioner and landing modes call `.focus()` on a sentinel, and that move
+  synchronously fires `focusout` on the previously-focused sentinel and `focusin`
+  on the target — the very events the exit-detection and landing-clear listeners
+  react to. Unguarded, focusing the *entering* sentinel for a landing blurs the
+  *leaving* one, whose `focusout` would wipe the `data-landing` just set (and whose
+  `focusin` could be mis-read as another exit while `focusInsideIframe` is still
+  stale-true). So the core brackets every sentinel `.focus()` it issues with a
+  flag, and the `focusin`/`focusout` handlers ignore events fired during that
+  window. A genuine native exit, an Escape/click-away clear, and a descent all
+  occur with the flag clear, so they are unaffected. This bites hardest on a
+  **single-iframe wrap** — Tab out of the only iframe slot hits its after-sentinel
+  (exit), and `cycleToAdjacentSlot` lands back on its own before-sentinel, so the
+  leaving and entering sentinels are the same slot's.
 - **Drive the trap's "Tab from a resting sentinel" rule.** When a *parent* Tab
   keydown fires while the current slot is this iframe-slot, focus must be on one
   of its sentinels (the only parent-focusable elements it owns). The trap then
@@ -573,6 +589,11 @@ In-repo (jsdom) unit tests:
 - **Landing hint clears on focus-out:** after a landing sets `data-landing`, a
   `focusout` dispatched on the sentinel (focus leaving without descent — Escape /
   trap exit, click away) clears `data-landing`, on both before- and after-sentinels.
+- **Self-focus guard (single-iframe wrap):** with focus already on the leaving
+  sentinel, a programmatic landing on the other sentinel keeps its `data-landing`
+  (the leaving sentinel's `focusout` must not wipe it), and the landing `focusin`
+  does not fire `onExit` even while `focusInsideIframe` is still true. (jsdom does
+  dispatch `focusout`/`focusin` on `.focus()`, so this is exercisable in-repo.)
 - Transport translation against a **mock transport**: inbound `focusExit {
   forward | reverse | escape }` and `capability`; outbound `focusEnter { restore
   }` on `requestRestore()`.
