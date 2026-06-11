@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { AccessibilityProvider } from "../src/hooks";
 import "./demo.css";
 import { CanonicalScenario } from "./sections/iframe-trap/canonical";
+import { LockToggleScenario } from "./sections/iframe-trap/lock-toggle";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
           trap. Tab, Shift+Tab, and Escape to exercise each trap.
         </p>
         <CanonicalScenario />
+        <LockToggleScenario />
       </main>
     </AccessibilityProvider>
   );
