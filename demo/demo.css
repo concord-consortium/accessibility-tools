@@ -110,3 +110,15 @@ body {
 .kitchen-sink p.bad {
   color: #dc2626;
 }
+
+/* Iframe focus-trap test page: reveal the landing hint only while the
+   library has marked a sentinel with data-landing. */
+.sentinel-hint {
+  display: none;
+  font: 12px system-ui;
+  color: #b45309;
+  margin-left: 6px;
+}
+.iframe-sentinel[data-landing] ~ .sentinel-hint {
+  display: inline;
+}
