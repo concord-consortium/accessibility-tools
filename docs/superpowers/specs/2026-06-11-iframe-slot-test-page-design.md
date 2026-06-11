@@ -110,3 +110,56 @@ derived from this.
 - Cooperating-path (transport / postMessage) scenarios. Adding any parent↔iframe
   communication would defeat the non-cooperating purpose; the inner page stays
   dumb.
+
+## Manual verification findings (2026-06-11)
+
+First DevTools-MCP-driven pass through the page (Chrome), using the `localhost`
+parent / `127.0.0.1` cross-origin inner page. The cross-origin load and the
+`data-testid` readout both worked.
+
+### Scenario 1 — Canonical (input → iframe → button): WORKS
+- Enter on the container activates the trap; focus lands on the input.
+- Tab forward: input → descend into the cross-origin iframe → (native tab through
+  the inner controls) → exit to the "After iframe" button → wrap to input.
+- Shift+Tab reverse mirrors this correctly, including reverse descent and exit.
+- Escape releases the trap and returns focus to the container.
+- Observation: clicking *directly into* the cross-origin iframe does NOT activate
+  the trap (`trapped` stays false). Expected — the parent cannot observe focus
+  entering a cross-origin frame via a click. Enter-to-enter and clicking the
+  native controls both activate it fine.
+
+### Scenario 2 — Enterable / locked toggle: WORKS
+- Enterable (tabindex 0): Tab from the input descends into the iframe.
+- Locked (tabindex -1): Tab forward skips the iframe straight to the button, and
+  Shift+Tab reverse skips it back to the input.
+- Integration note surfaced: the host must call `registry.notifyChange()` AFTER
+  React commits the new `tabindex` to the DOM (i.e. in a `useEffect` keyed on the
+  lock state), NOT synchronously in the click handler — the registry reads
+  `tabindex` live, so a synchronous call reads the stale value and the intercept
+  ends up one toggle behind. The demo does it in an effect.
+
+### Scenario 3 — Two adjacent iframes (shared registry): PARTIAL — bugs found
+This scenario surfaced real library issues (the point of the page):
+1. **`FocusTrapStrategy.contentSlot` is singular.** A trap with two iframe slots
+   can designate only one of them as the content slot, so only that one gets a
+   programmatic `focusContent` dispatch. With no `contentSlot` set at all,
+   entering the trap leaves focus stuck on the container (the non-focusable
+   wrapper `<div>` is focused and `focusContent` never runs). The demo works
+   around this by setting `contentSlot: "frameA"`.
+2. With `contentSlot: "frameA"`: programmatic entry works (lands on frameA's
+   before-sentinel in landing mode, then descends), and **native Tab flow from
+   frameA into frameB works** (`document.activeElement` reaches the frameB
+   iframe).
+3. **BUG: forward-exit from frameB (the last slot) does not wrap back to frameA.**
+   Focus escapes the trap entirely and walks out into the rest of the page
+   (observed landing on `body`, then the canonical scenario's iframe). Focus
+   containment fails for the last iframe slot in the multi-iframe case.
+4. **Readout observability limit (not a library bug):** moving directly between
+   two cross-origin iframes fires no parent-observable focus event (window stays
+   blurred, no parent `focusin`), so the readout's "descended into" label cannot
+   track inter-iframe moves. `document.activeElement` is the ground truth and was
+   used for those assertions.
+
+Caveat: cross-origin iframe focus traversal driven by automated key events is
+timing-sensitive; the Scenario 3 escape (finding 3) is worth a manual repro
+before any library fix.
