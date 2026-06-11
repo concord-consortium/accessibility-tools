@@ -3,6 +3,7 @@ import { AccessibilityProvider } from "../src/hooks";
 import "./demo.css";
 import { CanonicalScenario } from "./sections/iframe-trap/canonical";
 import { LockToggleScenario } from "./sections/iframe-trap/lock-toggle";
+import { MultiIframeScenario } from "./sections/iframe-trap/multi-iframe";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         </p>
         <CanonicalScenario />
         <LockToggleScenario />
+        <MultiIframeScenario />
       </main>
     </AccessibilityProvider>
   );
