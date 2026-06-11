@@ -77,6 +77,15 @@ export function MultiIframeScenario() {
     return {
       getElements,
       cycleOrder: CYCLE_ORDER,
+      // FocusTrapStrategy supports only ONE contentSlot, but this trap has two
+      // iframe slots. We designate frameA as the content slot so programmatic
+      // entry (enterTrap, and cycleToAdjacentSlot landing on frameA) dispatches
+      // focusContent for it. frameB has no programmatic focusContent dispatch —
+      // it is reachable via native Tab flow between the adjacent iframes, but
+      // programmatic entry directly into frameB (e.g. reverse-wrap) will not run
+      // its focusContent. This is a known single-contentSlot library limitation
+      // that this scenario deliberately exercises.
+      contentSlot: "frameA",
       announceEnter: "Entered multi-iframe trap. Tab cycles iframe A and B.",
       announceExit: "Exited multi-iframe trap",
       nativeTabSlots: [
