@@ -132,7 +132,7 @@ export function MultiIframeScenario() {
 
   return (
     <section>
-      <h2>3. Two adjacent iframes (shared registry)</h2>
+      <h2>4. Two adjacent iframes (shared registry)</h2>
       <p style={{ fontSize: 13 }}>
         Two enterable iframes next to each other. Tabbing from A into B should
         flow natively (no sentinel interception between them); the sentinels at

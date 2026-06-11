@@ -4,6 +4,7 @@ import "./demo.css";
 import { CanonicalScenario } from "./sections/iframe-trap/canonical";
 import { LockToggleScenario } from "./sections/iframe-trap/lock-toggle";
 import { MultiIframeScenario } from "./sections/iframe-trap/multi-iframe";
+import { SoloIframeScenario } from "./sections/iframe-trap/solo-iframe";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         </p>
         <CanonicalScenario />
         <LockToggleScenario />
+        <SoloIframeScenario />
         <MultiIframeScenario />
       </main>
     </AccessibilityProvider>
