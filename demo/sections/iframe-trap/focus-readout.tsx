@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react";
+import { type RefObject, useEffect, useState } from "react";
 
 export interface FocusReadoutProps {
   /** Human label for this scenario, shown in the panel heading. */
   label: string;
   /** Whether the parent's trap currently reports trapped. */
   isTrapped: boolean;
-  /** The iframe elements this scenario owns, by name, for descent detection. */
-  iframes: Record<string, HTMLIFrameElement | null>;
+  /** Refs to the iframe elements this scenario owns, by name, for descent detection. */
+  iframes: Record<string, RefObject<HTMLIFrameElement | null>>;
 }
 
 function describeActive(active: Element | null): string {
@@ -28,7 +28,9 @@ export function FocusReadout({ label, isTrapped, iframes }: FocusReadoutProps) {
     const update = () => {
       const el = document.activeElement;
       setActive(describeActive(el));
-      const hit = Object.entries(iframes).find(([, f]) => f && f === el);
+      const hit = Object.entries(iframes).find(
+        ([, f]) => f.current && f.current === el,
+      );
       setDescendedInto(hit ? hit[0] : "(none)");
     };
     update();

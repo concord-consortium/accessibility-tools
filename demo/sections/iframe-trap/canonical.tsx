@@ -7,6 +7,7 @@ import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
 
 const CYCLE_ORDER = ["input", "frame", "button"];
+const ENTER_LABEL = "Press Tab to enter the inner page";
 
 export function CanonicalScenario() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -23,6 +24,8 @@ export function CanonicalScenario() {
     () => crossOriginInnerSrc(window.location.href, "iframe-inner.html"),
     [],
   );
+
+  const iframesMap = useMemo(() => ({ frame: iframeRef }), []);
 
   const getElements = useMemo(
     () => () => ({
@@ -42,7 +45,7 @@ export function CanonicalScenario() {
     getElements,
     onExit: (d) => trapRef.current?.cycleToAdjacentSlot(d),
     onRequestExit: () => trapRef.current?.exitTrap(),
-    enterLabel: "Press Tab to enter the inner page",
+    enterLabel: ENTER_LABEL,
   });
 
   const strategy = useMemo<FocusTrapStrategy>(
@@ -70,7 +73,7 @@ export function CanonicalScenario() {
       <FocusReadout
         label="canonical"
         isTrapped={trap?.isTrapped ?? false}
-        iframes={{ frame: iframeRef.current }}
+        iframes={iframesMap}
       />
       <div
         ref={containerRef}
@@ -93,7 +96,7 @@ export function CanonicalScenario() {
           afterSentinelProps={slot.afterSentinelProps}
           src={src}
           title="canonical"
-          hint="Press Tab to enter the inner page"
+          hint={ENTER_LABEL}
         />
         <button ref={buttonRef} type="button">
           After iframe
