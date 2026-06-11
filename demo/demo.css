@@ -111,14 +111,19 @@ body {
   color: #dc2626;
 }
 
-/* Iframe focus-trap test page: reveal the landing hint only while the
-   library has marked a sentinel with data-landing. */
-.sentinel-hint {
-  display: none;
+/* Iframe focus-trap test page: each sentinel carries its own "press Tab to
+   enter" hint text. A sentinel collapses to zero height until the library marks
+   it with data-landing (focus resting on it in landing mode), when it expands
+   in place to reveal the hint. */
+.iframe-sentinel {
+  display: block;
+  height: 0;
+  overflow: hidden;
   font: 12px system-ui;
   color: #b45309;
-  margin-left: 6px;
 }
-.iframe-sentinel[data-landing] ~ .sentinel-hint {
-  display: inline;
+.iframe-sentinel[data-landing] {
+  height: auto;
+  overflow: visible;
+  padding: 4px 0;
 }

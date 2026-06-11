@@ -9,21 +9,18 @@ export interface SentinelIframeProps {
   /** Cross-origin URL from crossOriginInnerSrc(). */
   src: string;
   title: string;
-  /** Static landing-hint text; shown when the library sets data-landing. */
+  /**
+   * Landing hint text. It lives INSIDE each sentinel; the sentinel collapses to
+   * zero size and reveals this text only while the library marks it with
+   * data-landing (see the .iframe-sentinel CSS).
+   */
   hint: string;
   /** Host owns the iframe's tabindex (enterable when undefined). */
   iframeTabIndex?: number;
 }
 
 // The library is the sole imperative writer of tabindex/data-landing on the
-// sentinels; we only provide the ref + key and style. The hint is revealed by
-// the [data-landing] attribute the library sets, via the sibling-span CSS below.
-const sentinelStyle = {
-  display: "inline-block",
-  minWidth: 4,
-  minHeight: 16,
-} as const;
-
+// sentinels; we only provide the ref + key, the className, and the hint text.
 export function SentinelIframe({
   wrapperRef,
   iframeRef,
@@ -44,9 +41,9 @@ export function SentinelIframe({
         key={beforeSentinelProps.key}
         data-testid={`${title}-before-sentinel`}
         className="iframe-sentinel"
-        style={sentinelStyle}
-      />
-      <span className="sentinel-hint">{hint}</span>
+      >
+        {hint}
+      </span>
       <iframe
         ref={iframeRef as RefObject<HTMLIFrameElement>}
         src={src}
@@ -66,8 +63,9 @@ export function SentinelIframe({
         key={afterSentinelProps.key}
         data-testid={`${title}-after-sentinel`}
         className="iframe-sentinel"
-        style={sentinelStyle}
-      />
+      >
+        {hint}
+      </span>
     </div>
   );
 }
