@@ -92,8 +92,8 @@
   },
   "scripts": {
     "build": "tsup && node scripts/copy-styles.mjs && node scripts/downlevel-dts.mjs",
-    "demo": "vite serve demo",
-    "demo:build": "vite build demo --outDir ../dist-s3 --emptyOutDir --base ./",
+    "demo": "vite serve demo --config vite.config.ts",
+    "demo:build": "vite build demo --outDir ../dist-s3 --emptyOutDir --base ./ --config vite.config.ts",
     "deploy:build": "npm run build && npm run demo:build && cp dist/standalone.js dist-s3/standalone.js && cp demo/bookmarklet.html dist-s3/bookmarklet.html",
     "test": "vitest run",
     "test:smoke": "npm run build && vitest run --config vitest.smoke.config.ts",
