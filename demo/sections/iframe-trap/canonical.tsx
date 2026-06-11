@@ -3,6 +3,7 @@ import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
 import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
+import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
 
@@ -81,12 +82,7 @@ export function CanonicalScenario() {
         role="group"
         aria-label="Canonical iframe trap"
         data-testid="canonical-container"
-        style={{
-          border: trap?.isTrapped ? "2px solid #2563eb" : "1px solid #ccc",
-          borderRadius: 4,
-          padding: 12,
-          outline: "none",
-        }}
+        style={trapContainerStyle(trap?.isTrapped ?? false)}
       >
         <input ref={inputRef} type="text" placeholder="Before iframe" />
         <SentinelIframe

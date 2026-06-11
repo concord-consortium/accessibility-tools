@@ -8,6 +8,7 @@ import { createIframeSlotRegistry } from "../../../src/hooks/iframe-slot-registr
 import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
+import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
 
@@ -148,14 +149,10 @@ export function MultiIframeScenario() {
         role="group"
         aria-label="Multi-iframe trap"
         data-testid="multi-container"
-        style={{
-          border: trap?.isTrapped ? "2px solid #2563eb" : "1px solid #ccc",
-          borderRadius: 4,
-          padding: 12,
-          outline: "none",
+        style={trapContainerStyle(trap?.isTrapped ?? false, {
           display: "grid",
           gap: 8,
-        }}
+        })}
       >
         {renderFrame(
           "frameA",
