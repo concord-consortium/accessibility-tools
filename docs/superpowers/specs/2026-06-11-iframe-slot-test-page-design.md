@@ -138,7 +138,20 @@ parent / `127.0.0.1` cross-origin inner page. The cross-origin load and the
   `tabindex` live, so a synchronous call reads the stale value and the intercept
   ends up one toggle behind. The demo does it in an effect.
 
-### Scenario 3 — Two adjacent iframes (shared registry): PARTIAL — bugs found
+### Scenario 3 — Single iframe only (no other slots): WORKS
+A trap whose only slot is the non-cooperating iframe (single-iframe fallback, no
+registry). Added after the first pass.
+- Enter on the container activates the trap and lands on the before-sentinel in
+  landing mode (showing the hint); the next Tab descends into the iframe.
+- Tab through the inner controls and past the edge wraps back to the
+  before-sentinel (landing mode) rather than escaping; the next Tab re-descends.
+  Focus stays contained — the well-behaved counterpart to the Scenario 4
+  forward-exit escape below.
+- Escape from a parent-side sentinel exits. (Escape from *inside* the
+  cross-origin frame can't reach the parent — a known cross-origin constraint,
+  not specific to this scenario.)
+
+### Scenario 4 — Two adjacent iframes (shared registry): PARTIAL — bugs found
 This scenario surfaced real library issues (the point of the page):
 1. **`FocusTrapStrategy.contentSlot` is singular.** A trap with two iframe slots
    can designate only one of them as the content slot, so only that one gets a
@@ -161,5 +174,16 @@ This scenario surfaced real library issues (the point of the page):
    used for those assertions.
 
 Caveat: cross-origin iframe focus traversal driven by automated key events is
-timing-sensitive; the Scenario 3 escape (finding 3) is worth a manual repro
+timing-sensitive; the Scenario 4 escape (finding 3) is worth a manual repro
 before any library fix.
+
+### Library bug found and fixed this session
+Entering a trap via the **Enter key** activated the trap but focused the first
+content slot with the default `sequentialNavigation` (silent positioner)
+trigger, unlike the `enterTrap()` method which uses `programmatic` (landing)
+mode. For a non-cooperating iframe content slot this meant **no `data-landing` /
+landing hint on Enter entry** — focus parked silently on a zero-size sentinel.
+Root cause: the Enter-key handler reimplemented trap entry inline and had drifted
+from `enterTrap()`. Fixed by aligning the trigger (`fa8fbc3`) and then collapsing
+both routes onto a single shared `enterTrap` path so they can't drift again
+(`cf89bb9`). The two genuine **Scenario 4** issues above remain open.
