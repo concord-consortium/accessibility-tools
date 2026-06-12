@@ -309,6 +309,65 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
   });
 });
 
+describe("IframeSlot syncListeners rebinding (deferred / re-mount)", () => {
+  it("binds nothing when the elements are absent at attach, then binds on sync", () => {
+    let iframe: HTMLIFrameElement | null = null;
+    let before: HTMLElement | null = null;
+    let after: HTMLElement | null = null;
+    const onExit = vi.fn();
+    const slot = new IframeSlot({
+      slotName: "content",
+      getIframe: () => iframe,
+      getBeforeSentinel: () => before,
+      getAfterSentinel: () => after,
+      onExit,
+      getIntercept: () => ({ forward: true, reverse: true }),
+    });
+    slot.attach(); // elements not present yet → nothing element-bound
+
+    // The deferred nodes mount now.
+    iframe = document.createElement("iframe");
+    before = document.createElement("div");
+    after = document.createElement("div");
+    document.body.append(before, iframe, after);
+    slot.syncListeners();
+
+    iframe.dispatchEvent(new FocusEvent("focus")); // inside = true
+    after.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(onExit).toHaveBeenCalledWith(1);
+  });
+
+  it("moves listeners to a replacement element and drops the old one (re-mount)", () => {
+    const iframe = document.createElement("iframe");
+    let before = document.createElement("div");
+    const after = document.createElement("div");
+    document.body.append(before, iframe, after);
+    const onExit = vi.fn();
+    const slot = new IframeSlot({
+      slotName: "content",
+      getIframe: () => iframe,
+      getBeforeSentinel: () => before,
+      getAfterSentinel: () => after,
+      onExit,
+      getIntercept: () => ({ forward: true, reverse: true }),
+    });
+    slot.attach();
+    iframe.dispatchEvent(new FocusEvent("focus")); // inside = true
+
+    const oldBefore = before;
+    before = document.createElement("div"); // node replaced (re-mount)
+    document.body.append(before);
+    slot.syncListeners();
+
+    before.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(onExit).toHaveBeenCalledWith(-1); // listener followed to the new node
+
+    onExit.mockClear();
+    oldBefore.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+    expect(onExit).not.toHaveBeenCalled(); // old node no longer wired
+  });
+});
+
 describe("IframeSlot transport translation", () => {
   function transportSetup() {
     let handler: ((m: import("./focus-messages").FocusMessage) => void) | null =

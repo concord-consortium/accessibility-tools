@@ -47,6 +47,13 @@ export class IframeSlot {
   // entering sentinel blurs the leaving one) or mis-read a self-inflicted exit.
   private movingFocus = false;
 
+  // Elements each set of listeners is currently bound to. syncListeners() rebinds
+  // only when these differ from the live getters, so deferred mounts and
+  // re-mounts move the listeners precisely and detach() removes the right ones.
+  private boundIframe: HTMLIFrameElement | null = null;
+  private boundBefore: HTMLElement | null = null;
+  private boundAfter: HTMLElement | null = null;
+
   // Bound listeners for clean add/remove.
   private boundIframeFocus = () => this.handleIframeFocus();
   private boundIframeBlur = () => this.handleIframeBlur();
@@ -72,40 +79,81 @@ export class IframeSlot {
   attach(): void {
     if (this.attached) return;
     this.attached = true;
-    const iframe = this.options.getIframe();
-    iframe?.addEventListener("focus", this.boundIframeFocus);
-    iframe?.addEventListener("blur", this.boundIframeBlur);
-    const beforeSentinel = this.options.getBeforeSentinel();
-    const afterSentinel = this.options.getAfterSentinel();
-    beforeSentinel?.addEventListener("focusin", this.boundBeforeFocusIn);
-    afterSentinel?.addEventListener("focusin", this.boundAfterFocusIn);
-    beforeSentinel?.addEventListener("focusout", this.boundSentinelFocusOut);
-    afterSentinel?.addEventListener("focusout", this.boundSentinelFocusOut);
     if (typeof window !== "undefined") {
       window.addEventListener("blur", this.boundWindowFocusChange);
       window.addEventListener("focus", this.boundWindowFocusChange);
     }
-    this.applyTabindex();
     const transport = this.options.transport;
     if (transport && !this.unsubscribeTransport) {
       this.unsubscribeTransport = transport.onMessage((msg) =>
         this.handleMessage(msg),
       );
     }
+    // Bind to whatever iframe/sentinels exist now; the host calls syncListeners()
+    // again as nodes mount/remount.
+    this.syncListeners();
+  }
+
+  /**
+   * Bind the iframe/sentinel focus listeners to the elements the getters
+   * currently return, rebinding only what changed. Idempotent. The host calls
+   * this whenever a managed node mounts, unmounts, or is replaced (via the
+   * sentinel callback refs in useIframeSlot) so the listeners follow deferred
+   * mounts and re-mounts. No-op until attach() has run.
+   */
+  syncListeners(): void {
+    if (!this.attached) return;
+    const iframe = this.options.getIframe();
+    if (iframe !== this.boundIframe) {
+      this.boundIframe?.removeEventListener("focus", this.boundIframeFocus);
+      this.boundIframe?.removeEventListener("blur", this.boundIframeBlur);
+      iframe?.addEventListener("focus", this.boundIframeFocus);
+      iframe?.addEventListener("blur", this.boundIframeBlur);
+      this.boundIframe = iframe;
+    }
+    const before = this.options.getBeforeSentinel();
+    if (before !== this.boundBefore) {
+      this.boundBefore?.removeEventListener("focusin", this.boundBeforeFocusIn);
+      this.boundBefore?.removeEventListener(
+        "focusout",
+        this.boundSentinelFocusOut,
+      );
+      before?.addEventListener("focusin", this.boundBeforeFocusIn);
+      before?.addEventListener("focusout", this.boundSentinelFocusOut);
+      this.boundBefore = before;
+    }
+    const after = this.options.getAfterSentinel();
+    if (after !== this.boundAfter) {
+      this.boundAfter?.removeEventListener("focusin", this.boundAfterFocusIn);
+      this.boundAfter?.removeEventListener(
+        "focusout",
+        this.boundSentinelFocusOut,
+      );
+      after?.addEventListener("focusin", this.boundAfterFocusIn);
+      after?.addEventListener("focusout", this.boundSentinelFocusOut);
+      this.boundAfter = after;
+    }
+    this.applyTabindex();
   }
 
   detach(): void {
     if (!this.attached) return;
     this.attached = false;
-    const iframe = this.options.getIframe();
-    iframe?.removeEventListener("focus", this.boundIframeFocus);
-    iframe?.removeEventListener("blur", this.boundIframeBlur);
-    const beforeSentinel = this.options.getBeforeSentinel();
-    const afterSentinel = this.options.getAfterSentinel();
-    beforeSentinel?.removeEventListener("focusin", this.boundBeforeFocusIn);
-    afterSentinel?.removeEventListener("focusin", this.boundAfterFocusIn);
-    beforeSentinel?.removeEventListener("focusout", this.boundSentinelFocusOut);
-    afterSentinel?.removeEventListener("focusout", this.boundSentinelFocusOut);
+    this.boundIframe?.removeEventListener("focus", this.boundIframeFocus);
+    this.boundIframe?.removeEventListener("blur", this.boundIframeBlur);
+    this.boundIframe = null;
+    this.boundBefore?.removeEventListener("focusin", this.boundBeforeFocusIn);
+    this.boundBefore?.removeEventListener(
+      "focusout",
+      this.boundSentinelFocusOut,
+    );
+    this.boundBefore = null;
+    this.boundAfter?.removeEventListener("focusin", this.boundAfterFocusIn);
+    this.boundAfter?.removeEventListener(
+      "focusout",
+      this.boundSentinelFocusOut,
+    );
+    this.boundAfter = null;
     if (typeof window !== "undefined") {
       window.removeEventListener("blur", this.boundWindowFocusChange);
       window.removeEventListener("focus", this.boundWindowFocusChange);
