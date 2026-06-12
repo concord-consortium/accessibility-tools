@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
 import { createIframeSlotRegistry } from "../../../src/hooks/iframe-slot-registry";
-import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
+import { useEnterToTrap } from "./use-enter-to-trap";
 
 const CYCLE_ORDER = ["input", "frame", "button"];
 const ENTER_LABEL = "Press Tab to enter the inner page";
@@ -63,7 +63,7 @@ export function LockToggleScenario() {
     [getElements, slot.strategyFragment],
   );
 
-  const trap = useFocusTrap({ containerRef, strategy });
+  const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
   trapRef.current = trap;
 
   // Re-derive intercepts AFTER React commits the new iframe tabindex to the DOM
@@ -98,6 +98,7 @@ export function LockToggleScenario() {
       <div
         ref={containerRef}
         tabIndex={0}
+        {...containerProps}
         role="group"
         aria-label="Lock-toggle iframe trap"
         data-testid="lock-container"

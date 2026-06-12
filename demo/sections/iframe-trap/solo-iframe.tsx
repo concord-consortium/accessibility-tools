@@ -1,11 +1,11 @@
 import { useMemo, useRef } from "react";
 import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
-import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
+import { useEnterToTrap } from "./use-enter-to-trap";
 
 // The trap's only slot is the iframe — no other focusable slots.
 const CYCLE_ORDER = ["frame"];
@@ -58,7 +58,7 @@ export function SoloIframeScenario() {
     [getElements, slot.strategyFragment],
   );
 
-  const trap = useFocusTrap({ containerRef, strategy });
+  const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
   trapRef.current = trap;
 
   return (
@@ -78,6 +78,7 @@ export function SoloIframeScenario() {
       <div
         ref={containerRef}
         tabIndex={0}
+        {...containerProps}
         role="group"
         aria-label="Single iframe trap"
         data-testid="solo-container"

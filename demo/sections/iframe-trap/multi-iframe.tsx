@@ -5,12 +5,12 @@ import type {
   UseIframeSlotResult,
 } from "../../../src/hooks";
 import { createIframeSlotRegistry } from "../../../src/hooks/iframe-slot-registry";
-import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
+import { useEnterToTrap } from "./use-enter-to-trap";
 
 const CYCLE_ORDER = ["frameA", "frameB"];
 
@@ -109,7 +109,7 @@ export function MultiIframeScenario() {
     };
   }, [getElements, slotA.strategyFragment, slotB.strategyFragment]);
 
-  const trap = useFocusTrap({ containerRef, strategy });
+  const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
   trapRef.current = trap;
 
   const renderFrame = (
@@ -146,6 +146,7 @@ export function MultiIframeScenario() {
       <div
         ref={containerRef}
         tabIndex={0}
+        {...containerProps}
         role="group"
         aria-label="Multi-iframe trap"
         data-testid="multi-container"

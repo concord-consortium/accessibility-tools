@@ -1,11 +1,11 @@
 import { useMemo, useRef } from "react";
 import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
-import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
+import { useEnterToTrap } from "./use-enter-to-trap";
 
 const CYCLE_ORDER = ["input", "frame", "button"];
 const ENTER_LABEL = "Press Tab to enter the inner page";
@@ -60,7 +60,7 @@ export function CanonicalScenario() {
     [getElements, slot.strategyFragment],
   );
 
-  const trap = useFocusTrap({ containerRef, strategy });
+  const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
   trapRef.current = trap;
 
   return (
@@ -79,6 +79,7 @@ export function CanonicalScenario() {
       <div
         ref={containerRef}
         tabIndex={0}
+        {...containerProps}
         role="group"
         aria-label="Canonical iframe trap"
         data-testid="canonical-container"
