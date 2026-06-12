@@ -10,7 +10,14 @@
  * imperative writer of tabindex/data-landing/aria on the sentinels.
  */
 
-import { type RefObject, useEffect, useMemo, useRef } from "react";
+import {
+  type MutableRefObject,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 import { deriveIntercept } from "./dom-utils";
 import type { FocusTransport } from "./focus-messages";
 import { IframeSlot } from "./iframe-slot";
@@ -21,8 +28,8 @@ export interface UseIframeSlotOptions {
   /** The slot's name in cycleOrder (also the trap's contentSlot). */
   slotName: string;
   iframeRef: RefObject<HTMLIFrameElement | null>;
-  beforeSentinelRef: RefObject<HTMLElement | null>;
-  afterSentinelRef: RefObject<HTMLElement | null>;
+  beforeSentinelRef: MutableRefObject<HTMLElement | null>;
+  afterSentinelRef: MutableRefObject<HTMLElement | null>;
   /** The trap's cycleOrder (for intercept derivation). */
   cycleOrder: string[];
   /** The trap's getElements (for intercept derivation / DOM order). */
@@ -44,8 +51,8 @@ export interface UseIframeSlotOptions {
 }
 
 export interface UseIframeSlotResult {
-  beforeSentinelProps: { ref: RefObject<HTMLElement | null>; key: string };
-  afterSentinelProps: { ref: RefObject<HTMLElement | null>; key: string };
+  beforeSentinelProps: { ref: (node: HTMLElement | null) => void; key: string };
+  afterSentinelProps: { ref: (node: HTMLElement | null) => void; key: string };
   strategyFragment: Partial<FocusTrapStrategy>;
   requestRestore: () => void;
 }
@@ -147,6 +154,25 @@ export function useIframeSlot(
     };
   }, [registry, slotName, iframeRef]);
 
+  // Callback refs: write the host's RefObject (so its other reads still work)
+  // and tell the slot to (re)bind. Fires on mount, unmount (node === null), and
+  // re-mount (null then the new node) — so listeners follow deferred mounts and
+  // node replacements. slotRef is set during render, so it is available here.
+  const setBeforeSentinel = useCallback(
+    (node: HTMLElement | null) => {
+      beforeSentinelRef.current = node;
+      slotRef.current?.syncListeners();
+    },
+    [beforeSentinelRef],
+  );
+  const setAfterSentinel = useCallback(
+    (node: HTMLElement | null) => {
+      afterSentinelRef.current = node;
+      slotRef.current?.syncListeners();
+    },
+    [afterSentinelRef],
+  );
+
   const strategyFragment = useMemo<Partial<FocusTrapStrategy>>(
     () => ({
       contentSlot: slotName,
@@ -165,8 +191,8 @@ export function useIframeSlot(
   );
 
   return {
-    beforeSentinelProps: { ref: beforeSentinelRef, key: `${slotName}-before` },
-    afterSentinelProps: { ref: afterSentinelRef, key: `${slotName}-after` },
+    beforeSentinelProps: { ref: setBeforeSentinel, key: `${slotName}-before` },
+    afterSentinelProps: { ref: setAfterSentinel, key: `${slotName}-after` },
     strategyFragment,
     requestRestore: () => slotRef.current?.requestRestore(),
   };

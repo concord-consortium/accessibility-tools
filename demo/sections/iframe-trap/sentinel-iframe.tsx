@@ -4,8 +4,8 @@ export interface SentinelIframeProps {
   /** Wrapper element used as the slot element in getElements. */
   wrapperRef: RefObject<HTMLDivElement | null>;
   iframeRef: RefObject<HTMLIFrameElement | null>;
-  beforeSentinelProps: { ref: RefObject<HTMLElement | null>; key: string };
-  afterSentinelProps: { ref: RefObject<HTMLElement | null>; key: string };
+  beforeSentinelProps: { ref: (node: HTMLElement | null) => void; key: string };
+  afterSentinelProps: { ref: (node: HTMLElement | null) => void; key: string };
   /** Cross-origin URL from crossOriginInnerSrc(). */
   src: string;
   title: string;
@@ -37,7 +37,7 @@ export function SentinelIframe({
       style={{ border: "2px dashed #94a3b8", borderRadius: 4, padding: 8 }}
     >
       <span
-        ref={beforeSentinelProps.ref as RefObject<HTMLSpanElement>}
+        ref={beforeSentinelProps.ref}
         key={beforeSentinelProps.key}
         data-testid={`${title}-before-sentinel`}
         className="iframe-sentinel"
@@ -59,7 +59,7 @@ export function SentinelIframe({
         }}
       />
       <span
-        ref={afterSentinelProps.ref as RefObject<HTMLSpanElement>}
+        ref={afterSentinelProps.ref}
         key={afterSentinelProps.key}
         data-testid={`${title}-after-sentinel`}
         className="iframe-sentinel"

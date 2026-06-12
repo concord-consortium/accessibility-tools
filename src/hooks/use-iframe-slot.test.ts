@@ -77,6 +77,47 @@ describe("useIframeSlot", () => {
     const { result } = renderSlot();
     expect(typeof result.current.requestRestore).toBe("function");
   });
+
+  it("binds the sentinel exit when the sentinels mount after the slot (deferred)", () => {
+    const iframe = document.createElement("iframe");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    document.body.append(before, iframe, after);
+    const onExit = vi.fn();
+
+    const { result } = renderHook(() => {
+      const iframeRef = useRef<HTMLIFrameElement | null>(iframe);
+      const beforeRef = useRef<HTMLElement | null>(null); // deferred
+      const afterRef = useRef<HTMLElement | null>(null); // deferred
+      return useIframeSlot({
+        slotName: "content",
+        iframeRef,
+        beforeSentinelRef: beforeRef,
+        afterSentinelRef: afterRef,
+        cycleOrder: ["content"],
+        getElements: () => ({ content: iframe }),
+        onExit,
+      });
+    });
+
+    // React attaches the deferred sentinel nodes — drive the returned callback refs.
+    act(() => {
+      (
+        result.current.beforeSentinelProps.ref as (
+          n: HTMLElement | null,
+        ) => void
+      )(before);
+      (
+        result.current.afterSentinelProps.ref as (n: HTMLElement | null) => void
+      )(after);
+    });
+
+    act(() => iframe.dispatchEvent(new FocusEvent("focus"))); // inside = true
+    act(() =>
+      after.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
+    );
+    expect(onExit).toHaveBeenCalledWith(1);
+  });
 });
 
 describe("useIframeSlot multi-iframe (registry)", () => {
