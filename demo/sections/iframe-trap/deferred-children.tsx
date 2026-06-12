@@ -90,22 +90,18 @@ export function DeferredChildrenScenario() {
         Same input → iframe → button shape as scenario 1, but the sentinels and
         iframe are wrapped in a component that renders <code>null</code> on its
         first pass and mounts the subtree one render later (an effect-gated
-        mount, like a portal whose host isn't ready yet). When{" "}
-        <code>useIframeSlot</code>'s attach effect runs, the iframe/sentinel
-        refs are still <code>null</code>, so the slot binds only the listeners
-        that don't need them (the window-level focus tracking) and never
-        re-attaches the iframe/sentinel listeners.
+        mount, like a portal whose host isn't ready yet). This used to leave the
+        slot half-wired — the exit redirect never bound — because{" "}
+        <code>useIframeSlot</code> bound its listeners once, when the refs were
+        still <code>null</code>.
       </p>
       <p style={{ fontSize: 13 }}>
-        The result is a <em>partial</em> break that's easy to miss. Going in
-        looks fine: Tab from the input still descends into the iframe (native
-        Tab finds the now-tabbable frame), and the window tracking still makes
-        the sentinels tabbable while you're inside. The failure shows on the way
-        out — tabbing out of the iframe lands on a sentinel but does{" "}
-        <strong>not</strong> cycle to the next slot or show the landing hint
-        (the sentinel's focusin/focusout handlers never bound), so focus rests
-        on the invisible sentinel instead of wrapping. Compare against scenario
-        1.
+        It now behaves like scenario 1: the sentinel refs are callback refs, so
+        when the deferred subtree mounts the slot re-binds its listeners. Enter,
+        Tab through the iframe, and Tab/Shift+Tab out — focus cycles to the
+        button / wraps and the landing hint shows, instead of getting stuck on
+        an invisible sentinel. This scenario is now a regression guard for
+        deferred and re-mounted slots.
       </p>
       <FocusReadout
         label="deferred"

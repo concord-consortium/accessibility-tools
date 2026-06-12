@@ -128,7 +128,7 @@ parent / `127.0.0.1` cross-origin inner page. The cross-origin load and the
   entering a cross-origin frame via a click. Enter-to-enter and clicking the
   native controls both activate it fine.
 
-### Scenario 2 — Deferred sentinel/iframe mount: BROKEN — partial (verified)
+### Scenario 2 — Deferred sentinel/iframe mount: FIXED (regression guard)
 Same `input → iframe → button` shape as Scenario 1, but the sentinels and iframe
 are wrapped in a component that renders `null` on its first pass and mounts the
 subtree one render later (effect-gated mount / not-yet-ready portal host). Added
@@ -155,6 +155,14 @@ iframe slot sits between two known-good slots.
     cycling to the button / wrapping.
 - Fix is the open follow-up: re-attach (or bind the element listeners) once the
   iframe/sentinel refs become non-null.
+- **Resolved (2026-06-12):** `IframeSlot` now rebinds via `syncListeners()` and
+  `useIframeSlot` exposes sentinel **callback refs**, so a deferred-mounted (or
+  re-mounted) subtree wires up correctly. The exit redirect and landing hint now
+  match scenario 1 (manually verified in Chrome: focus exits the iframe and
+  cycles to the button instead of sticking on the sentinel). Covered by
+  `iframe-slot.test.ts` (`syncListeners rebinding`) and `use-iframe-slot.test.ts`
+  (deferred + re-mount). See
+  `docs/superpowers/plans/2026-06-12-deferred-iframe-slot-fix.md`.
 
 ### Scenario 3 — Enterable / locked toggle: WORKS
 - Enterable (tabindex 0): Tab from the input descends into the iframe.
