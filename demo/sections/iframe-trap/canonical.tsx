@@ -94,6 +94,10 @@ export function CanonicalScenario() {
           src={src}
           title="canonical"
           hint={ENTER_LABEL}
+          // Host requirement: a managed slot must leave the tab order while its
+          // trap is dormant, else Shift+Tab from outside falls into the iframe.
+          // See docs/trap-composition.md → "Managed slots must be de-tabbed…".
+          iframeTabIndex={trap?.isTrapped ? 0 : -1}
         />
         <button ref={buttonRef} type="button">
           After iframe

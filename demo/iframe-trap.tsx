@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import { AccessibilityProvider } from "../src/hooks";
 import "./demo.css";
 import { CanonicalScenario } from "./sections/iframe-trap/canonical";
+import { DeferredChildrenScenario } from "./sections/iframe-trap/deferred-children";
 import { LockToggleScenario } from "./sections/iframe-trap/lock-toggle";
 import { MultiIframeScenario } from "./sections/iframe-trap/multi-iframe";
 import { SoloIframeScenario } from "./sections/iframe-trap/solo-iframe";
@@ -16,6 +17,7 @@ function App() {
           trap. Tab, Shift+Tab, and Escape to exercise each trap.
         </p>
         <CanonicalScenario />
+        <DeferredChildrenScenario />
         <LockToggleScenario />
         <SoloIframeScenario />
         <MultiIframeScenario />

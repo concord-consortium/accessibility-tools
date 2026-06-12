@@ -63,7 +63,7 @@ export function SoloIframeScenario() {
 
   return (
     <section>
-      <h2>3. Single iframe only (no other slots)</h2>
+      <h2>4. Single iframe only (no other slots)</h2>
       <p style={{ fontSize: 13 }}>
         The trap's only slot is the non-cooperating iframe. Focus the container
         and press Enter to descend into it. Tab/Shift+Tab cycle within the inner
@@ -92,6 +92,10 @@ export function SoloIframeScenario() {
           src={src}
           title="solo"
           hint={ENTER_LABEL}
+          // Host requirement: a managed slot must leave the tab order while its
+          // trap is dormant, else Shift+Tab from outside falls into the iframe.
+          // See docs/trap-composition.md → "Managed slots must be de-tabbed…".
+          iframeTabIndex={trap?.isTrapped ? 0 : -1}
         />
       </div>
     </section>

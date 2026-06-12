@@ -1,4 +1,4 @@
-import { type RefObject, useMemo, useRef } from "react";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import type {
   FocusTrapResult,
   FocusTrapStrategy,
@@ -111,6 +111,15 @@ export function MultiIframeScenario() {
 
   const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
   trapRef.current = trap;
+  const isTrapped = trap?.isTrapped ?? false;
+
+  // Re-derive intercepts AFTER React commits the new iframe tabindex (gated on
+  // isTrapped below) to the DOM — the registry reads tabindex live, so a
+  // synchronous notify would read the stale value.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: isTrapped triggers the post-commit notify
+  useEffect(() => {
+    registry.notifyChange();
+  }, [isTrapped, registry]);
 
   const renderFrame = (
     name: string,
@@ -127,12 +136,16 @@ export function MultiIframeScenario() {
       src={src}
       title={name}
       hint={hint}
+      // Host requirement: managed slots leave the tab order while the trap is
+      // dormant, else Shift+Tab from outside falls into an iframe.
+      // See docs/trap-composition.md → "Managed slots must be de-tabbed…".
+      iframeTabIndex={isTrapped ? 0 : -1}
     />
   );
 
   return (
     <section>
-      <h2>4. Two adjacent iframes (shared registry)</h2>
+      <h2>5. Two adjacent iframes (shared registry)</h2>
       <p style={{ fontSize: 13 }}>
         Two enterable iframes next to each other. Tabbing from A into B should
         flow natively (no sentinel interception between them); the sentinels at

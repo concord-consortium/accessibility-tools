@@ -65,21 +65,22 @@ export function LockToggleScenario() {
 
   const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
   trapRef.current = trap;
+  const isTrapped = trap?.isTrapped ?? false;
 
   // Re-derive intercepts AFTER React commits the new iframe tabindex to the DOM
-  // (the registry reads tabindex live, so notifying synchronously in the click
-  // handler would read the stale value). `locked` drives the commit we react to,
-  // even though it isn't read inside the effect body.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: locked triggers the post-commit notify
+  // (the registry reads tabindex live, so notifying synchronously would read the
+  // stale value). Both `locked` and `isTrapped` drive the iframe tabindex commit
+  // we react to, even though neither is read inside the effect body.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: locked/isTrapped trigger the post-commit notify
   useEffect(() => {
     registry.notifyChange();
-  }, [locked, registry]);
+  }, [locked, isTrapped, registry]);
 
   const toggleLock = () => setLocked((v) => !v);
 
   return (
     <section>
-      <h2>2. Enterable / locked toggle</h2>
+      <h2>3. Enterable / locked toggle</h2>
       <p style={{ fontSize: 13 }}>
         Toggle the iframe between enterable (tabindex 0) and locked (tabindex
         -1). When locked, Tab should skip over the iframe via the sentinels
@@ -113,7 +114,11 @@ export function LockToggleScenario() {
           src={src}
           title="lock"
           hint={ENTER_LABEL}
-          iframeTabIndex={locked ? -1 : 0}
+          // Enterable only while the trap is active AND not locked. The dormant
+          // -1 satisfies the host requirement (no stray tab stop while the trap
+          // is inactive); `locked` keeps it out even when active.
+          // See docs/trap-composition.md → "Managed slots must be de-tabbed…".
+          iframeTabIndex={!locked && isTrapped ? 0 : -1}
         />
         <button ref={buttonRef} type="button">
           After iframe
