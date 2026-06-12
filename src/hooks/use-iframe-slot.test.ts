@@ -102,14 +102,8 @@ describe("useIframeSlot", () => {
 
     // React attaches the deferred sentinel nodes — drive the returned callback refs.
     act(() => {
-      (
-        result.current.beforeSentinelProps.ref as (
-          n: HTMLElement | null,
-        ) => void
-      )(before);
-      (
-        result.current.afterSentinelProps.ref as (n: HTMLElement | null) => void
-      )(after);
+      result.current.beforeSentinelProps.ref(before);
+      result.current.afterSentinelProps.ref(after);
     });
 
     act(() => iframe.dispatchEvent(new FocusEvent("focus"))); // inside = true
@@ -117,6 +111,51 @@ describe("useIframeSlot", () => {
       after.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
     );
     expect(onExit).toHaveBeenCalledWith(1);
+  });
+
+  it("re-binds when a sentinel node is replaced (unmount → remount)", () => {
+    const iframe = document.createElement("iframe");
+    const before1 = document.createElement("div");
+    const after = document.createElement("div");
+    document.body.append(before1, iframe, after);
+    const onExit = vi.fn();
+
+    const { result } = renderHook(() => {
+      const iframeRef = useRef<HTMLIFrameElement | null>(iframe);
+      const beforeRef = useRef<HTMLElement | null>(before1);
+      const afterRef = useRef<HTMLElement | null>(after);
+      return useIframeSlot({
+        slotName: "content",
+        iframeRef,
+        beforeSentinelRef: beforeRef,
+        afterSentinelRef: afterRef,
+        cycleOrder: ["content"],
+        getElements: () => ({ content: iframe }),
+        onExit,
+      });
+    });
+    const setBefore = result.current.beforeSentinelProps.ref;
+
+    act(() => iframe.dispatchEvent(new FocusEvent("focus"))); // inside = true
+
+    // The sentinel unmounts and a fresh node mounts in its place.
+    const before2 = document.createElement("div");
+    document.body.append(before2);
+    act(() => {
+      setBefore(null);
+      setBefore(before2);
+    });
+
+    act(() =>
+      before2.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
+    );
+    expect(onExit).toHaveBeenCalledWith(-1); // listener followed to the new node
+
+    onExit.mockClear();
+    act(() =>
+      before1.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
+    );
+    expect(onExit).not.toHaveBeenCalled(); // old node is unwired
   });
 });
 
