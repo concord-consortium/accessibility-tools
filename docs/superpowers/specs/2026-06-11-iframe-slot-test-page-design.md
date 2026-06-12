@@ -128,7 +128,35 @@ parent / `127.0.0.1` cross-origin inner page. The cross-origin load and the
   entering a cross-origin frame via a click. Enter-to-enter and clicking the
   native controls both activate it fine.
 
-### Scenario 2 — Enterable / locked toggle: WORKS
+### Scenario 2 — Deferred sentinel/iframe mount: BROKEN — partial (verified)
+Same `input → iframe → button` shape as Scenario 1, but the sentinels and iframe
+are wrapped in a component that renders `null` on its first pass and mounts the
+subtree one render later (effect-gated mount / not-yet-ready portal host). Added
+after a client surfaced the case; placed right after Scenario 1 so the broken
+iframe slot sits between two known-good slots.
+- Mechanism (verified in Chrome): `useIframeSlot` calls `IframeSlot.attach()` in
+  a mount-only effect that reads the iframe and sentinels eagerly. With the
+  subtree deferred, those refs are `null` at attach time, so the *element*
+  listeners (iframe `focus`/`blur`, sentinel `focusin`/`focusout`) never bind and
+  there is no re-attach. But the **window-level inside-tracking listeners DO bind**
+  — they don't reference the refs — and `applyTabindex`/`focusContent` read the
+  refs live. So the slot is only *partially* inert, not dead.
+- Observed behavior — the break is easy to miss because the entry path looks
+  correct:
+  - Forward Tab from the input **does descend** into the iframe: the iframe is
+    `tabindex=0` while trapped (host fix), the positioner's attempt to focus the
+    before-sentinel silently no-ops, and native Tab walks straight into the frame.
+  - While focus is inside, the window-listener inside-tracking flips **both
+    sentinels to `tabindex=0`** (confirmed mid-frame).
+  - The failure surfaces on **exit**: tabbing out of the iframe lands on the
+    after-sentinel (now a real tab stop) but does **not** redirect to the next
+    slot and does **not** show the landing hint — the sentinel `focusin`/`focusout`
+    handlers never bound. Focus rests on the invisible sentinel instead of
+    cycling to the button / wrapping.
+- Fix is the open follow-up: re-attach (or bind the element listeners) once the
+  iframe/sentinel refs become non-null.
+
+### Scenario 3 — Enterable / locked toggle: WORKS
 - Enterable (tabindex 0): Tab from the input descends into the iframe.
 - Locked (tabindex -1): Tab forward skips the iframe straight to the button, and
   Shift+Tab reverse skips it back to the input.
@@ -138,20 +166,20 @@ parent / `127.0.0.1` cross-origin inner page. The cross-origin load and the
   `tabindex` live, so a synchronous call reads the stale value and the intercept
   ends up one toggle behind. The demo does it in an effect.
 
-### Scenario 3 — Single iframe only (no other slots): WORKS
+### Scenario 4 — Single iframe only (no other slots): WORKS
 A trap whose only slot is the non-cooperating iframe (single-iframe fallback, no
 registry). Added after the first pass.
 - Enter on the container activates the trap and lands on the before-sentinel in
   landing mode (showing the hint); the next Tab descends into the iframe.
 - Tab through the inner controls and past the edge wraps back to the
   before-sentinel (landing mode) rather than escaping; the next Tab re-descends.
-  Focus stays contained — the well-behaved counterpart to the Scenario 4
+  Focus stays contained — the well-behaved counterpart to the Scenario 5
   forward-exit escape below.
 - Escape from a parent-side sentinel exits. (Escape from *inside* the
   cross-origin frame can't reach the parent — a known cross-origin constraint,
   not specific to this scenario.)
 
-### Scenario 4 — Two adjacent iframes (shared registry): PARTIAL — bugs found
+### Scenario 5 — Two adjacent iframes (shared registry): PARTIAL — bugs found
 This scenario surfaced real library issues (the point of the page):
 1. **`FocusTrapStrategy.contentSlot` is singular.** A trap with two iframe slots
    can designate only one of them as the content slot, so only that one gets a
@@ -174,7 +202,7 @@ This scenario surfaced real library issues (the point of the page):
    used for those assertions.
 
 Caveat: cross-origin iframe focus traversal driven by automated key events is
-timing-sensitive; the Scenario 4 escape (finding 3) is worth a manual repro
+timing-sensitive; the Scenario 5 escape (finding 3) is worth a manual repro
 before any library fix.
 
 ### Library bug found and fixed this session
@@ -186,4 +214,4 @@ landing hint on Enter entry** — focus parked silently on a zero-size sentinel.
 Root cause: the Enter-key handler reimplemented trap entry inline and had drifted
 from `enterTrap()`. Fixed by aligning the trigger (`fa8fbc3`) and then collapsing
 both routes onto a single shared `enterTrap` path so they can't drift again
-(`cf89bb9`). The two genuine **Scenario 4** issues above remain open.
+(`cf89bb9`). The two genuine **Scenario 5** issues above remain open.

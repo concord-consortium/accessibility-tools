@@ -516,6 +516,17 @@ toggled `tabindex`. This keeps the AP-108 rule intact: the iframe element's
 `tabIndex` is set by static host properties (locked / content-only) and is never
 mutated by the focus system.
 
+**Host obligation (dormant state).** Because the focus system never writes the
+iframe's `tabIndex`, the host must also keep the iframe out of the tab order
+while the trap is *inactive* — a locked / content-only static property is not
+enough. An enterable iframe left at `tabIndex=0` (or with no `tabindex`) while
+its trap is dormant is a stray native tab stop that Shift+Tab can fall into from
+outside the container, and once focus is inside a cross-origin frame the parent
+can't redirect it. Gate the iframe's `tabIndex` on the trap's active state
+(`isTrapped ? 0 : -1`). This is one instance of a requirement that holds for
+every managed slot — see
+[trap-composition.md → Managed slots must be de-tabbed while the trap is inactive](./trap-composition.md#managed-slots-must-be-de-tabbed-while-the-trap-is-inactive).
+
 ### 9. Exit without refocus (host-driven release on outside click)
 
 > **Not iframe-specific.** This is a general trap-lifecycle change that rides

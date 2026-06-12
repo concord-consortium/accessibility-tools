@@ -138,6 +138,53 @@ where a slot wants the trap to leave its `tabindex` alone is a case
 where the slot has its own Tab semantics, and vice versa. A separate
 field would be a second knob to misconfigure.
 
+(Since the iframe-slot work, `getManagedSlotElements`
+([dom-utils.ts](../src/hooks/dom-utils.ts)) also treats every
+`nativeTabSlots` entry as managed — an iframe slot has no `tabHandler`
+but still must be off-limits to the sweep. See
+[iframe-slot-design.md §8](./iframe-slot-design.md). So "managed slot"
+below means a slot in `tabHandlers` **or** `nativeTabSlots`.)
+
+### Managed slots must be de-tabbed while the trap is inactive
+
+The corollary the host owns: because the trap never writes a managed
+slot's `tabindex` — in *either* direction — removing the slot's
+focusables from the tab order while the trap is dormant is the host's
+job, not the library's.
+
+`setChildrenNonTabbable` sweeps every *non-managed* focusable to
+`tabindex="-1"` when the trap is disabled or engaged, and
+`restoreChildrenTabbable` restores them on entry
+([focus-trap-controller.ts](../src/hooks/focus-trap-controller.ts)).
+Managed slots are skipped by both, so a managed slot the host leaves
+natively tabbable stays a live tab stop while its trap is inactive.
+
+That stray tab stop is reachable by the browser's native sequential
+navigation, which the trap can't intercept once focus is outside the
+container. It bites Shift+Tab specifically: the container sits *before*
+the slot in the DOM, so a forward Tab reaches the container first and
+skips the whole subtree, but a Shift+Tab arriving from a following
+sibling reaches the slot first and lands in it. For an iframe slot this
+is the worst case — once focus is inside a cross-origin frame the parent
+can't see the keydown to redirect.
+
+**Requirement.** While a trap is inactive (not `trapped`), the host must
+keep every managed slot's focusables out of the tab order
+(`tabindex="-1"`) and restore them only while the trap is active. This
+applies to any slot whose `tabindex` the library does not manage:
+
+- **iframe slots** (`nativeTabSlots`) — the host owns the iframe's
+  `tabindex` (the AP-108 rule, [iframe-slot-design.md §8](./iframe-slot-design.md)).
+  Gate it on the trap's active state, e.g. `tabIndex={isTrapped ? 0 : -1}`,
+  not on a static `locked` / `content-only` property alone.
+- **roving-tabindex slots** (`tabHandlers`, e.g. `react-data-grid`) — the
+  widget's own `tabindex="0"` cell is a stray tab stop while the tile is
+  unselected unless the host parks it at `-1`.
+
+The library can't do this for the host: not knowing a managed slot's
+internal `tabindex` scheme is exactly why the slot is managed. Only the
+host knows which element is the slot's single tab stop, and when.
+
 ### What this is not
 
 These fields don't give a slot an independent `enabled`/`trapped`
