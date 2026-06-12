@@ -755,7 +755,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     // The non-managed slot element gets tabindex=-1 from the mount-time
     // setChildrenNonTabbable call ...
@@ -787,7 +789,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     expect(title.getAttribute("tabindex")).toBe("-1");
     expect(cellA.getAttribute("tabindex")).toBe("0");
@@ -815,7 +819,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     // Non-managed slot is still mutated to -1.
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -836,7 +842,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     expect(title.getAttribute("tabindex")).toBe("-1");
     expect(content.getAttribute("tabindex")).toBe("-1");
@@ -865,7 +873,7 @@ describe("useFocusTrap", () => {
 
     const { rerender } = renderHook(
       ({ strategy }: { strategy: FocusTrapStrategy }) =>
-        useFocusTrap({ containerRef: ref, strategy }),
+        useFocusTrap({ containerRef: ref, strategy, enabled: false }),
       { initialProps: { strategy: buildStrategy() } },
     );
 
