@@ -359,28 +359,33 @@ behave well too.
 
 The iframe-slot needs to advance the trap from a `focusin` or a protocol
 message, not from `keydown`. Today slot cycling is internal state
-(`slotIndexRef.current` in the hook; `slotIndex` in the controller) with no
-public entry point — `FocusTrapResult` exposes only `isTrapped` / `enterTrap` /
-`exitTrap` ([types.ts:179](../src/hooks/types.ts#L179)).
+(`slotIndex` in the controller) with no public entry point beyond
+`isTrapped` / `enterTrap` / `exitTrap`.
 
-**New method on both surfaces:**
+> **Note (2026-06-13):** `useFocusTrap` no longer returns a separate
+> `FocusTrapResult` wrapper — it returns the `FocusTrapController` instance
+> directly, so the consumer-facing surface below *is* the controller's public
+> API. See [the deferred-controller
+> plan](superpowers/plans/2026-06-13-deferred-focus-trap-controller.md).
+
+**The consumer-facing surface (on `FocusTrapController`):**
 
 ```ts
-interface FocusTrapResult {
-  isTrapped: boolean;
-  enterTrap: () => void;
-  exitTrap: () => void;
+class FocusTrapController {
+  get isTrapped(): boolean;
+  enterTrap(): void;
+  exitTrap(options?: { refocus?: boolean }): void;
   /**
    * Advance the trap to the next (1) or previous (-1) slot from the
    * current one and focus it — the same path Tab cycling uses. Intended
    * for self-managed slots (e.g. an iframe-slot) that detect a boundary
    * crossing outside the keydown path.
    */
-  cycleToAdjacentSlot: (direction: 1 | -1) => void;
+  cycleToAdjacentSlot(direction: 1 | -1): void;
 }
 ```
 
-`FocusTrapController` gains the same method. Internally it reuses the existing
+Internally `cycleToAdjacentSlot` reuses the existing
 `findNextSlot` + `focusSlot` machinery so behavior is identical to a Tab cycle,
 including wrap-around.
 
