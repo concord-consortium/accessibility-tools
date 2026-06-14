@@ -7,6 +7,7 @@
  */
 
 import type { RefObject } from "react";
+import type { FocusTrapController } from "./focus-trap-controller";
 
 // ---------------------------------------------------------------------------
 // Focus Trap Strategy (provided by consuming apps)
@@ -149,7 +150,6 @@ export interface FocusTrapStrategy {
 // ---------------------------------------------------------------------------
 
 export interface FocusTrapConfig {
-  containerRef: RefObject<HTMLElement | null>;
   strategy: FocusTrapStrategy;
   /** When false, the trap is dormant — no Tab interception, no Enter activation.
    *  When true, Tab cycles within slots and Enter on the container enters the trap.
@@ -214,25 +214,10 @@ export interface ResizableResult {
   resizeHandleProps: Record<string, unknown>;
 }
 
-export interface FocusTrapResult {
-  isTrapped: boolean;
-  enterTrap: () => void;
-  exitTrap: () => void;
-  /**
-   * Advance the trap to the next (1) or previous (-1) slot from the current
-   * one and focus it — the same path Tab cycling uses, including wrap-around.
-   * Intended for self-managed slots (e.g. an iframe-slot) that detect a
-   * boundary crossing outside the keydown path. Programmatic: when it lands
-   * on a nativeTabSlot, focusContent runs in landing mode
-   * (trigger="programmatic").
-   */
-  cycleToAdjacentSlot: (direction: 1 | -1) => void;
-}
-
 export interface AccessibilityResult {
   navigation: NavigationResult | null;
   resizable: ResizableResult | null;
-  focusTrap: FocusTrapResult | null;
+  focusTrap: FocusTrapController | null;
   debug: AccessibilityDebugHandle | null;
 }
 

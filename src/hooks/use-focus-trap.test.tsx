@@ -1,6 +1,8 @@
-import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { FocusTrapConfig, FocusTrapStrategy } from "./types";
+import { act, render, renderHook } from "@testing-library/react";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { FocusTrapStrategy } from "./types";
 import { useFocusTrap } from "./use-focus-trap";
 
 function createContainer(): HTMLDivElement {
@@ -21,7 +23,35 @@ function createSlot(tag = "div"): HTMLElement {
 
 afterEach(() => {
   document.body.innerHTML = "";
+  // Several tests stub document.activeElement via an own-property
+  // Object.defineProperty. Delete it so the real (prototype) getter is
+  // restored — otherwise the stub leaks into later tests that rely on real
+  // focus (the portal/deferred/reactivity regression tests). Must use delete
+  // (not = undefined): deleting the own property restores the
+  // Document.prototype getter, whereas assigning undefined would shadow it.
+  // biome-ignore lint/performance/noDelete: restoring the prototype getter
+  delete (document as unknown as { activeElement?: unknown }).activeElement;
 });
+
+/**
+ * Render the hook and immediately attach `container` via the controller's
+ * `containerRef` seam — the new (container-less) wiring that replaces the old
+ * `config.containerRef`. Returns the renderHook result so callers can read
+ * `result.current` (the controller).
+ */
+function renderTrap(
+  config: Parameters<typeof useFocusTrap>[0],
+  container: HTMLElement | null,
+) {
+  const rendered = renderHook(() => {
+    const trap = useFocusTrap(config);
+    // Attach during render — React calls ref callbacks at commit time in the
+    // real app; here we attach synchronously so tests can drive the trap.
+    trap.containerRef(container);
+    return trap;
+  });
+  return rendered;
+}
 
 function makeStrategy(
   overrides: Partial<FocusTrapStrategy> = {},
@@ -49,22 +79,29 @@ function pressKey(key: string, opts: Partial<KeyboardEventInit> = {}) {
 }
 
 describe("useFocusTrap", () => {
-  it("returns null when config is undefined", () => {
+  it("returns a dormant controller when config is undefined", () => {
     const { result } = renderHook(() => useFocusTrap(undefined));
-    expect(result.current).toBeNull();
+    expect(result.current).not.toBeNull();
+    expect(result.current.isTrapped).toBe(false);
+    // Methods are safe no-ops (no container attached, no strategy elements).
+    expect(() => {
+      act(() => {
+        result.current.enterTrap();
+        result.current.exitTrap();
+        result.current.cycleToAdjacentSlot(1);
+      });
+    }).not.toThrow();
+    expect(result.current.isTrapped).toBe(false);
   });
 
   it("returns trap state when config is provided", () => {
     const container = createContainer();
     const strategy = makeStrategy();
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
     expect(result.current).not.toBeNull();
-    expect(result.current?.isTrapped).toBe(false);
+    expect(result.current.isTrapped).toBe(false);
   });
 
   it("enters trap on Enter key when container is focused", () => {
@@ -72,11 +109,8 @@ describe("useFocusTrap", () => {
     const strategy = makeStrategy({
       onEnter: vi.fn(),
     });
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
     // Simulate Enter on container
     Object.defineProperty(document, "activeElement", {
@@ -94,7 +128,7 @@ describe("useFocusTrap", () => {
       document.dispatchEvent(event);
     });
 
-    expect(result.current?.isTrapped).toBe(true);
+    expect(result.current.isTrapped).toBe(true);
     expect(strategy.onEnter).toHaveBeenCalledOnce();
   });
 
@@ -107,9 +141,8 @@ describe("useFocusTrap", () => {
       getElements: () => ({ title, content }),
       cycleOrder: ["title", "content"],
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     act(() => {
       const event = new KeyboardEvent("keydown", {
@@ -132,9 +165,8 @@ describe("useFocusTrap", () => {
       getElements: () => ({ title: undefined, content }),
       cycleOrder: ["title", "content"],
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     act(() => {
       const event = new KeyboardEvent("keydown", {
@@ -159,9 +191,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["content"],
       focusContent,
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     act(() => {
       const event = new KeyboardEvent("keydown", {
@@ -182,11 +213,8 @@ describe("useFocusTrap", () => {
     vi.spyOn(container, "focus");
     const onExit = vi.fn();
     const strategy = makeStrategy({ onExit });
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
     // Enter the trap
     act(() => {
@@ -198,7 +226,7 @@ describe("useFocusTrap", () => {
       Object.defineProperty(event, "target", { value: container });
       document.dispatchEvent(event);
     });
-    expect(result.current?.isTrapped).toBe(true);
+    expect(result.current.isTrapped).toBe(true);
 
     // Make activeElement inside the container
     const title = strategy.getElements().title as HTMLElement;
@@ -214,7 +242,7 @@ describe("useFocusTrap", () => {
       pressKey("Escape");
     });
 
-    expect(result.current?.isTrapped).toBe(false);
+    expect(result.current.isTrapped).toBe(false);
     expect(onExit).toHaveBeenCalledOnce();
     expect(container.focus).toHaveBeenCalled();
   });
@@ -234,9 +262,8 @@ describe("useFocusTrap", () => {
       getElements: () => ({ title, toolbar, content }),
       cycleOrder: ["title", "toolbar", "content"],
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     // Enter
     act(() => {
@@ -295,9 +322,8 @@ describe("useFocusTrap", () => {
       getElements: () => ({ title, content }),
       cycleOrder: ["title", "content"],
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     // Enter - focuses title
     act(() => {
@@ -326,18 +352,15 @@ describe("useFocusTrap", () => {
       onEnter: vi.fn(),
       onExit: vi.fn(),
     });
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
-    act(() => result.current?.enterTrap());
-    expect(result.current?.isTrapped).toBe(true);
+    act(() => result.current.enterTrap());
+    expect(result.current.isTrapped).toBe(true);
     expect(strategy.onEnter).toHaveBeenCalledOnce();
 
-    act(() => result.current?.exitTrap());
-    expect(result.current?.isTrapped).toBe(false);
+    act(() => result.current.exitTrap());
+    expect(result.current.isTrapped).toBe(false);
     expect(strategy.onExit).toHaveBeenCalledOnce();
   });
 
@@ -359,9 +382,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["content"],
       tabWithinSlots: ["content"],
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     // Enter trap
     act(() => {
@@ -400,9 +422,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabWithinSlots: ["content"],
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     // Enter trap
     act(() => {
@@ -444,9 +465,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["content"],
       tabWithinSlots: ["content"],
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     // Enter trap
     act(() => {
@@ -485,9 +505,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabWithinSlots: ["content"], // title is NOT in the list
     };
-    const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderTrap({ strategy }, container);
 
     // Enter trap - focus lands on title
     act(() => {
@@ -526,13 +545,10 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
-    act(() => result.current?.enterTrap());
+    act(() => result.current.enterTrap());
     expect(title.focus).toHaveBeenCalled();
 
     Object.defineProperty(document, "activeElement", {
@@ -561,13 +577,10 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
-    act(() => result.current?.enterTrap());
+    act(() => result.current.enterTrap());
 
     Object.defineProperty(document, "activeElement", {
       value: title,
@@ -594,13 +607,10 @@ describe("useFocusTrap", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
-    act(() => result.current?.enterTrap());
+    act(() => result.current.enterTrap());
 
     Object.defineProperty(document, "activeElement", {
       value: content,
@@ -627,13 +637,10 @@ describe("useFocusTrap", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
-    act(() => result.current?.enterTrap());
+    act(() => result.current.enterTrap());
 
     Object.defineProperty(document, "activeElement", {
       value: content,
@@ -669,13 +676,10 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: titleHandler, content: contentHandler },
     };
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
-    act(() => result.current?.enterTrap());
+    act(() => result.current.enterTrap());
 
     // Click-style focus move into content while slotIndex stays at 0
     Object.defineProperty(document, "activeElement", {
@@ -703,13 +707,10 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       escapeHandlers: { title: titleHandler, content: contentHandler },
     };
-    const ref = { current: container };
 
-    const { result } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { result } = renderTrap({ strategy }, container);
 
-    act(() => result.current?.enterTrap());
+    act(() => result.current.enterTrap());
 
     Object.defineProperty(document, "activeElement", {
       value: content,
@@ -725,12 +726,9 @@ describe("useFocusTrap", () => {
   it("cleans up listener on unmount", () => {
     const container = createContainer();
     const strategy = makeStrategy();
-    const ref = { current: container };
 
     const removeSpy = vi.spyOn(document, "removeEventListener");
-    const { unmount } = renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy }),
-    );
+    const { unmount } = renderTrap({ strategy }, container);
 
     unmount();
     expect(removeSpy).toHaveBeenCalledWith(
@@ -753,11 +751,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    const ref = { current: container };
 
-    renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
-    );
+    renderTrap({ strategy, enabled: false }, container);
 
     // The non-managed slot element gets tabindex=-1 from the mount-time
     // setChildrenNonTabbable call ...
@@ -787,11 +782,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    const ref = { current: container };
 
-    renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
-    );
+    renderTrap({ strategy, enabled: false }, container);
 
     expect(title.getAttribute("tabindex")).toBe("-1");
     expect(cellA.getAttribute("tabindex")).toBe("0");
@@ -817,11 +809,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    const ref = { current: container };
 
-    renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
-    );
+    renderTrap({ strategy, enabled: false }, container);
 
     // Non-managed slot is still mutated to -1.
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -840,11 +829,8 @@ describe("useFocusTrap", () => {
       cycleOrder: ["title", "content"],
       // No tabHandlers field at all.
     };
-    const ref = { current: container };
 
-    renderHook(() =>
-      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
-    );
+    renderTrap({ strategy, enabled: false }, container);
 
     expect(title.getAttribute("tabindex")).toBe("-1");
     expect(content.getAttribute("tabindex")).toBe("-1");
@@ -869,11 +855,12 @@ describe("useFocusTrap", () => {
       tabHandlers,
     });
 
-    const ref = { current: container };
-
     const { rerender } = renderHook(
-      ({ strategy }: { strategy: FocusTrapStrategy }) =>
-        useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+      ({ strategy }: { strategy: FocusTrapStrategy }) => {
+        const trap = useFocusTrap({ strategy, enabled: false });
+        trap.containerRef(container);
+        return trap;
+      },
       { initialProps: { strategy: buildStrategy() } },
     );
 
@@ -894,4 +881,115 @@ describe("useFocusTrap", () => {
     // The newly-mounted managed cell is NOT touched.
     expect(cell.getAttribute("tabindex")).toBe("0");
   });
+
+  // --- Regression: deferred + portal mount + reactivity (Task 2.4) ---
+
+  it("engages when the container mounts after the hook's first commit (deferred)", async () => {
+    function Host() {
+      const trap = useFocusTrap({
+        strategy: {
+          getElements: () => ({
+            content: document.getElementById("slot") ?? undefined,
+          }),
+          cycleOrder: ["content"],
+        },
+      });
+      const onContainer = (el: HTMLDivElement | null) => {
+        trap.containerRef(el);
+        if (el) trap.enterTrap();
+      };
+      return (
+        <DeferredChildren>
+          <div ref={onContainer} tabIndex={-1}>
+            <button id="slot" type="button">
+              slot
+            </button>
+          </div>
+        </DeferredChildren>
+      );
+    }
+    render(<Host />);
+    await Promise.resolve();
+    expect(document.activeElement).toBe(document.getElementById("slot"));
+  });
+
+  it("engages through ReactDOM.createPortal", async () => {
+    function PortalChildren({ children }: { children: React.ReactNode }) {
+      const host = useMemo(() => document.createElement("div"), []);
+      useEffect(() => {
+        document.body.appendChild(host);
+        return () => {
+          // Guard: afterEach may have already cleared document.body.
+          if (host.parentNode) host.parentNode.removeChild(host);
+        };
+      }, [host]);
+      return createPortal(children, host);
+    }
+    function Host() {
+      const trap = useFocusTrap({
+        strategy: {
+          getElements: () => ({
+            content: document.getElementById("pslot") ?? undefined,
+          }),
+          cycleOrder: ["content"],
+        },
+      });
+      const onContainer = (el: HTMLDivElement | null) => {
+        trap.containerRef(el);
+        if (el) trap.enterTrap();
+      };
+      return (
+        <PortalChildren>
+          <div ref={onContainer} tabIndex={-1}>
+            <button id="pslot" type="button">
+              slot
+            </button>
+          </div>
+        </PortalChildren>
+      );
+    }
+    render(<Host />);
+    await Promise.resolve();
+    expect(document.activeElement).toBe(document.getElementById("pslot"));
+  });
+
+  it("re-renders the consumer when isTrapped changes", async () => {
+    const seen: boolean[] = [];
+    function Host() {
+      const trap = useFocusTrap({
+        strategy: {
+          getElements: () => ({
+            content: document.getElementById("rslot") ?? undefined,
+          }),
+          cycleOrder: ["content"],
+        },
+      });
+      seen.push(trap.isTrapped);
+      return (
+        <div
+          ref={(el) => {
+            trap.containerRef(el);
+            if (el) trap.enterTrap();
+          }}
+          tabIndex={-1}
+        >
+          <button id="rslot" type="button">
+            slot
+          </button>
+        </div>
+      );
+    }
+    render(<Host />);
+    await Promise.resolve();
+    expect(seen).toContain(true); // a render observed isTrapped === true
+  });
 });
+
+// Helper component for the deferred-mount regression test.
+function DeferredChildren({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  return mounted ? <>{children}</> : null;
+}

@@ -27,7 +27,6 @@ export type { FocusMessage, FocusTransport } from "./focus-messages";
 export type {
   FocusTrapStrategy,
   FocusTrapConfig,
-  FocusTrapResult,
   FocusContentContext,
   FocusContentTrigger,
   TabHandlerResult,
