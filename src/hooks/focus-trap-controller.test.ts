@@ -9,11 +9,19 @@ function makeContainer(): HTMLDivElement {
   return el;
 }
 
+let activeElementOverridden = false;
+
 function setActiveElement(el: Element) {
+  // Override the native `document.activeElement` getter with a fixed value so a
+  // test can simulate "focus is on element X" without driving real focus. This
+  // installs an own, configurable property on `document`; afterEach deletes it
+  // to restore jsdom's native getter (otherwise later tests that assert against
+  // *real* focus would still see this stale value).
   Object.defineProperty(document, "activeElement", {
     value: el,
     configurable: true,
   });
+  activeElementOverridden = true;
 }
 
 function pressKey(key: string, opts: Partial<KeyboardEventInit> = {}) {
@@ -33,6 +41,33 @@ afterEach(() => {
   controller?.destroy();
   controller = null;
   document.body.innerHTML = "";
+  if (activeElementOverridden) {
+    // Delete the own property installed by setActiveElement to restore jsdom's
+    // native activeElement getter for the next test. Reflect.deleteProperty
+    // (rather than `delete`) keeps Biome's noDelete rule happy; assigning
+    // `undefined` would NOT work — it leaves a static own property shadowing
+    // the prototype getter.
+    Reflect.deleteProperty(document, "activeElement");
+    activeElementOverridden = false;
+  }
+});
+
+describe("FocusTrapController pre-attach safety", () => {
+  it("constructs without a container; all public methods are safe before attach", () => {
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: ["content"],
+    };
+    const ctrl = new FocusTrapController(strategy);
+    expect(ctrl.isTrapped).toBe(false);
+    expect(() => ctrl.enterTrap()).not.toThrow();
+    expect(ctrl.isTrapped).toBe(false); // no-op, no state change
+    expect(() => ctrl.exitTrap()).not.toThrow();
+    expect(() => ctrl.cycleToAdjacentSlot(1)).not.toThrow();
+    expect(() => ctrl.setEnabled(true)).not.toThrow();
+    expect(() => ctrl.setStrategy(strategy)).not.toThrow();
+    expect(() => ctrl.destroy()).not.toThrow(); // destroy works pre-attach
+  });
 });
 
 describe("FocusTrapController", () => {
@@ -49,7 +84,8 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title, content }),
       cycleOrder: ["title", "content"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -81,7 +117,8 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title, toolbar, content }),
       cycleOrder: ["title", "toolbar", "content"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     // Trap entered at title (slotIndex=0). Without the re-derivation fix, a
@@ -119,7 +156,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["content"],
       tabWithinSlots: ["content"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -154,7 +192,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabWithinSlots: ["content"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -190,7 +229,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["toolbar", "content"],
       tabWithinSlots: ["toolbar"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -222,7 +262,8 @@ describe("FocusTrapController", () => {
       getExternalElements: () => [portalToolbar],
       externalElementsSlot: "toolbar",
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     expect(title.focus).toHaveBeenCalled();
@@ -254,7 +295,8 @@ describe("FocusTrapController", () => {
       getExternalElements: () => [portal],
       // externalElementsSlot intentionally omitted
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     // Trap entered at title (slotIndex=0). Without externalElementsSlot, Tab
@@ -278,7 +320,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title"],
       onExit,
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     expect(controller.isTrapped).toBe(true);
@@ -302,7 +345,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title"],
       onExit,
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     expect(controller.isTrapped).toBe(true);
@@ -325,7 +369,8 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title }),
       cycleOrder: ["title"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     controller.exitTrap();
@@ -339,7 +384,8 @@ describe("FocusTrapController", () => {
       cycleOrder: [],
     };
     const removeSpy = vi.spyOn(document, "removeEventListener");
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.destroy();
 
     expect(removeSpy).toHaveBeenCalledWith(
@@ -369,7 +415,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     expect(title.focus).toHaveBeenCalled();
@@ -396,7 +443,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -423,7 +471,8 @@ describe("FocusTrapController", () => {
         /* none for title */
       },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -446,7 +495,8 @@ describe("FocusTrapController", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -471,7 +521,8 @@ describe("FocusTrapController", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -500,7 +551,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content", "toolbar"],
       focusContent,
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
     // Forward entry into content from title:
@@ -534,7 +586,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: handler },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     // setEnabled(false) when not previously enabled triggers setChildrenNonTabbable
     controller.setEnabled(false);
 
@@ -563,7 +616,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(false);
 
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -585,7 +639,8 @@ describe("FocusTrapController", () => {
       // Only `content` is managed; `title` should still be set non-tabbable.
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(false);
 
     expect(titleBtn.getAttribute("tabindex")).toBe("-1");
@@ -604,7 +659,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       // No tabHandlers field at all.
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(false);
 
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -628,7 +684,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
 
     // First call: content slot doesn't exist, so its descendants — none yet —
     // can't be skipped. (No assertion needed here; this just exercises the path.)
@@ -675,7 +732,8 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       focusContent,
       getNativeTabSlotSentinels: () => ({ before, after }),
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap(); // focus title
 
@@ -705,7 +763,8 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       focusContent,
       getNativeTabSlotSentinels: () => ({ before, after }),
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -736,7 +795,8 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       focusContent: () => true,
       getNativeTabSlotSentinels: () => ({ before, after }),
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap();
 
@@ -758,7 +818,8 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       getElements: () => ({ title, content }),
       cycleOrder: ["title", "content"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
     controller.enterTrap(); // title, index 0
 
@@ -768,5 +829,91 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
     (title.focus as ReturnType<typeof vi.fn>).mockClear();
     controller.cycleToAdjacentSlot(1); // wrap to title
     expect(title.focus).toHaveBeenCalled();
+  });
+});
+
+describe("FocusTrapController containerRef lifecycle", () => {
+  it("engages when the container arrives after construction", () => {
+    const container = document.createElement("div");
+    container.tabIndex = -1;
+    const slot = document.createElement("button");
+    container.appendChild(slot);
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slot }),
+      cycleOrder: ["content"],
+    });
+    controller.setEnabled(true);
+    controller.enterTrap(); // pre-attach: no-op
+    expect(controller.isTrapped).toBe(false);
+    document.body.appendChild(container);
+    controller.containerRef(container); // container mounts
+    controller.enterTrap();
+    expect(controller.isTrapped).toBe(true);
+    expect(document.activeElement).toBe(slot);
+  });
+
+  it("containerRef(null) tears down silently — no onExit", () => {
+    const container = document.createElement("div");
+    container.tabIndex = -1;
+    const slot = document.createElement("button");
+    container.appendChild(slot);
+    document.body.appendChild(container);
+    const onExit = vi.fn();
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slot }),
+      cycleOrder: ["content"],
+      onExit,
+    });
+    controller.setEnabled(true);
+    controller.containerRef(container);
+    controller.enterTrap();
+    expect(controller.isTrapped).toBe(true);
+    controller.containerRef(null); // unmount
+    expect(controller.isTrapped).toBe(false); // state accurate
+    expect(onExit).not.toHaveBeenCalled(); // but NO onExit on unmount
+  });
+
+  it("swaps cleanly from one container to another", () => {
+    const a = document.createElement("div");
+    a.tabIndex = -1;
+    const b = document.createElement("div");
+    b.tabIndex = -1;
+    const slotA = document.createElement("button");
+    a.appendChild(slotA);
+    const slotB = document.createElement("button");
+    b.appendChild(slotB);
+    document.body.append(a, b);
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slotA }),
+      cycleOrder: ["content"],
+    });
+    controller.setEnabled(true);
+    controller.containerRef(a);
+    controller.enterTrap();
+    expect(document.activeElement).toBe(slotA);
+    controller.containerRef(b); // detach A, attach B
+    controller.setStrategy({
+      getElements: () => ({ content: slotB }),
+      cycleOrder: ["content"],
+    });
+    controller.enterTrap();
+    expect(document.activeElement).toBe(slotB);
+  });
+
+  it("methods survive destructuring (bound)", () => {
+    const container = document.createElement("div");
+    container.tabIndex = -1;
+    const slot = document.createElement("button");
+    container.appendChild(slot);
+    document.body.appendChild(container);
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slot }),
+      cycleOrder: ["content"],
+    });
+    controller.setEnabled(true);
+    controller.containerRef(container);
+    const { enterTrap } = controller; // destructured
+    expect(() => enterTrap()).not.toThrow();
+    expect(controller.isTrapped).toBe(true);
   });
 });

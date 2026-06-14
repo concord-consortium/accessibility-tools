@@ -1,12 +1,28 @@
 /**
  * FocusTrapController — imperative (non-hook) API for focus trap management.
  *
- * Designed for class components that can't use hooks. Mirrors the behavior of
- * useFocusTrap but with explicit lifecycle management (constructor/destroy).
+ * Two-phase lifecycle:
+ *   1. Construct with `(strategy, options)` only — this sets up engine state
+ *      (strategy, options, bound handlers) but wires NO DOM. All public methods
+ *      are safe no-ops until a container is attached.
+ *   2. Attach the DOM by handing the container element to `containerRef` (a
+ *      stable ref-callback): a non-null element attaches (installs document
+ *      listeners, runs tabindex sweeps); null detaches silently. React keeps the
+ *      same callback identity across renders, so the node attaches/detaches/
+ *      remounts precisely when the DOM node does — even inside deferred portals.
+ *   3. Call `destroy()` on teardown.
  *
- * Usage:
- *   // componentDidMount
- *   this.trap = new FocusTrapController(this.domElement, strategy);
+ * **Ownership when obtained from `useFocusTrap`:** the hook owns
+ * `setEnabled`, `setStrategy`, and `destroy` — consumers must NOT call them.
+ * The consumer-facing surface is `containerRef`, `isTrapped`, `enterTrap`,
+ * `exitTrap`, and `cycleToAdjacentSlot`.
+ *
+ * Class-component usage (where hooks aren't available):
+ *   // constructor / field initializer
+ *   this.trap = new FocusTrapController(strategy);
+ *
+ *   // render — wire the seam onto the root element
+ *   <div ref={this.trap.containerRef}>…</div>
  *
  *   // componentDidUpdate — toggle based on selection
  *   this.trap.setEnabled(isSelected);
@@ -54,6 +70,11 @@ export interface FocusTrapControllerOptions {
    * debug instrumentation observe the trap's lifecycle.
    */
   onEvent?: (event: FocusTrapEvent) => void;
+  /**
+   * Called whenever the container attaches (el) or detaches (null), so a
+   * wrapper can mirror the element (e.g. into the debug inspector).
+   */
+  onContainerChange?: (el: HTMLElement | null) => void;
 }
 
 function announce(text: string | undefined) {
@@ -70,27 +91,26 @@ function announce(text: string | undefined) {
 }
 
 export class FocusTrapController {
-  private container: HTMLElement;
+  private container: HTMLElement | null = null;
+  private attached = false;
+  private destroyed = false;
   private strategy: FocusTrapStrategy;
   private options: FocusTrapControllerOptions;
   private enabled = false;
   private trapped = false;
   private slotIndex = 0;
   private savedTabIndices = new Map<HTMLElement, string | null>();
-  private destroyed = false;
+  private tabInProgress = false;
 
   // Bound handlers for cleanup
   private boundHandleKeyDown: (e: KeyboardEvent) => void;
   private boundHandleTabDirection: (e: KeyboardEvent) => void;
   private boundHandleFocusIn: (e: FocusEvent) => void;
-  private tabInProgress = false;
 
   constructor(
-    container: HTMLElement,
     strategy: FocusTrapStrategy,
     options: FocusTrapControllerOptions = {},
   ) {
-    this.container = container;
     this.strategy = strategy;
     this.options = options;
 
@@ -98,9 +118,50 @@ export class FocusTrapController {
     this.boundHandleTabDirection = this.handleTabDirection.bind(this);
     this.boundHandleFocusIn = this.handleFocusIn.bind(this);
 
+    // Bind the consumer-facing methods so the hook can return the raw
+    // controller and consumers can safely destructure them.
+    this.enterTrap = this.enterTrap.bind(this);
+    this.exitTrap = this.exitTrap.bind(this);
+    this.cycleToAdjacentSlot = this.cycleToAdjacentSlot.bind(this);
+    // NOTE: no document.addEventListener here — that moves to attach().
+  }
+
+  /**
+   * The single container seam. Spread onto the container element
+   * (`ref={controller.containerRef}`) from a hook or class component, or call
+   * imperatively. Stable identity (bound arrow field), so React never
+   * detaches/reattaches it across renders. Non-null attaches; null tears down
+   * silently (see detach()).
+   */
+  containerRef = (el: HTMLElement | null): void => {
+    if (this.destroyed) return;
+    if (el === this.container) return;
+    if (this.attached) this.detach();
+    this.container = el;
+    if (el) this.attach();
+    this.options.onContainerChange?.(el);
+  };
+
+  private attach(): void {
+    this.attached = true;
     document.addEventListener("keydown", this.boundHandleTabDirection, true);
     document.addEventListener("keydown", this.boundHandleKeyDown, true);
     document.addEventListener("focusin", this.boundHandleFocusIn, true);
+    // Match constructor-era startup: if enabled-but-not-trapped, make children
+    // non-tabbable now that we have a container.
+    if (this.enabled && !this.trapped) this.setChildrenNonTabbable();
+  }
+
+  /** Silent teardown: no onExit / no announce (that's exitTrap's job). */
+  private detach(): void {
+    if (!this.attached) return;
+    this.attached = false;
+    document.removeEventListener("keydown", this.boundHandleTabDirection, true);
+    document.removeEventListener("keydown", this.boundHandleKeyDown, true);
+    document.removeEventListener("focusin", this.boundHandleFocusIn, true);
+    this.restoreChildrenTabbable();
+    if (this.trapped) this.setTrapped(false); // fires onTrappedChange; NO onExit/announce
+    this.container = null;
   }
 
   get isTrapped(): boolean {
@@ -150,6 +211,10 @@ export class FocusTrapController {
     if (this.destroyed) return;
     const wasEnabled = this.enabled;
     this.enabled = enabled;
+    // Record the flag above; defer all DOM effects (tabindex sweeps, focus
+    // moves) until a container is attached.
+    if (!this.attached) return;
+    const container = this.container as HTMLElement;
 
     if (enabled && !wasEnabled) {
       // Becoming enabled: if focus is already inside, just enable Tab cycling.
@@ -164,7 +229,7 @@ export class FocusTrapController {
       this.strategy.onExit?.();
       announce(this.strategy.announceExit);
       this.emit("exit");
-      this.container.focus();
+      container.focus();
     }
 
     if (!enabled && !this.trapped) {
@@ -178,7 +243,7 @@ export class FocusTrapController {
   }
 
   enterTrap(): void {
-    if (this.destroyed || !this.enabled) return;
+    if (this.destroyed || !this.attached || !this.enabled) return;
     this.activateTrap({ announce: true });
     // enterTrap is a programmatic entry (no pending Tab default to descend
     // with), so a content slot must enter in landing mode (trigger
@@ -199,18 +264,19 @@ export class FocusTrapController {
    * user just put it. Modality is the host's policy — see docs/trap-composition.md.
    */
   exitTrap(options?: { refocus?: boolean }): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.attached) return;
+    const container = this.container as HTMLElement;
     const refocus = options?.refocus ?? true;
     this.setTrapped(false);
     this.setChildrenNonTabbable();
     this.strategy.onExit?.();
     announce(this.strategy.announceExit);
     this.emit("exit");
-    if (refocus) this.container.focus();
+    if (refocus) container.focus();
   }
 
   cycleToAdjacentSlot(direction: 1 | -1): void {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.attached) return;
     const reverse = direction === -1;
     const nextIndex = this.findNextSlot(this.slotIndex, direction);
     this.slotIndex = nextIndex;
@@ -221,16 +287,7 @@ export class FocusTrapController {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-
-    document.removeEventListener("keydown", this.boundHandleTabDirection, true);
-    document.removeEventListener("keydown", this.boundHandleKeyDown, true);
-    document.removeEventListener("focusin", this.boundHandleFocusIn, true);
-
-    this.restoreChildrenTabbable();
-
-    if (this.trapped) {
-      this.strategy.onExit?.();
-    }
+    this.detach(); // safe if !attached
   }
 
   // --- Private methods ---
@@ -245,11 +302,15 @@ export class FocusTrapController {
   }
 
   private handleFocusIn(e: FocusEvent): void {
+    // Only invoked via the document listener installed in attach(), so the
+    // container is always present here.
+    const container = this.container;
+    if (!container) return;
     if (this.trapped) return;
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
-    if (target === this.container) return;
-    if (!this.container.contains(target)) return;
+    if (target === container) return;
+    if (!container.contains(target)) return;
 
     if (this.tabInProgress) {
       // Tab moved focus into a child when not trapped — the trap is enabled
@@ -264,7 +325,7 @@ export class FocusTrapController {
     // Focus entered via non-Tab event (e.g., mouse click) — enter trap if coming from outside.
     const relatedTarget = e.relatedTarget as HTMLElement | null;
     const cameFromOutside =
-      !relatedTarget || !this.container.contains(relatedTarget);
+      !relatedTarget || !container.contains(relatedTarget);
     if (cameFromOutside) {
       if (!this.enabled) {
         this.enabled = true;
@@ -278,9 +339,13 @@ export class FocusTrapController {
 
   private handleKeyDown(e: KeyboardEvent): void {
     if (this.destroyed) return;
+    // Only invoked via the document listener installed in attach(), so the
+    // container is always present here.
+    const container = this.container;
+    if (!container) return;
     const target = e.target as HTMLElement | null;
-    const isOnContainer = target === this.container;
-    const isInsideContainer = target ? this.container.contains(target) : false;
+    const isOnContainer = target === container;
+    const isInsideContainer = target ? container.contains(target) : false;
 
     if (!this.enabled) {
       // When disabled, call onTabWhenInactive for inter-tile navigation
@@ -515,6 +580,7 @@ export class FocusTrapController {
 
   private isInsideTrap(el: Element | null): boolean {
     if (!el) return false;
+    if (!this.container) return false;
     if (this.container.contains(el)) return true;
     const externals = this.strategy.getExternalElements?.() ?? [];
     return externals.some((ext) => ext.contains(el));
@@ -526,19 +592,21 @@ export class FocusTrapController {
   }
 
   private setChildrenNonTabbable(): void {
-    const focusable = this.container.querySelectorAll<HTMLElement>(
+    const container = this.container;
+    if (!container) return;
+    const focusable = container.querySelectorAll<HTMLElement>(
       "a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]",
     );
     // Remove stale entries for elements no longer in the container
     for (const [el] of this.savedTabIndices) {
-      if (!this.container.contains(el)) {
+      if (!container.contains(el)) {
         this.savedTabIndices.delete(el);
       }
     }
     const managedSlotEls = getManagedSlotElements(this.strategy);
     // Only save original tabindex if not already saved (preserve originals across multiple calls)
     for (const el of focusable) {
-      if (el === this.container) continue;
+      if (el === container) continue;
       if (managedSlotEls.some((s) => s.contains(el))) continue;
       if (!this.savedTabIndices.has(el)) {
         this.savedTabIndices.set(el, el.getAttribute("tabindex"));
