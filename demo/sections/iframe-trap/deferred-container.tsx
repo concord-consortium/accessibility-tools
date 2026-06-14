@@ -134,7 +134,7 @@ export function DeferredContainerScenario() {
           {...containerProps}
           role="group"
           aria-label="Deferred-container iframe trap"
-          data-testid="deferred-container-container"
+          data-testid="deferred-container-trap"
           style={trapContainerStyle(trap.isTrapped)}
         >
           <input ref={inputRef} type="text" placeholder="Before iframe" />
