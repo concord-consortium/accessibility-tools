@@ -1,5 +1,8 @@
 import { useMemo, useRef } from "react";
-import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
+import type {
+  FocusTrapController,
+  FocusTrapStrategy,
+} from "../../../src/hooks";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
@@ -12,13 +15,13 @@ const CYCLE_ORDER = ["frame"];
 const ENTER_LABEL = "Press Tab to enter the inner page";
 
 export function SoloIframeScenario() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const beforeRef = useRef<HTMLElement>(null);
   const afterRef = useRef<HTMLElement>(null);
   // Trap is created after the slot; read it through a ref to break the cycle.
-  const trapRef = useRef<FocusTrapResult | null>(null);
+  const trapRef = useRef<FocusTrapController | null>(null);
 
   const src = useMemo(
     () => crossOriginInnerSrc(window.location.href, "iframe-inner.html"),
@@ -72,17 +75,16 @@ export function SoloIframeScenario() {
       </p>
       <FocusReadout
         label="solo"
-        isTrapped={trap?.isTrapped ?? false}
+        isTrapped={trap.isTrapped}
         iframes={iframesMap}
       />
       <div
-        ref={containerRef}
         tabIndex={0}
         {...containerProps}
         role="group"
         aria-label="Single iframe trap"
         data-testid="solo-container"
-        style={trapContainerStyle(trap?.isTrapped ?? false)}
+        style={trapContainerStyle(trap.isTrapped)}
       >
         <SentinelIframe
           wrapperRef={wrapperRef}
@@ -95,7 +97,7 @@ export function SoloIframeScenario() {
           // Host requirement: a managed slot must leave the tab order while its
           // trap is dormant, else Shift+Tab from outside falls into the iframe.
           // See docs/trap-composition.md → "Managed slots must be de-tabbed…".
-          iframeTabIndex={trap?.isTrapped ? 0 : -1}
+          iframeTabIndex={trap.isTrapped ? 0 : -1}
         />
       </div>
     </section>

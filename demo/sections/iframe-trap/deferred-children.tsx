@@ -1,5 +1,8 @@
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
+import type {
+  FocusTrapController,
+  FocusTrapStrategy,
+} from "../../../src/hooks";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
@@ -29,7 +32,7 @@ function DeferredChildren({ children }: { children: ReactNode }) {
 }
 
 export function DeferredChildrenScenario() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -37,7 +40,7 @@ export function DeferredChildrenScenario() {
   const beforeRef = useRef<HTMLElement>(null);
   const afterRef = useRef<HTMLElement>(null);
   // Trap is created after the slot; read it through a ref to break the cycle.
-  const trapRef = useRef<FocusTrapResult | null>(null);
+  const trapRef = useRef<FocusTrapController | null>(null);
 
   const src = useMemo(
     () => crossOriginInnerSrc(window.location.href, "iframe-inner.html"),
@@ -105,17 +108,16 @@ export function DeferredChildrenScenario() {
       </p>
       <FocusReadout
         label="deferred"
-        isTrapped={trap?.isTrapped ?? false}
+        isTrapped={trap.isTrapped}
         iframes={iframesMap}
       />
       <div
-        ref={containerRef}
         tabIndex={0}
         {...containerProps}
         role="group"
         aria-label="Deferred-children iframe trap"
         data-testid="deferred-container"
-        style={trapContainerStyle(trap?.isTrapped ?? false)}
+        style={trapContainerStyle(trap.isTrapped)}
       >
         <input ref={inputRef} type="text" placeholder="Before iframe" />
         <DeferredChildren>
@@ -130,7 +132,7 @@ export function DeferredChildrenScenario() {
             // Host requirement: a managed slot must leave the tab order while its
             // trap is dormant, else Shift+Tab from outside falls into the iframe.
             // See docs/trap-composition.md → "Managed slots must be de-tabbed…".
-            iframeTabIndex={trap?.isTrapped ? 0 : -1}
+            iframeTabIndex={trap.isTrapped ? 0 : -1}
           />
         </DeferredChildren>
         <button ref={buttonRef} type="button">

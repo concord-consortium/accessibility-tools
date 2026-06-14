@@ -1,20 +1,24 @@
 import {
+  type MutableRefObject,
   type KeyboardEvent as ReactKeyboardEvent,
-  type RefObject,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
+import type {
+  FocusTrapController,
+  FocusTrapStrategy,
+} from "../../../src/hooks";
 import { findNextFocusableOutside } from "../../../src/hooks/dom-utils";
 import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 
 export interface EnterToTrapResult {
-  trap: FocusTrapResult | null;
+  trap: FocusTrapController;
   /** Spread onto the trap container element. */
   containerProps: {
+    ref: (el: HTMLElement | null) => void;
     onKeyDown: (e: ReactKeyboardEvent) => void;
   };
 }
@@ -36,7 +40,7 @@ export interface EnterToTrapResult {
  *   releases (Escape) and stays consistent when the engine enters on a click.
  */
 export function useEnterToTrap(
-  containerRef: RefObject<HTMLElement | null>,
+  containerRef: MutableRefObject<HTMLElement | null>,
   strategy: FocusTrapStrategy,
 ): EnterToTrapResult {
   const [enabled, setEnabled] = useState(false);
@@ -56,11 +60,20 @@ export function useEnterToTrap(
   );
 
   const trap = useFocusTrap({
-    containerRef,
     strategy: strategyWithSkip,
     enabled,
   });
-  const isTrapped = trap?.isTrapped ?? false;
+  const isTrapped = trap.isTrapped;
+
+  // Attach the container to both the host RefObject (read by onTabWhenInactive)
+  // and the controller. Identity is stable: containerRef and trap are stable.
+  const setContainer = useCallback(
+    (el: HTMLElement | null) => {
+      containerRef.current = el;
+      trap.containerRef(el);
+    },
+    [containerRef, trap],
+  );
 
   // Read the latest trap without re-running the entry effect every render.
   const trapRef = useRef(trap);
@@ -94,5 +107,5 @@ export function useEnterToTrap(
     [isTrapped],
   );
 
-  return { trap, containerProps: { onKeyDown } };
+  return { trap, containerProps: { ref: setContainer, onKeyDown } };
 }

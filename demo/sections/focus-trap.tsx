@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { FocusTrapStrategy } from "../../src/hooks";
 import { useFocusTrap } from "../../src/hooks/use-focus-trap";
 
@@ -21,7 +21,7 @@ export function FocusTrapSection() {
   const [multiFocused, setMultiFocused] = useState(false);
 
   // --- Simple trap: three focusable elements as slots ---
-  const simpleRef = useRef<HTMLDivElement>(null);
+  const simpleRef = useRef<HTMLDivElement | null>(null);
   const simpleInputRef = useRef<HTMLInputElement>(null);
   const simpleBtn1Ref = useRef<HTMLButtonElement>(null);
   const simpleBtn2Ref = useRef<HTMLButtonElement>(null);
@@ -41,13 +41,17 @@ export function FocusTrapSection() {
     [],
   );
 
-  const simpleTrap = useFocusTrap({
-    containerRef: simpleRef,
-    strategy: simpleStrategy,
-  });
+  const simpleTrap = useFocusTrap({ strategy: simpleStrategy });
+  const setSimpleRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      simpleRef.current = el;
+      simpleTrap.containerRef(el);
+    },
+    [simpleTrap],
+  );
 
   // --- Multi-slot trap: title + toolbar buttons + content ---
-  const multiRef = useRef<HTMLDivElement>(null);
+  const multiRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const boldRef = useRef<HTMLButtonElement>(null);
   const italicRef = useRef<HTMLButtonElement>(null);
@@ -71,13 +75,17 @@ export function FocusTrapSection() {
     [],
   );
 
-  const multiTrap = useFocusTrap({
-    containerRef: multiRef,
-    strategy: multiStrategy,
-  });
+  const multiTrap = useFocusTrap({ strategy: multiStrategy });
+  const setMultiRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      multiRef.current = el;
+      multiTrap.containerRef(el);
+    },
+    [multiTrap],
+  );
 
   // --- Tab-within-slots: content has multiple focusables ---
-  const tabWithinRef = useRef<HTMLDivElement>(null);
+  const tabWithinRef = useRef<HTMLDivElement | null>(null);
   const twTitleRef = useRef<HTMLInputElement>(null);
   const twToolbarRef = useRef<HTMLButtonElement>(null);
   const twContentRef = useRef<HTMLDivElement>(null);
@@ -99,10 +107,14 @@ export function FocusTrapSection() {
     [],
   );
 
-  const tabWithinTrap = useFocusTrap({
-    containerRef: tabWithinRef,
-    strategy: tabWithinStrategy,
-  });
+  const tabWithinTrap = useFocusTrap({ strategy: tabWithinStrategy });
+  const setTabWithinRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      tabWithinRef.current = el;
+      tabWithinTrap.containerRef(el);
+    },
+    [tabWithinTrap],
+  );
 
   return (
     <section>
@@ -118,7 +130,7 @@ export function FocusTrapSection() {
       {/* Simple trap */}
       <h3>Simple (three elements)</h3>
       <div
-        ref={simpleRef}
+        ref={setSimpleRef}
         tabIndex={0}
         role="group"
         aria-label="Simple focus trap demo"
@@ -128,10 +140,10 @@ export function FocusTrapSection() {
         onBlur={(e) => {
           if (e.target === simpleRef.current) setSimpleFocused(false);
         }}
-        style={containerStyle(simpleTrap?.isTrapped ?? false, simpleFocused)}
+        style={containerStyle(simpleTrap.isTrapped, simpleFocused)}
       >
         <p style={{ margin: "0 0 8px", fontSize: 13 }}>
-          {simpleTrap?.isTrapped
+          {simpleTrap.isTrapped
             ? "Trapped. Tab cycles: input -> Action 1 -> Action 2. Escape exits."
             : "Focus this container and press Enter to enter the trap."}
         </p>
@@ -159,7 +171,7 @@ export function FocusTrapSection() {
       {/* Multi-slot trap */}
       <h3>Multi-slot (title + toolbar + content)</h3>
       <div
-        ref={multiRef}
+        ref={setMultiRef}
         tabIndex={0}
         role="group"
         aria-label="Multi-slot focus trap demo"
@@ -169,10 +181,10 @@ export function FocusTrapSection() {
         onBlur={(e) => {
           if (e.target === multiRef.current) setMultiFocused(false);
         }}
-        style={containerStyle(multiTrap?.isTrapped ?? false, multiFocused)}
+        style={containerStyle(multiTrap.isTrapped, multiFocused)}
       >
         <p style={{ margin: "0 0 8px", fontSize: 13 }}>
-          {multiTrap?.isTrapped
+          {multiTrap.isTrapped
             ? "Trapped. Tab cycles: title -> toolbar -> content. Escape exits."
             : "Focus this container and press Enter to enter the trap."}
         </p>
@@ -219,7 +231,7 @@ export function FocusTrapSection() {
         slot. Title and toolbar cycle immediately.
       </p>
       <div
-        ref={tabWithinRef}
+        ref={setTabWithinRef}
         tabIndex={0}
         role="group"
         aria-label="Tab-within-slots focus trap demo"
@@ -229,10 +241,10 @@ export function FocusTrapSection() {
         onBlur={(e) => {
           if (e.target === tabWithinRef.current) setTwFocused(false);
         }}
-        style={containerStyle(tabWithinTrap?.isTrapped ?? false, twFocused)}
+        style={containerStyle(tabWithinTrap.isTrapped, twFocused)}
       >
         <p style={{ margin: "0 0 8px", fontSize: 13 }}>
-          {tabWithinTrap?.isTrapped
+          {tabWithinTrap.isTrapped
             ? "Trapped. Tab within content: Input 1 -> Input 2 -> Checkbox -> then cycles to title."
             : "Focus this container and press Enter to enter the trap."}
         </p>

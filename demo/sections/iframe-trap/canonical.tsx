@@ -1,5 +1,8 @@
 import { useMemo, useRef } from "react";
-import type { FocusTrapResult, FocusTrapStrategy } from "../../../src/hooks";
+import type {
+  FocusTrapController,
+  FocusTrapStrategy,
+} from "../../../src/hooks";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
@@ -11,7 +14,7 @@ const CYCLE_ORDER = ["input", "frame", "button"];
 const ENTER_LABEL = "Press Tab to enter the inner page";
 
 export function CanonicalScenario() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -19,7 +22,7 @@ export function CanonicalScenario() {
   const beforeRef = useRef<HTMLElement>(null);
   const afterRef = useRef<HTMLElement>(null);
   // Trap is created after the slot; read it through a ref to break the cycle.
-  const trapRef = useRef<FocusTrapResult | null>(null);
+  const trapRef = useRef<FocusTrapController | null>(null);
 
   const src = useMemo(
     () => crossOriginInnerSrc(window.location.href, "iframe-inner.html"),
@@ -73,17 +76,16 @@ export function CanonicalScenario() {
       </p>
       <FocusReadout
         label="canonical"
-        isTrapped={trap?.isTrapped ?? false}
+        isTrapped={trap.isTrapped}
         iframes={iframesMap}
       />
       <div
-        ref={containerRef}
         tabIndex={0}
         {...containerProps}
         role="group"
         aria-label="Canonical iframe trap"
         data-testid="canonical-container"
-        style={trapContainerStyle(trap?.isTrapped ?? false)}
+        style={trapContainerStyle(trap.isTrapped)}
       >
         <input ref={inputRef} type="text" placeholder="Before iframe" />
         <SentinelIframe
@@ -97,7 +99,7 @@ export function CanonicalScenario() {
           // Host requirement: a managed slot must leave the tab order while its
           // trap is dormant, else Shift+Tab from outside falls into the iframe.
           // See docs/trap-composition.md → "Managed slots must be de-tabbed…".
-          iframeTabIndex={trap?.isTrapped ? 0 : -1}
+          iframeTabIndex={trap.isTrapped ? 0 : -1}
         />
         <button ref={buttonRef} type="button">
           After iframe

@@ -1,6 +1,6 @@
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import type {
-  FocusTrapResult,
+  FocusTrapController,
   FocusTrapStrategy,
   UseIframeSlotResult,
 } from "../../../src/hooks";
@@ -15,8 +15,8 @@ import { useEnterToTrap } from "./use-enter-to-trap";
 const CYCLE_ORDER = ["frameA", "frameB"];
 
 export function MultiIframeScenario() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const trapRef = useRef<FocusTrapResult | null>(null);
+  const containerRef = useRef<HTMLElement | null>(null);
+  const trapRef = useRef<FocusTrapController | null>(null);
   const registry = useMemo(() => createIframeSlotRegistry(), []);
 
   const aWrap = useRef<HTMLDivElement>(null);
@@ -111,7 +111,7 @@ export function MultiIframeScenario() {
 
   const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
   trapRef.current = trap;
-  const isTrapped = trap?.isTrapped ?? false;
+  const isTrapped = trap.isTrapped;
 
   // Re-derive intercepts AFTER React commits the new iframe tabindex (gated on
   // isTrapped below) to the DOM — the registry reads tabindex live, so a
@@ -153,17 +153,16 @@ export function MultiIframeScenario() {
       </p>
       <FocusReadout
         label="multi"
-        isTrapped={trap?.isTrapped ?? false}
+        isTrapped={trap.isTrapped}
         iframes={iframesMap}
       />
       <div
-        ref={containerRef}
         tabIndex={0}
         {...containerProps}
         role="group"
         aria-label="Multi-iframe trap"
         data-testid="multi-container"
-        style={trapContainerStyle(trap?.isTrapped ?? false, {
+        style={trapContainerStyle(trap.isTrapped, {
           display: "grid",
           gap: 8,
         })}
