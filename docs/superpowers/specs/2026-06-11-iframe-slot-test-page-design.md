@@ -80,6 +80,11 @@ selectors stay clean and stable for automation.
    `data-testid` attributes so the MCP can assert without screenshots and
    without reading into the cross-origin frame.
 
+Two deferred-mount regression scenarios were added later (see the findings
+below): `deferred-children.tsx` defers the iframe SUBTREE (iframe-slot guard),
+and `deferred-container.tsx` defers the WHOLE trap container so the controller's
+`containerRef` attaches late (trap-controller guard).
+
 ### `demo/cross-origin.ts`
 `crossOriginInnerSrc()` helper. In dev, swaps `localhost`↔`127.0.0.1` on
 `window.location` while preserving protocol, port, and path. Falls back to a
@@ -163,6 +168,38 @@ iframe slot sits between two known-good slots.
   `iframe-slot.test.ts` (`syncListeners rebinding`) and `use-iframe-slot.test.ts`
   (deferred + re-mount). See
   `docs/superpowers/plans/2026-06-12-deferred-iframe-slot-fix.md`.
+
+### Scenario 6 — Deferred trap CONTAINER (controller attaches late): PENDING manual verification
+The trap-**controller** analogue of Scenario 2. Scenario 2 is the iframe-**slot**
+deferred case — it defers only the iframe subtree (sentinels + iframe) INSIDE an
+immediately-mounted container. This scenario instead defers the **whole trap
+container `<div>`** — the element that carries the controller's `containerRef`
+ref-callback — by wrapping it in the same effect-gated `DeferredChildren` gate, so
+the container (and everything in it) commits one render late. Appended to the page
+as scenario 6 to avoid renumbering the existing scenarios; conceptually it sits
+beside Scenario 2 (both deferred cases), hence its placement here in the doc.
+- Mechanism it guards: with the pre-fix code the `FocusTrapController` was
+  constructed *with* its container in a mount-only effect, so a container that
+  committed after the hook's first render (React portals / effect-gated children /
+  Suspense) meant the controller was never built and the trap never engaged. The
+  container-less `FocusTrapController` + stable `containerRef` ref-callback (Tasks
+  1/2 of `docs/superpowers/plans/2026-06-13-deferred-focus-trap-controller.md`)
+  fixes this: the controller is constructed eagerly and attaches whenever the
+  container commits — even late — so Enter/Tab engage the trap exactly like the
+  canonical scenario 1. Inside the deferred container the iframe subtree is NOT
+  separately deferred (unlike scenario 2) — the whole thing mounts together, one
+  render late.
+- Expected behavior (mirror of scenario 1): once the deferred container commits,
+  Enter activates the trap and lands on the input; Tab forward descends into the
+  iframe and exits to the button / wraps; Shift+Tab reverses; Escape releases.
+- Coverage: the unit-level regression for the deferred/portal-mounted controller
+  already exists in `src/hooks/use-focus-trap.test.tsx` (deferred-mount +
+  `createPortal` engagement, plus `isTrapped` reactivity). This demo scenario is
+  the manual/DevTools-MCP regression guard.
+- **Status: PENDING.** Manual browser / DevTools-MCP verification in Chrome has
+  NOT yet been performed for this scenario (cross-origin browser driving is not
+  available in the implementation session). To be confirmed against the live page
+  the same way scenarios 1–2 were.
 
 ### Scenario 3 — Enterable / locked toggle: WORKS
 - Enterable (tabindex 0): Tab from the input descends into the iframe.
