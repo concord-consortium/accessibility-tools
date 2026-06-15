@@ -157,6 +157,64 @@ describe("IframeSlot native-Tab descent tracking (window blur/focus)", () => {
       vi.useRealTimers();
     }
   });
+
+  // Regression: Safari delivers the top-window `focus` event (focus ascending
+  // out of an out-of-process iframe) while the iframe is STILL
+  // document.activeElement, then settles activeElement a tick later. That makes
+  // the deferred syncInsideFromActiveElement() clear `inside` BEFORE the
+  // after-sentinel focusin arrives — so without tracking the ascent, the exit
+  // redirect (onExit) is silently dropped and focus is stranded on the sentinel.
+  // Reproduces an activity-player dialog hang. See docs/iframe-slot-design.md.
+  it("after-sentinel focusin still exits when a deferred window-focus sync cleared inside first (Safari ordering)", () => {
+    vi.useFakeTimers();
+    try {
+      const { slot, iframe, after, onExit } = setup();
+      const ae = vi.spyOn(document, "activeElement", "get");
+
+      // Descent: window blur with the iframe active → inside = true.
+      ae.mockReturnValue(iframe);
+      window.dispatchEvent(new Event("blur"));
+      vi.runAllTimers();
+      expect(slot.focusInsideIframe).toBe(true);
+
+      // Ascent (Safari ordering): window focus fires while the iframe is STILL
+      // activeElement (schedules the deferred sync)...
+      window.dispatchEvent(new Event("focus"));
+      // ...activeElement then settles off the iframe BEFORE the sentinel focusin...
+      ae.mockReturnValue(document.body);
+      vi.runAllTimers(); // deferred sync runs → clears `inside`
+      expect(slot.focusInsideIframe).toBe(false);
+
+      // ...and only now does focus actually land on the after-sentinel.
+      ae.mockReturnValue(after);
+      after.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+
+      // The exit must still be redirected even though `inside` was cleared early.
+      expect(onExit).toHaveBeenCalledWith(1);
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
+
+  // The ascent flag must NOT make a genuine landing-rest focusin exit: a window
+  // focus that arrives while focus is already OUTSIDE the iframe is not an
+  // ascent, so a later sentinel focusin (a programmatic landing) must not exit.
+  it("window focus while already outside does not arm a false exit on the next sentinel focusin", () => {
+    vi.useFakeTimers();
+    try {
+      const { before, onExit } = setup();
+      // Not inside; window focus with focus already on a host element.
+      vi.spyOn(document, "activeElement", "get").mockReturnValue(before);
+      window.dispatchEvent(new Event("focus"));
+      vi.runAllTimers();
+      before.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
+      expect(onExit).not.toHaveBeenCalled();
+    } finally {
+      vi.restoreAllMocks();
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe("IframeSlot sentinel tabindex toggling", () => {

@@ -46,6 +46,16 @@ export class IframeSlot {
   // which would otherwise wipe a landing hint as we set it (focusing the
   // entering sentinel blurs the leaving one) or mis-read a self-inflicted exit.
   private movingFocus = false;
+  // Set when the top window regains focus while we still believe focus is inside
+  // the iframe — i.e. focus is ascending back OUT of the frame. It lets a
+  // sentinel focusin that lands a beat later still be recognized as an exit even
+  // if the deferred syncInsideFromActiveElement() has meanwhile cleared `inside`.
+  // Safari delivers the window `focus` event while the iframe is still
+  // document.activeElement and only settles activeElement a tick later, so the
+  // sync would otherwise clear `inside` before the sentinel focusin and the exit
+  // redirect would be dropped (focus stranded on the sentinel). See § in
+  // docs/iframe-slot-design.md and the IframeSlot Safari-ordering regression test.
+  private leavingIframe = false;
 
   // Elements each set of listeners is currently bound to. syncListeners() rebinds
   // only when these differ from the live getters, so deferred mounts and
@@ -65,8 +75,11 @@ export class IframeSlot {
   // away). Descent also clears via handleIframeFocus, so this is idempotent.
   private boundSentinelFocusOut = () => this.handleSentinelFocusOut();
   // Native Tab descent does NOT fire focus/blur on the iframe ELEMENT, so we
-  // also track entry/exit from the top window's blur/focus (§ below).
-  private boundWindowFocusChange = () => this.scheduleInsideSync();
+  // also track entry/exit from the top window's blur/focus (§ below). Focus and
+  // blur use distinct handlers: a window focus while inside also arms the
+  // leavingIframe ascent flag before the deferred sync can clear `inside`.
+  private boundWindowBlur = () => this.scheduleInsideSync();
+  private boundWindowFocus = () => this.handleWindowFocus();
 
   constructor(options: IframeSlotOptions) {
     this.options = options;
@@ -80,8 +93,8 @@ export class IframeSlot {
     if (this.attached) return;
     this.attached = true;
     if (typeof window !== "undefined") {
-      window.addEventListener("blur", this.boundWindowFocusChange);
-      window.addEventListener("focus", this.boundWindowFocusChange);
+      window.addEventListener("blur", this.boundWindowBlur);
+      window.addEventListener("focus", this.boundWindowFocus);
     }
     const transport = this.options.transport;
     if (transport && !this.unsubscribeTransport) {
@@ -155,9 +168,10 @@ export class IframeSlot {
     );
     this.boundAfter = null;
     if (typeof window !== "undefined") {
-      window.removeEventListener("blur", this.boundWindowFocusChange);
-      window.removeEventListener("focus", this.boundWindowFocusChange);
+      window.removeEventListener("blur", this.boundWindowBlur);
+      window.removeEventListener("focus", this.boundWindowFocus);
     }
+    this.leavingIframe = false;
     if (this.insideSyncTimer !== null) {
       clearTimeout(this.insideSyncTimer);
       this.insideSyncTimer = null;
@@ -184,8 +198,22 @@ export class IframeSlot {
 
   private handleIframeFocus(): void {
     this.inside = true;
+    // A fresh descent supersedes any pending ascent.
+    this.leavingIframe = false;
     this.clearHint();
     this.applyTabindex();
+  }
+
+  /**
+   * The top window regained focus. If we still believe focus is inside the
+   * iframe, this is focus ascending back out of the frame — arm leavingIframe so
+   * a sentinel focusin that lands a tick later is still treated as an exit, even
+   * though the deferred sync below is about to clear `inside`. Then run the
+   * normal deferred activeElement sync.
+   */
+  private handleWindowFocus(): void {
+    if (this.inside) this.leavingIframe = true;
+    this.scheduleInsideSync();
   }
 
   private handleIframeBlur(): void {
@@ -230,8 +258,12 @@ export class IframeSlot {
     // A sentinel firing while focus is INSIDE the iframe is an exit: native Tab
     // walked out of the iframe and landed on the (tabbable) sentinel. Redirect
     // synchronously via the trap. Direction is purely which sentinel fired.
-    // A focusin while OUTSIDE is a landing rest — leave it alone (§3).
-    if (!this.inside) return;
+    // leavingIframe covers the Safari ordering where the deferred window-focus
+    // sync already flipped `inside` to false just before this focusin (the
+    // ascent is still in flight). A focusin while genuinely OUTSIDE — neither
+    // inside nor mid-ascent — is a landing rest; leave it alone (§3).
+    if (!this.inside && !this.leavingIframe) return;
+    this.leavingIframe = false;
     this.options.onExit(direction);
   }
 
