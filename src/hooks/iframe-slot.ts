@@ -27,7 +27,7 @@ export interface IframeSlotOptions {
   /** Optional cooperating-path channel. Absent ⇒ non-cooperating. */
   transport?: FocusTransport;
   /**
-   * Visible-hint label written/announced in landing mode. The host renders the
+   * Visible-hint label written/announced when the hint is shown. The host renders the
    * text statically; this is used only for an aria fallback if provided.
    */
   enterLabel?: string;
@@ -184,7 +184,7 @@ export class IframeSlot {
 
   private handleIframeFocus(): void {
     this.inside = true;
-    this.clearLanding();
+    this.clearHint();
     this.applyTabindex();
   }
 
@@ -240,7 +240,7 @@ export class IframeSlot {
     // establishing a landing, not leaving it). A genuine leave (Escape/trap
     // exit, click away, descent) happens with movingFocus === false.
     if (this.movingFocus) return;
-    this.clearLanding();
+    this.clearHint();
   }
 
   /**
@@ -277,7 +277,7 @@ export class IframeSlot {
 
     if (ctx.trigger === "sequentialNavigation") {
       // Positioner: silent invisible sentinel; the pending Tab default descends.
-      this.clearLanding();
+      this.clearHint();
       this.focusSentinel(target);
       return true;
     }
@@ -289,10 +289,11 @@ export class IframeSlot {
       return true;
     }
 
-    // Non-cooperating ⇒ visible labeled landing hint; user's next Tab descends.
-    this.clearLanding();
+    // Non-cooperating ⇒ focus the sentinel and reveal the visible hint; the
+    // user's next Tab descends.
+    this.clearHint();
     if (target) {
-      target.setAttribute("data-landing", "");
+      target.setAttribute("data-show-hint", "");
       if (this.options.enterLabel) {
         target.setAttribute("aria-label", this.options.enterLabel);
       }
@@ -301,12 +302,12 @@ export class IframeSlot {
     return true;
   }
 
-  private clearLanding(): void {
+  private clearHint(): void {
     for (const el of [
       this.options.getBeforeSentinel(),
       this.options.getAfterSentinel(),
     ]) {
-      el?.removeAttribute("data-landing");
+      el?.removeAttribute("data-show-hint");
       el?.removeAttribute("aria-label");
     }
   }

@@ -7,7 +7,7 @@
  * the iframe wrapper in getElements, and merges strategyFragment into the
  * FocusTrapStrategy passed to useFocusTrap. The host owns iframe tabIndex,
  * sentinel styling, and the static label text; the library is the single
- * imperative writer of tabindex/data-landing/aria on the sentinels.
+ * imperative writer of tabindex/data-show-hint/aria on the sentinels.
  */
 
 import {

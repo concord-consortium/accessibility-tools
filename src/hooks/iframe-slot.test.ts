@@ -116,11 +116,11 @@ describe("IframeSlot native-Tab descent tracking (window blur/focus)", () => {
     try {
       const { slot, iframe, before } = setup();
       slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
-      expect(before.hasAttribute("data-landing")).toBe(true);
+      expect(before.hasAttribute("data-show-hint")).toBe(true);
       vi.spyOn(document, "activeElement", "get").mockReturnValue(iframe);
       window.dispatchEvent(new Event("blur"));
       vi.runAllTimers();
-      expect(before.hasAttribute("data-landing")).toBe(false);
+      expect(before.hasAttribute("data-show-hint")).toBe(false);
     } finally {
       vi.restoreAllMocks();
       vi.useRealTimers();
@@ -222,7 +222,7 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     });
     expect(handled).toBe(true);
     expect(before.focus).toHaveBeenCalled();
-    expect(before.hasAttribute("data-landing")).toBe(false);
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
   });
 
   it("positioner reverse focuses the after-sentinel", () => {
@@ -235,12 +235,12 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     expect(after.focus).toHaveBeenCalled();
   });
 
-  it("landing mode (non-cooperating) focuses sentinel + sets data-landing", () => {
+  it("hint mode (non-cooperating) focuses sentinel + sets data-show-hint", () => {
     const { slot, before } = setup();
     vi.spyOn(before, "focus");
     slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
     expect(before.focus).toHaveBeenCalled();
-    expect(before.getAttribute("data-landing")).toBe("");
+    expect(before.getAttribute("data-show-hint")).toBe("");
   });
 
   it("landing mode (cooperating) sends focusEnter and sets no landing", () => {
@@ -250,33 +250,33 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     slot.notifyCapability(true); // mark cooperating
     slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
     expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "forward" });
-    expect(before.hasAttribute("data-landing")).toBe(false);
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
   });
 
   it("clears the landing hint when focus leaves the sentinel (e.g. Escape / trap exit)", () => {
     const { slot, before } = setup();
     slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
-    expect(before.getAttribute("data-landing")).toBe("");
+    expect(before.getAttribute("data-show-hint")).toBe("");
     // Focus leaves the sentinel for a host element (trap exit, click away, …)
     // WITHOUT descending into the iframe — the hint must not linger.
     before.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
-    expect(before.hasAttribute("data-landing")).toBe(false);
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
   });
 
   it("clears the reverse landing hint on after-sentinel focusout", () => {
     const { slot, after } = setup();
     slot.focusContent({ entryMode: "reverse", trigger: "programmatic" });
-    expect(after.getAttribute("data-landing")).toBe("");
+    expect(after.getAttribute("data-show-hint")).toBe("");
     after.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
-    expect(after.hasAttribute("data-landing")).toBe(false);
+    expect(after.hasAttribute("data-show-hint")).toBe(false);
   });
 
-  it("entering the iframe clears data-landing", () => {
+  it("entering the iframe clears data-show-hint", () => {
     const { slot, iframe, before } = setup();
     slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
-    expect(before.hasAttribute("data-landing")).toBe(true);
+    expect(before.hasAttribute("data-show-hint")).toBe(true);
     iframe.dispatchEvent(new FocusEvent("focus"));
-    expect(before.hasAttribute("data-landing")).toBe(false);
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
   });
 
   it("keeps the landing hint when entering from an already-focused (leaving) sentinel", () => {
@@ -289,7 +289,7 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     expect(document.activeElement).toBe(after);
     slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
     expect(document.activeElement).toBe(before);
-    expect(before.getAttribute("data-landing")).toBe("");
+    expect(before.getAttribute("data-show-hint")).toBe("");
   });
 
   it("does not read its own landing focus as an exit when inside is still true", () => {
@@ -424,7 +424,7 @@ describe("IframeSlot transport translation", () => {
     const { slot, before } = transportSetup();
     vi.spyOn(before, "focus");
     slot.requestRestore();
-    expect(before.getAttribute("data-landing")).toBe("");
+    expect(before.getAttribute("data-show-hint")).toBe("");
     expect(before.focus).toHaveBeenCalled();
   });
 });

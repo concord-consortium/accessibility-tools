@@ -52,13 +52,13 @@ describe("useIframeSlot", () => {
     expect(sentinels).toEqual({ before, after });
   });
 
-  it("sentinel props expose a ref + stable key, never tabIndex/data-landing", () => {
+  it("sentinel props expose a ref + stable key, never tabIndex/data-show-hint", () => {
     const { result } = renderSlot();
     const props = result.current.beforeSentinelProps;
     expect(props).toHaveProperty("ref");
     expect(props).toHaveProperty("key");
     expect(props).not.toHaveProperty("tabIndex");
-    expect(props).not.toHaveProperty("data-landing");
+    expect(props).not.toHaveProperty("data-show-hint");
   });
 
   it("focusContent via the fragment drives the underlying IframeSlot", () => {

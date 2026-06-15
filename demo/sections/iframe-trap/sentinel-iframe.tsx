@@ -12,14 +12,14 @@ export interface SentinelIframeProps {
   /**
    * Landing hint text. It lives INSIDE each sentinel; the sentinel collapses to
    * zero size and reveals this text only while the library marks it with
-   * data-landing (see the .iframe-sentinel CSS).
+   * data-show-hint (see the .iframe-sentinel CSS).
    */
   hint: string;
   /** Host owns the iframe's tabindex (enterable when undefined). */
   iframeTabIndex?: number;
 }
 
-// The library is the sole imperative writer of tabindex/data-landing on the
+// The library is the sole imperative writer of tabindex/data-show-hint on the
 // sentinels; we only provide the ref + key, the className, and the hint text.
 export function SentinelIframe({
   wrapperRef,
