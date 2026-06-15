@@ -321,6 +321,38 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     expect(before.hasAttribute("data-show-hint")).toBe(false);
   });
 
+  it("sets aria-label on the landed sentinel when enterLabel is configured", () => {
+    const { slot, before } = setup({ enterLabel: "Press Tab to enter" });
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(before.getAttribute("aria-label")).toBe("Press Tab to enter");
+    expect(before.getAttribute("data-show-hint")).toBe("");
+  });
+
+  it("suppressHint also suppresses aria-label even when enterLabel is set", () => {
+    const { slot, before } = setup({ enterLabel: "Press Tab to enter" });
+    vi.spyOn(before, "focus");
+    slot.focusContent({
+      entryMode: "forward",
+      trigger: "programmatic",
+      suppressHint: true,
+    });
+    expect(before.focus).toHaveBeenCalled();
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
+    expect(before.hasAttribute("aria-label")).toBe(false);
+  });
+
+  it("suppressHint in reverse focuses the after sentinel WITHOUT data-show-hint", () => {
+    const { slot, after } = setup();
+    vi.spyOn(after, "focus");
+    slot.focusContent({
+      entryMode: "reverse",
+      trigger: "programmatic",
+      suppressHint: true,
+    });
+    expect(after.focus).toHaveBeenCalled();
+    expect(after.hasAttribute("data-show-hint")).toBe(false);
+  });
+
   it("suppressHint is moot for a cooperating slot (still sends focusEnter)", () => {
     const send = vi.fn();
     const transport = { send, onMessage: () => () => {} };
