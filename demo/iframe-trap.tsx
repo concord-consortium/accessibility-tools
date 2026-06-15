@@ -7,6 +7,7 @@ import { DeferredContainerScenario } from "./sections/iframe-trap/deferred-conta
 import { DialogOpenScenario } from "./sections/iframe-trap/dialog-open";
 import { LockToggleScenario } from "./sections/iframe-trap/lock-toggle";
 import { MultiIframeScenario } from "./sections/iframe-trap/multi-iframe";
+import { SoloDeferredDialogScenario } from "./sections/iframe-trap/solo-deferred-dialog";
 import { SoloIframeScenario } from "./sections/iframe-trap/solo-iframe";
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
         <MultiIframeScenario />
         <DeferredContainerScenario />
         <DialogOpenScenario />
+        <SoloDeferredDialogScenario />
       </main>
     </AccessibilityProvider>
   );
