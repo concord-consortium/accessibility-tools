@@ -355,14 +355,18 @@ wrap often lands on the close control rather than re-entering an iframe at all.
 Landing mode is what makes the **general** all-iframe trap (no normal bookend)
 behave well too.
 
-### Landing vs. hint, and suppressing the hint
+#### Landing vs. hint, and suppressing the hint
 
 "Landing" means focus comes to **rest** on a sentinel (as opposed to the
 transient positioner, where a pending Tab immediately descends). A landing may be
 **visible** (the `data-show-hint` attribute reveals the "Press Tab…" text) or
-**quiet** (no visible hint). The hint text always remains in the accessibility
-tree — the sentinel is only *visually* clipped — so a screen reader reads it
-either way; `data-show-hint` controls only the visual reveal.
+**quiet** (no visible hint). `data-show-hint` controls only the *visual* reveal:
+a quiet landing skips it (and the `aria-label`), so no visible "Press Tab…"
+affordance appears. Whether a screen reader still announces the sentinel in the
+quiet case depends on the host's markup and styling — the sentinel text remains
+in the DOM, but keeping it screen-reader-available while visually hidden is a host
+concern (see the SR caveat at the end of §3's intro above, and the spec's
+follow-up).
 
 The hint is **conditional**: it appears only for a slot that cannot be entered
 programmatically — today, a non-cooperating iframe. A cooperating iframe places
