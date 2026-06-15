@@ -307,6 +307,32 @@ describe("IframeSlot focusContent modes + getSentinels", () => {
     const { slot, before, after } = setup();
     expect(slot.getSentinels()).toEqual({ before, after });
   });
+
+  it("suppressHint focuses the sentinel WITHOUT setting data-show-hint", () => {
+    const { slot, before } = setup();
+    vi.spyOn(before, "focus");
+    const handled = slot.focusContent({
+      entryMode: "forward",
+      trigger: "programmatic",
+      suppressHint: true,
+    });
+    expect(handled).toBe(true);
+    expect(before.focus).toHaveBeenCalled();
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
+  });
+
+  it("suppressHint is moot for a cooperating slot (still sends focusEnter)", () => {
+    const send = vi.fn();
+    const transport = { send, onMessage: () => () => {} };
+    const { slot } = setup({ transport });
+    slot.notifyCapability(true); // mark cooperating
+    slot.focusContent({
+      entryMode: "forward",
+      trigger: "programmatic",
+      suppressHint: true,
+    });
+    expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "forward" });
+  });
 });
 
 describe("IframeSlot syncListeners rebinding (deferred / re-mount)", () => {

@@ -242,15 +242,17 @@ export class FocusTrapController {
     this.strategy = strategy;
   }
 
-  enterTrap(): void {
+  enterTrap(options?: { suppressHint?: boolean }): void {
     if (this.destroyed || !this.attached || !this.enabled) return;
     this.activateTrap({ announce: true });
     // enterTrap is a programmatic entry (no pending Tab default to descend
     // with), so a content slot must enter in landing mode (trigger
     // "programmatic") rather than positioner — otherwise focus rests silently on
     // the invisible sentinel with no hint. Live-Tab engage paths use
-    // focusEntrySlot() with the positioner default and are unaffected.
-    this.focusEntrySlot(false, "programmatic");
+    // focusEntrySlot() with the positioner default and are unaffected. A host may
+    // pass { suppressHint: true } for a pointer-driven entry: focus still rests on
+    // the sentinel, but no visible hint is shown. See docs/iframe-slot-design.md.
+    this.focusEntrySlot(false, "programmatic", options?.suppressHint ?? false);
   }
 
   /**
@@ -522,6 +524,7 @@ export class FocusTrapController {
   private focusEntrySlot(
     reverse = false,
     trigger: FocusContentTrigger = "sequentialNavigation",
+    suppressHint = false,
   ): void {
     const elements = this.strategy.getElements();
     const order = this.cycleOrder;
@@ -531,7 +534,7 @@ export class FocusTrapController {
     for (let i = start; i !== end; i += step) {
       if (elements[order[i]]) {
         this.slotIndex = i;
-        this.focusSlot(order[i], reverse, trigger);
+        this.focusSlot(order[i], reverse, trigger, suppressHint);
         return;
       }
     }
@@ -541,12 +544,13 @@ export class FocusTrapController {
     slotName: string,
     reverse = false,
     trigger: FocusContentTrigger = "sequentialNavigation",
+    suppressHint = false,
   ): void {
     const contentSlot = this.strategy.contentSlot ?? "content";
     const entryMode = reverse ? "reverse" : "forward";
     if (
       slotName === contentSlot &&
-      this.strategy.focusContent?.({ entryMode, trigger })
+      this.strategy.focusContent?.({ entryMode, trigger, suppressHint })
     )
       return;
 

@@ -561,6 +561,7 @@ describe("FocusTrapController", () => {
     expect(focusContent).toHaveBeenLastCalledWith({
       entryMode: "forward",
       trigger: "sequentialNavigation",
+      suppressHint: false,
     });
 
     // Reverse entry into content from toolbar:
@@ -569,6 +570,7 @@ describe("FocusTrapController", () => {
     expect(focusContent).toHaveBeenLastCalledWith({
       entryMode: "reverse",
       trigger: "sequentialNavigation",
+      suppressHint: false,
     });
   });
 
@@ -742,6 +744,7 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
     expect(focusContent).toHaveBeenCalledWith({
       entryMode: "forward",
       trigger: "sequentialNavigation",
+      suppressHint: false,
     });
     expect(e.defaultPrevented).toBe(false);
   });
@@ -774,6 +777,36 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
     expect(focusContent).toHaveBeenCalledWith({
       entryMode: "forward",
       trigger: "programmatic",
+      suppressHint: false,
+    });
+  });
+
+  it("enterTrap({ suppressHint: true }) threads suppressHint to focusContent", () => {
+    const container = makeContainer();
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+    controller.setEnabled(true);
+    controller.enterTrap({ suppressHint: true });
+
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      trigger: "programmatic",
+      suppressHint: true,
     });
   });
 

@@ -49,6 +49,16 @@ export type FocusContentContext = {
    * (cooperating)).
    */
   trigger: FocusContentTrigger;
+
+  /**
+   * Suppress the *visible* hint for this entry (default false). When true, a slot
+   * that would otherwise show a hint (a non-cooperating iframe) focuses its
+   * sentinel quietly: focus still rests there and a screen reader still reads the
+   * sentinel text, but no visible "Press Tab …" affordance appears. Used by a host
+   * for pointer-driven entries (e.g. a mouse-opened dialog). Cooperating slots and
+   * normal focusable slots are unaffected.
+   */
+  suppressHint?: boolean;
 };
 
 export interface FocusTrapStrategy {

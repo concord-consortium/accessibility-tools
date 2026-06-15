@@ -282,20 +282,25 @@ export class IframeSlot {
       return true;
     }
 
-    // Programmatic (landing). Cooperating ⇒ precise placement via the protocol.
+    // Programmatic entry. Cooperating ⇒ precise placement via the protocol (no
+    // visible hint either way, so suppressHint is moot here).
     if (this.cooperating && this.options.transport) {
       const mode = ctx.entryMode === "reverse" ? "reverse" : "forward";
       this.options.transport.send({ type: "focusEnter", mode });
       return true;
     }
 
-    // Non-cooperating ⇒ focus the sentinel and reveal the visible hint; the
-    // user's next Tab descends.
+    // Non-cooperating programmatic entry. Default: focus the sentinel and reveal
+    // the visible hint; the user's next Tab descends. suppressHint: focus the
+    // sentinel quietly (no visible hint) — focus still rests, the screen reader
+    // still reads the sentinel text. Used for pointer-driven entries.
     this.clearHint();
     if (target) {
-      target.setAttribute("data-show-hint", "");
-      if (this.options.enterLabel) {
-        target.setAttribute("aria-label", this.options.enterLabel);
+      if (!ctx.suppressHint) {
+        target.setAttribute("data-show-hint", "");
+        if (this.options.enterLabel) {
+          target.setAttribute("aria-label", this.options.enterLabel);
+        }
       }
       this.focusSentinel(target);
     }
