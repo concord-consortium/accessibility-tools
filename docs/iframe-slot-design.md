@@ -246,7 +246,7 @@ Responsibilities:
     rests on the sentinel.
   - **Landing mode** (called programmatically — `cycleToAdjacentSlot` or restore,
     with no live keydown): focus the directional sentinel and toggle it to its
-    **visible + labeled** state (a `data-landing`/class the host styles, plus a
+    **visible + labeled** state (a `data-show-hint`/class the host styles, plus a
     host-supplied "Press Tab to enter …" label). Focus *rests*; the user's next
     Tab descends (see the trap rule below). The hint is a "focus-is-here"
     affordance, so it lives exactly as long as the sentinel holds focus: it is
@@ -260,7 +260,7 @@ Responsibilities:
   synchronously fires `focusout` on the previously-focused sentinel and `focusin`
   on the target — the very events the exit-detection and landing-clear listeners
   react to. Unguarded, focusing the *entering* sentinel for a landing blurs the
-  *leaving* one, whose `focusout` would wipe the `data-landing` just set (and whose
+  *leaving* one, whose `focusout` would wipe the `data-show-hint` just set (and whose
   `focusin` could be mis-read as another exit while `focusInsideIframe` is still
   stale-true). So the core brackets every sentinel `.focus()` it issues with a
   flag, and the `focusin`/`focusout` handlers ignore events fired during that
@@ -355,6 +355,29 @@ wrap often lands on the close control rather than re-entering an iframe at all.
 Landing mode is what makes the **general** all-iframe trap (no normal bookend)
 behave well too.
 
+### Landing vs. hint, and suppressing the hint
+
+"Landing" means focus comes to **rest** on a sentinel (as opposed to the
+transient positioner, where a pending Tab immediately descends). A landing may be
+**visible** (the `data-show-hint` attribute reveals the "Press Tab…" text) or
+**quiet** (no visible hint). The hint text always remains in the accessibility
+tree — the sentinel is only *visually* clipped — so a screen reader reads it
+either way; `data-show-hint` controls only the visual reveal.
+
+The hint is **conditional**: it appears only for a slot that cannot be entered
+programmatically — today, a non-cooperating iframe. A cooperating iframe places
+focus via the transport protocol (no hint); a normal focusable slot shows no hint.
+
+`enterTrap({ suppressHint: true })` requests a **quiet** landing: focus still
+moves to the first actionable element (for an iframe slot, its sentinel), but the
+visible hint is suppressed. This is intended for **pointer-driven** entries — e.g.
+a dialog opened by mouse, where a sighted user should not be shown keyboard-only
+jargon. The generic trap does not detect modality; the host (a dialog layer)
+decides and passes `suppressHint`. See the demo's scenario 7
+(`demo/sections/iframe-trap/dialog-open.tsx`) for the canonical pattern, and
+`docs/superpowers/specs/2026-06-15-modality-aware-trap-entry-design.md` for the
+rationale.
+
 ### 5. Programmatic slot-cycling API
 
 The iframe-slot needs to advance the trap from a `focusin` or a protocol
@@ -417,7 +440,7 @@ function useIframeSlot(options: UseIframeSlotOptions): {
   /**
    * Spread onto the rendered before/after sentinel elements. This is a
    * **ref only** (plus a stable element key). It deliberately does NOT
-   * include tabIndex/data-landing/aria — those are dynamic, focus-critical
+   * include tabIndex/data-show-hint/aria — those are dynamic, focus-critical
    * attributes the library writes imperatively (see "React stability").
    */
   beforeSentinelProps: { ref: Ref<HTMLElement>; key: string };
@@ -437,10 +460,10 @@ function useIframeSlot(options: UseIframeSlotOptions): {
 `UseIframeSlotOptions` carries the iframe + sentinel refs, the optional
 transport, and a **skip-link label** (e.g. `enterLabel: "Press Tab to enter
 " + interactiveName`). The host renders the label text statically inside each
-sentinel; CSS shows it only while the library has set `[data-landing]`.
+sentinel; CSS shows it only while the library has set `[data-show-hint]`.
 
 It instantiates the agnostic `IframeSlot`, which attaches `focus`/`blur`/`focusin`
-listeners and writes `tabindex`/`data-landing` (and any toggled aria) via
+listeners and writes `tabindex`/`data-show-hint` (and any toggled aria) via
 `setAttribute` on the ref'd nodes — synchronously, inside the event, never through
 React. It manages the `onExit`/`cycleToAdjacentSlot` ref wiring and tears down
 listeners on unmount (idempotent re-attach to survive StrictMode's dev
@@ -455,7 +478,7 @@ not move under React mid-event:
   `{cond && <sentinel/>}`, never a changing key, never a swapped element type. A
   removed/remounted node drops focus to `document.body`.
 - The host is **not** a writer of the dynamic attributes: it must not pass
-  `tabIndex`, `data-landing`, or the toggled aria as props. The library is the
+  `tabIndex`, `data-show-hint`, or the toggled aria as props. The library is the
   single imperative writer; a second (React-controlled) writer would clobber it on
   the next re-render and race the in-event `.focus()`.
 - This mirrors the existing trap, which already keeps slot state in refs
@@ -594,19 +617,19 @@ In-repo (jsdom) unit tests:
   `tabindex=-1` (content-only) iframe neighbor → intercepted.
 - **Positioner vs landing selection:** `focusContent` with
   `trigger: "sequentialNavigation"` focuses the sentinel and leaves
-  `data-landing` unset; `cycleToAdjacentSlot`
+  `data-show-hint` unset; `cycleToAdjacentSlot`
   into a non-cooperating iframe-slot focuses the directional sentinel and **sets**
-  `data-landing` (the visible-hint state). Cooperating entry sends `focusEnter {
+  `data-show-hint` (the visible-hint state). Cooperating entry sends `focusEnter {
   forward | reverse | restore }` and sets no landing state.
 - **Tab from a resting sentinel:** with focus on the before-sentinel and
   `focusInsideIframe === false` (landing), a forward Tab skips `preventDefault`
-  and clears `data-landing`; a forward Tab on the after-sentinel `preventDefault`s
+  and clears `data-show-hint`; a forward Tab on the after-sentinel `preventDefault`s
   and cycles to the next slot; Shift+Tab mirrors both.
-- **Landing hint clears on focus-out:** after a landing sets `data-landing`, a
+- **Landing hint clears on focus-out:** after a landing sets `data-show-hint`, a
   `focusout` dispatched on the sentinel (focus leaving without descent — Escape /
-  trap exit, click away) clears `data-landing`, on both before- and after-sentinels.
+  trap exit, click away) clears `data-show-hint`, on both before- and after-sentinels.
 - **Self-focus guard (single-iframe wrap):** with focus already on the leaving
-  sentinel, a programmatic landing on the other sentinel keeps its `data-landing`
+  sentinel, a programmatic landing on the other sentinel keeps its `data-show-hint`
   (the leaving sentinel's `focusout` must not wipe it), and the landing `focusin`
   does not fire `onExit` even while `focusInsideIframe` is still true. (jsdom does
   dispatch `focusout`/`focusin` on `.focus()`, so this is exercisable in-repo.)
@@ -620,7 +643,7 @@ In-repo (jsdom) unit tests:
 - **Exit refocus opt-out (§9):** `exitTrap()` releases and refocuses the container
   (spy on `container.focus`); `exitTrap({ refocus: false })` releases and fires
   `onExit` but does **not** refocus the container.
-- **React stability:** the library writes `tabindex`/`data-landing` via
+- **React stability:** the library writes `tabindex`/`data-show-hint` via
   `setAttribute` (assert the host's render never sets them); and a host re-render
   while focus rests on a landing sentinel keeps the **same** DOM node
   (`document.activeElement` unchanged, attributes intact) — guarding the
