@@ -4,6 +4,7 @@ import "./demo.css";
 import { CanonicalScenario } from "./sections/iframe-trap/canonical";
 import { DeferredChildrenScenario } from "./sections/iframe-trap/deferred-children";
 import { DeferredContainerScenario } from "./sections/iframe-trap/deferred-container";
+import { DialogOpenScenario } from "./sections/iframe-trap/dialog-open";
 import { LockToggleScenario } from "./sections/iframe-trap/lock-toggle";
 import { MultiIframeScenario } from "./sections/iframe-trap/multi-iframe";
 import { SoloIframeScenario } from "./sections/iframe-trap/solo-iframe";
@@ -23,6 +24,7 @@ function App() {
         <SoloIframeScenario />
         <MultiIframeScenario />
         <DeferredContainerScenario />
+        <DialogOpenScenario />
       </main>
     </AccessibilityProvider>
   );
