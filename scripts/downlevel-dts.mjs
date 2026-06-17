@@ -11,12 +11,17 @@
 // AST-confirmed import/export specifier modifiers are removed — object-literal
 // or enum members that happen to be named `type` are never touched.
 
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const distDir = fileURLToPath(new URL("../dist/", import.meta.url));
+
+if (!existsSync(distDir)) {
+  console.error("Error: dist/ not found (run the build before this step)");
+  process.exit(1);
+}
 
 const collectDeclarationFiles = (dir) => {
   const files = [];
