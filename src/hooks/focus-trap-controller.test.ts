@@ -839,6 +839,43 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
     expect(title.focus).toHaveBeenCalled();
   });
 
+  it("resting-sentinel: reverse Tab on before-sentinel of a SOLO trap re-enters the iframe via native descent (no preventDefault)", () => {
+    const container = makeContainer();
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+    controller.setEnabled(true);
+    controller.enterTrap();
+
+    // Resting on the before-sentinel (the landing), Shift+Tab in a solo trap
+    // wraps back into the SAME nativeTabSlot. That must use the positioner and
+    // let the native Shift+Tab descend into the iframe — so the default must NOT
+    // be prevented (otherwise focus is stranded on the invisible after-sentinel).
+    focusContent.mockClear();
+    setActiveElement(before);
+    const e = pressKey("Tab", { shiftKey: true });
+    expect(e.defaultPrevented).toBe(false);
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "reverse",
+      trigger: "sequentialNavigation",
+      suppressHint: false,
+    });
+  });
+
   it("cycleToAdjacentSlot advances and wraps like a Tab cycle", () => {
     const container = makeContainer();
     const title = document.createElement("input");

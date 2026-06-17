@@ -452,15 +452,18 @@ export class FocusTrapController {
         const reverse = e.shiftKey;
         const descend = (!reverse && onBefore) || (reverse && onAfter);
         if (descend) return; // native descent — do not preventDefault
-        e.preventDefault();
         const direction: 1 | -1 = reverse ? -1 : 1;
         const nextIndex = this.findNextSlot(this.slotIndex, direction);
+        const nextSlotName = this.cycleOrder[nextIndex];
+        // Only suppress the native default when the next slot is a regular
+        // element. If it's another nativeTabSlot — including a SOLO trap wrapping
+        // back into the same iframe — the positioner needs the pending native
+        // (Shift+)Tab to descend, so we must NOT preventDefault (mirrors the
+        // tabHandler / final-cycle branches below). Preventing it here strands
+        // focus on the opposite, invisible sentinel.
+        if (!nativeTabSlots.includes(nextSlotName)) e.preventDefault();
         this.slotIndex = nextIndex;
-        this.focusSlot(
-          this.cycleOrder[nextIndex],
-          reverse,
-          "sequentialNavigation",
-        );
+        this.focusSlot(nextSlotName, reverse, "sequentialNavigation");
         return;
       }
 
