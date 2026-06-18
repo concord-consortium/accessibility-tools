@@ -7,8 +7,9 @@
  * trap events to the debug context.
  *
  * Behavior is whatever the controller does:
- * - When enabled but not trapped: Enter on the container enters the trap;
- *   Tab into a child (or a click from outside) implicitly activates it.
+ * - When enabled but not trapped: children are non-tabbable, so Tab/Shift+Tab
+ *   skip past the container and all its children. Enter on the container enters
+ *   the trap; a click from outside also enters it implicitly.
  * - When trapped: Tab/Shift+Tab cycles through strategy slots; Escape exits.
  * - When disabled (`config.enabled === false`): children are made non-tabbable
  *   and the trap stays dormant.

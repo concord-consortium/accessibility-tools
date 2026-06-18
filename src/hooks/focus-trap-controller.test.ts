@@ -291,6 +291,56 @@ describe("FocusTrapController", () => {
     expect(container.focus).toHaveBeenCalled();
   });
 
+  it("keeps children non-tabbable when enabled but not trapped", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    title.setAttribute("tabindex", "0");
+    container.appendChild(title);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      cycleOrder: ["title"],
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+
+    // Enabling does not enter the trap, and children stay out of the tab order
+    // so the container remains the single tab stop (entry is Enter/click only).
+    expect(controller.isTrapped).toBe(false);
+    expect(title.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("Tab on the container does not enter the trap when enabled but not trapped", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    container.appendChild(title);
+    vi.spyOn(title, "focus");
+    const onEnter = vi.fn();
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      cycleOrder: ["title"],
+      onEnter,
+    };
+    controller = new FocusTrapController(container, strategy);
+    controller.setEnabled(true);
+
+    // Tab while focus is on the container: skip past the trap rather than enter.
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(controller.isTrapped).toBe(false);
+    expect(onEnter).not.toHaveBeenCalled();
+    expect(title.focus).not.toHaveBeenCalled();
+    // Default Tab is suppressed so the controller can place focus outside.
+    expect(event.defaultPrevented).toBe(true);
+  });
+
   it("destroy removes listeners and cleans up", () => {
     const container = makeContainer();
     const strategy: FocusTrapStrategy = {

@@ -59,6 +59,31 @@ A "modal inside a trapped tile" would work today only if the consumer
 disables the tile's trap while the modal is open and re-enables it on
 close. The library has no awareness of this dance.
 
+### A trap does not auto-exit when focus leaves it
+
+Once a trap is `trapped`, that flag only clears via `exitTrap()`/Escape,
+`setEnabled(false)`, or `destroy()`. The trap does **not** watch for focus
+moving out of its container (there is no `focusout`/blur exit). So if focus
+moves from trap A to trap B — most visibly by clicking an element inside B —
+A stays `trapped` until its owner disables it. With nothing driving
+`setEnabled`, both A and B can read as `trapped` at once, and Tab back into A
+re-enters it (its `trapped` state was never cleared).
+
+This is the same constraint stated from the focus side: keeping exactly one
+trap `enabled` at a time is what also keeps exactly one `trapped`, because
+disabling a trapped trap auto-exits it (`setEnabled(false)` clears `trapped`).
+CLUE gets this for free — selecting a tile disables every other tile's trap,
+which exits it. A consumer that leaves multiple traps permanently enabled (as
+the demo does) will see the stale-`trapped` behavior above.
+
+Why this is owner-driven rather than a built-in `focusout` exit: a focus-out
+exit would have to know what counts as "still inside" (portaled external
+elements via `getExternalElements`, a non-cooperating iframe slot where focus
+legitimately leaves the document) and whether leaving should fire `onExit`
+(which a consumer may wire to selection side effects). Those policies belong
+to the owner, not the generic trap — the same reason modality detection does
+(see the modality-aware-trap-entry design).
+
 ## Composition primitive: slots, not nested traps
 
 Inside a single trap, composition happens via **slots** — named regions

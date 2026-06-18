@@ -98,6 +98,29 @@ describe("useFocusTrap", () => {
     expect(strategy.onEnter).toHaveBeenCalledOnce();
   });
 
+  it("makes children non-tabbable while enabled but not trapped (Tab cannot enter)", () => {
+    const container = createContainer();
+    const child = document.createElement("button");
+    child.setAttribute("tabindex", "0");
+    container.appendChild(child);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    // Enabled by default but not entered: the child is pulled out of the tab
+    // order so Tab/Shift+Tab skip past the trap. Entry requires Enter (or a
+    // click), matching the demo behavior on main.
+    expect(result.current?.isTrapped).toBe(false);
+    expect(child.getAttribute("tabindex")).toBe("-1");
+  });
+
   it("focuses first available slot on enter", () => {
     const container = createContainer();
     const title = createSlot("input");
