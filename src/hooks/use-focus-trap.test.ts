@@ -98,6 +98,29 @@ describe("useFocusTrap", () => {
     expect(strategy.onEnter).toHaveBeenCalledOnce();
   });
 
+  it("makes children non-tabbable while enabled but not trapped (Tab cannot enter)", () => {
+    const container = createContainer();
+    const child = document.createElement("button");
+    child.setAttribute("tabindex", "0");
+    container.appendChild(child);
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+    };
+    const ref = { current: container };
+
+    const { result } = renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy }),
+    );
+
+    // Enabled by default but not entered: the child is pulled out of the tab
+    // order so Tab/Shift+Tab skip past the trap. Entry requires Enter (or a
+    // click), matching the demo behavior on main.
+    expect(result.current?.isTrapped).toBe(false);
+    expect(child.getAttribute("tabindex")).toBe("-1");
+  });
+
   it("focuses first available slot on enter", () => {
     const container = createContainer();
     const title = createSlot("input");
@@ -755,7 +778,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     // The non-managed slot element gets tabindex=-1 from the mount-time
     // setChildrenNonTabbable call ...
@@ -787,7 +812,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     expect(title.getAttribute("tabindex")).toBe("-1");
     expect(cellA.getAttribute("tabindex")).toBe("0");
@@ -815,7 +842,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     // Non-managed slot is still mutated to -1.
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -836,7 +865,9 @@ describe("useFocusTrap", () => {
     };
     const ref = { current: container };
 
-    renderHook(() => useFocusTrap({ containerRef: ref, strategy }));
+    renderHook(() =>
+      useFocusTrap({ containerRef: ref, strategy, enabled: false }),
+    );
 
     expect(title.getAttribute("tabindex")).toBe("-1");
     expect(content.getAttribute("tabindex")).toBe("-1");
@@ -865,7 +896,7 @@ describe("useFocusTrap", () => {
 
     const { rerender } = renderHook(
       ({ strategy }: { strategy: FocusTrapStrategy }) =>
-        useFocusTrap({ containerRef: ref, strategy }),
+        useFocusTrap({ containerRef: ref, strategy, enabled: false }),
       { initialProps: { strategy: buildStrategy() } },
     );
 
