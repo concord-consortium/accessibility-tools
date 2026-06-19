@@ -9,6 +9,10 @@ export default defineConfig([
       version: "src/version.ts",
     },
     format: ["esm", "cjs"],
+    // Target ES2019 so the published JS is parseable by older bundlers that
+    // predate ES2020 syntax (e.g. webpack 4 / acorn 6, used by some downstream
+    // consumers). Downlevels optional chaining and nullish coalescing.
+    target: "es2019",
     dts: {
       tsconfig: "tsconfig.build.json",
     },

@@ -69,8 +69,8 @@
     }
   },
   "peerDependencies": {
-    "react": ">=17",
-    "react-dom": ">=17"
+    "react": ">=16.8",
+    "react-dom": ">=16.8"
   },
   "devDependencies": {
     "@biomejs/biome": "^1",
@@ -91,7 +91,7 @@
     "vitest": "^3"
   },
   "scripts": {
-    "build": "tsup && node scripts/copy-styles.mjs",
+    "build": "tsup && node scripts/copy-styles.mjs && node scripts/downlevel-dts.mjs",
     "demo": "vite serve demo",
     "demo:build": "vite build demo --outDir ../dist-s3 --emptyOutDir --base ./",
     "deploy:build": "npm run build && npm run demo:build && cp dist/standalone.js dist-s3/standalone.js && cp demo/bookmarklet.html dist-s3/bookmarklet.html",

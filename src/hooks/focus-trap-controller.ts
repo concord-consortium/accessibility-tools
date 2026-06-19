@@ -23,15 +23,35 @@
 
 import {
   findFocusableIndex,
+  findNextFocusableOutside,
   findNextSlot,
   findSlotIndexFromFocus,
   getManagedSlotElements,
   getVisibleFocusables,
   pickSlotEntryTarget,
 } from "./dom-utils";
-import type { FocusTrapStrategy } from "./types";
+import type { FocusTrapEvent, FocusTrapStrategy } from "./types";
 
 const DEFAULT_CYCLE_ORDER = ["title", "toolbar", "content"];
+
+/**
+ * Optional callbacks for observers (e.g. a React wrapper or debug tooling).
+ * The controller stays framework-agnostic — these are the only seams through
+ * which it reports state outward.
+ */
+export interface FocusTrapControllerOptions {
+  /**
+   * Called whenever the internal `trapped` flag changes — including implicit
+   * entry via a click from outside, not just enterTrap/exitTrap. Lets a React
+   * wrapper mirror `isTrapped` into component state.
+   */
+  onTrappedChange?: (trapped: boolean) => void;
+  /**
+   * Called when the trap is entered, exited, or cycles to another slot. Lets
+   * debug instrumentation observe the trap's lifecycle.
+   */
+  onEvent?: (event: FocusTrapEvent) => void;
+}
 
 function announce(text: string | undefined) {
   if (!text) return;
@@ -49,6 +69,7 @@ function announce(text: string | undefined) {
 export class FocusTrapController {
   private container: HTMLElement;
   private strategy: FocusTrapStrategy;
+  private options: FocusTrapControllerOptions;
   private enabled = false;
   private trapped = false;
   private slotIndex = 0;
@@ -61,9 +82,14 @@ export class FocusTrapController {
   private boundHandleFocusIn: (e: FocusEvent) => void;
   private tabInProgress = false;
 
-  constructor(container: HTMLElement, strategy: FocusTrapStrategy) {
+  constructor(
+    container: HTMLElement,
+    strategy: FocusTrapStrategy,
+    options: FocusTrapControllerOptions = {},
+  ) {
     this.container = container;
     this.strategy = strategy;
+    this.options = options;
 
     this.boundHandleKeyDown = this.handleKeyDown.bind(this);
     this.boundHandleTabDirection = this.handleTabDirection.bind(this);
@@ -82,28 +108,64 @@ export class FocusTrapController {
     return this.strategy.cycleOrder ?? DEFAULT_CYCLE_ORDER;
   }
 
+  /**
+   * Single write path for `trapped`. Every transition — explicit
+   * (enterTrap/exitTrap) and implicit (handleFocusIn, Tab-into-trap) — routes
+   * through here so onTrappedChange fires for all of them.
+   */
+  private setTrapped(value: boolean): void {
+    if (this.trapped === value) return;
+    this.trapped = value;
+    this.options.onTrappedChange?.(value);
+  }
+
+  private emit(type: FocusTrapEvent["type"], slot?: string): void {
+    this.options.onEvent?.({ type, slot, timestamp: Date.now() });
+  }
+
+  /**
+   * Shared trap-entry sequence: flip to trapped, restore children to the tab
+   * order, fire onEnter, optionally announce, and emit the "enter" event.
+   *
+   * Deliberately does NOT place focus — callers follow with focusEntrySlot()
+   * for a fresh entry (focus a boundary slot) or updateSlotIndexFromFocus() to
+   * adopt wherever focus already landed (a click into a child).
+   *
+   * @param announce whether to make the screen-reader announcement. Explicit
+   *   keyboard entry (Enter) announces; implicit entry via focusin (a click
+   *   from outside) does not.
+   */
+  private activateTrap({ announce: doAnnounce = false } = {}): void {
+    this.setTrapped(true);
+    this.restoreChildrenTabbable();
+    this.strategy.onEnter?.();
+    if (doAnnounce) announce(this.strategy.announceEnter);
+    this.emit("enter");
+  }
+
   setEnabled(enabled: boolean): void {
     if (this.destroyed) return;
     const wasEnabled = this.enabled;
     this.enabled = enabled;
 
-    if (enabled && !wasEnabled) {
-      // Becoming enabled: if focus is already inside, just enable Tab cycling.
-      // Don't enter trap explicitly — that's for Enter key.
-      // But if previously trapped and re-enabled (e.g., selection restored), re-trap.
-    }
-
     if (!enabled && wasEnabled && this.trapped) {
       // Becoming disabled while trapped: auto-exit
-      this.trapped = false;
+      this.setTrapped(false);
       this.setChildrenNonTabbable();
       this.strategy.onExit?.();
       announce(this.strategy.announceExit);
+      this.emit("exit");
       this.container.focus();
+      return;
     }
 
-    if (!enabled && !this.trapped) {
-      // Make sure children are non-tabbable when disabled
+    // Whenever not trapped — enabled or disabled — children stay out of the tab
+    // order so the container is the single tab stop and Tab does not walk into
+    // a child. Entry is always explicit: Enter/enterTrap() or a click from
+    // outside (handleFocusIn). Without this, a freshly-enabled trap (or a
+    // disable→enable cycle) would leave children tabbable and Tab would fall
+    // straight in. Mirrors useFocusTrap's "Tab skips past when not trapped".
+    if (!this.trapped) {
       this.setChildrenNonTabbable();
     }
   }
@@ -114,29 +176,17 @@ export class FocusTrapController {
 
   enterTrap(): void {
     if (this.destroyed || !this.enabled) return;
-    this.trapped = true;
-    this.restoreChildrenTabbable();
-    this.strategy.onEnter?.();
-    announce(this.strategy.announceEnter);
-
-    // Focus the first available slot
-    const elements = this.strategy.getElements();
-    const order = this.cycleOrder;
-    for (let i = 0; i < order.length; i++) {
-      if (elements[order[i]]) {
-        this.slotIndex = i;
-        this.focusSlot(order[i]);
-        break;
-      }
-    }
+    this.activateTrap({ announce: true });
+    this.focusEntrySlot();
   }
 
   exitTrap(): void {
     if (this.destroyed) return;
-    this.trapped = false;
+    this.setTrapped(false);
     this.setChildrenNonTabbable();
     this.strategy.onExit?.();
     announce(this.strategy.announceExit);
+    this.emit("exit");
     this.container.focus();
   }
 
@@ -167,6 +217,9 @@ export class FocusTrapController {
   }
 
   private handleFocusIn(e: FocusEvent): void {
+    // No focus-out exit: a trapped trap stays trapped until Escape/
+    // setEnabled(false)/destroy, not when focus leaves it. Keeping exactly one
+    // trap active is the owner's job. See docs/trap-composition.md.
     if (this.trapped) return;
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
@@ -174,15 +227,15 @@ export class FocusTrapController {
     if (!this.container.contains(target)) return;
 
     if (this.tabInProgress) {
-      // Tab moved focus into a child when not trapped — the trap is enabled (tile selected)
-      // so we should allow this and start trapping from the current position.
+      // Tab moved focus into a child when not trapped. Entry is explicit (Enter
+      // or a click from outside), so don't trap here — redirect focus back to
+      // the container so it stays the single tab stop. With children parked at
+      // tabindex=-1 this rarely fires; it's a guard for browsers that move
+      // focus onto a child ignoring tabindex=-1 (e.g. Shift+Tab onto some
+      // native elements). Only when enabled — a disabled trap lets Tab pass.
       if (!this.enabled) return;
-      this.trapped = true;
-      this.restoreChildrenTabbable();
-      this.strategy.onEnter?.();
-      // Don't announce — this is implicit entry via Tab, not explicit Enter.
-      // Determine which slot the focus landed in.
-      this.updateSlotIndexFromFocus(target);
+      e.stopImmediatePropagation();
+      this.container.focus();
       return;
     }
 
@@ -194,9 +247,7 @@ export class FocusTrapController {
       if (!this.enabled) {
         this.enabled = true;
       }
-      this.trapped = true;
-      this.restoreChildrenTabbable();
-      this.strategy.onEnter?.();
+      this.activateTrap();
       this.updateSlotIndexFromFocus(target);
       // Notify the tile it can select/activate itself (e.g., for tiles with tileHandlesOwnSelection).
       this.strategy.onFocusEnter?.();
@@ -230,35 +281,15 @@ export class FocusTrapController {
         return;
       }
 
-      // Tab on container when enabled but not trapped: enter trap implicitly
-      // Shift+Tab enters from the last slot, Tab enters from the first.
-      if (e.key === "Tab" && isOnContainer) {
+      // Tab on the container or a child when enabled but not trapped: skip past
+      // the whole trap to the next focusable outside it. Entry is explicit
+      // (Enter, above, or a click from outside via handleFocusIn) — Tab never
+      // enters. Mirrors useFocusTrap's "Tab/Shift+Tab skip past the container
+      // and all children when not trapped" behavior.
+      if (e.key === "Tab" && (isOnContainer || isInsideContainer)) {
         e.preventDefault();
-        this.trapped = true;
-        this.restoreChildrenTabbable();
-        this.strategy.onEnter?.();
-        announce(this.strategy.announceEnter);
-        const elements = this.strategy.getElements();
-        const order = this.cycleOrder;
-        if (e.shiftKey) {
-          // Reverse entry: focus last available slot
-          for (let i = order.length - 1; i >= 0; i--) {
-            if (elements[order[i]]) {
-              this.slotIndex = i;
-              this.focusSlot(order[i], true);
-              break;
-            }
-          }
-        } else {
-          // Forward entry: focus first available slot
-          for (let i = 0; i < order.length; i++) {
-            if (elements[order[i]]) {
-              this.slotIndex = i;
-              this.focusSlot(order[i]);
-              break;
-            }
-          }
-        }
+        const next = findNextFocusableOutside(this.container, e.shiftKey);
+        next?.focus();
         return;
       }
 
@@ -269,16 +300,6 @@ export class FocusTrapController {
         e.stopPropagation();
         this.exitTrap();
         return;
-      }
-
-      // Tab from inside when enabled but not trapped (e.g., click put focus inside)
-      // Start trapping from current position
-      if (e.key === "Tab" && isInsideContainer) {
-        this.trapped = true;
-        this.restoreChildrenTabbable();
-        this.strategy.onEnter?.();
-        this.updateSlotIndexFromFocus(document.activeElement as HTMLElement);
-        // Fall through to the trapped Tab handler below
       }
 
       if (!this.trapped) return;
@@ -335,7 +356,9 @@ export class FocusTrapController {
         const direction: 1 | -1 = reverse ? -1 : 1;
         const nextIndex = this.findNextSlot(this.slotIndex, direction);
         this.slotIndex = nextIndex;
-        this.focusSlot(this.cycleOrder[nextIndex], reverse);
+        const nextSlotName = this.cycleOrder[nextIndex];
+        this.focusSlot(nextSlotName, reverse);
+        this.emit("cycle", nextSlotName);
         return;
       }
 
@@ -366,7 +389,29 @@ export class FocusTrapController {
       const direction: 1 | -1 = reverse ? -1 : 1;
       const nextIndex = this.findNextSlot(this.slotIndex, direction);
       this.slotIndex = nextIndex;
-      this.focusSlot(this.cycleOrder[nextIndex], reverse);
+      const nextSlotName = this.cycleOrder[nextIndex];
+      this.focusSlot(nextSlotName, reverse);
+      this.emit("cycle", nextSlotName);
+    }
+  }
+
+  /**
+   * Place focus at a boundary slot for a fresh entry: the first available slot
+   * in cycle order, or the last when entering in reverse (Shift+Tab). Syncs
+   * slotIndex to the chosen slot.
+   */
+  private focusEntrySlot(reverse = false): void {
+    const elements = this.strategy.getElements();
+    const order = this.cycleOrder;
+    const start = reverse ? order.length - 1 : 0;
+    const end = reverse ? -1 : order.length;
+    const step = reverse ? -1 : 1;
+    for (let i = start; i !== end; i += step) {
+      if (elements[order[i]]) {
+        this.slotIndex = i;
+        this.focusSlot(order[i], reverse);
+        return;
+      }
     }
   }
 
