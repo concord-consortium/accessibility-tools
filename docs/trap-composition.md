@@ -81,8 +81,7 @@ exit would have to know what counts as "still inside" (portaled external
 elements via `getExternalElements`, a non-cooperating iframe slot where focus
 legitimately leaves the document) and whether leaving should fire `onExit`
 (which a consumer may wire to selection side effects). Those policies belong
-to the owner, not the generic trap — the same reason modality detection does
-(see the modality-aware-trap-entry design).
+to the owner, not the generic trap, for the same reason modality detection does.
 
 ## Composition primitive: slots, not nested traps
 
