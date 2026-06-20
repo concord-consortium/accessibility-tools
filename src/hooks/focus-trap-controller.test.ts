@@ -429,6 +429,133 @@ describe("FocusTrapController", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  // onTabWhenInactive is the disabled-trap extension point CLUE uses for
+  // inter-tile Tab navigation: while a trap is enabled=false (a deselected
+  // tile), the controller delegates Tab to the strategy instead of cycling
+  // slots. The demo exercises this via use-enter-to-trap.ts.
+  it("disabled trap: Tab on the container delegates to onTabWhenInactive and preventDefaults when handled", () => {
+    const container = makeContainer();
+    const child = document.createElement("input");
+    container.appendChild(child);
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ child }),
+      cycleOrder: ["child"],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+    // enabled defaults to false → dormant; no setEnabled call needed.
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledOnce();
+    // reverse=false for a plain Tab.
+    expect(onTabWhenInactive).toHaveBeenCalledWith(event, false);
+    // Handler returned true ⇒ it owns focus movement, so default Tab is suppressed.
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("disabled trap: Shift+Tab passes reverse=true to onTabWhenInactive", () => {
+    const container = makeContainer();
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledWith(event, true);
+  });
+
+  it("disabled trap: does not preventDefault when onTabWhenInactive declines (returns false)", () => {
+    const container = makeContainer();
+    const onTabWhenInactive = vi.fn(() => false);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledOnce();
+    // Handler declined ⇒ native Tab proceeds.
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("disabled trap: Tab originating on a child still delegates to onTabWhenInactive", () => {
+    const container = makeContainer();
+    const child = document.createElement("input");
+    container.appendChild(child);
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ child }),
+      cycleOrder: ["child"],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: child });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledOnce();
+  });
+
+  it("enabled trap: onTabWhenInactive is not called (the enabled path skips past natively)", () => {
+    const container = makeContainer();
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+    controller.setEnabled(true);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).not.toHaveBeenCalled();
+  });
+
   it("destroy removes listeners and cleans up", () => {
     const container = makeContainer();
     const strategy: FocusTrapStrategy = {

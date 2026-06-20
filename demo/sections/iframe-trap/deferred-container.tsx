@@ -3,12 +3,12 @@ import type {
   FocusTrapController,
   FocusTrapStrategy,
 } from "../../../src/hooks";
+import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
-import { useEnterToTrap } from "./use-enter-to-trap";
 
 // Same input → iframe → button shape as the canonical scenario, but the WHOLE
 // trap container <div> (the element carrying the controller's containerRef) is
@@ -47,7 +47,6 @@ function DeferredChildren({ children }: { children: ReactNode }) {
 }
 
 export function DeferredContainerScenario() {
-  const containerRef = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -100,7 +99,9 @@ export function DeferredContainerScenario() {
     [getElements, slot.strategyFragment],
   );
 
-  const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
+  // Always-enabled trap: the engine gives Enter-to-enter / Tab-skips-past for
+  // free. (canonical.tsx keeps useEnterToTrap to model CLUE's dormant tile.)
+  const trap = useFocusTrap({ strategy });
   trapRef.current = trap;
 
   return (
@@ -131,7 +132,7 @@ export function DeferredContainerScenario() {
       <DeferredChildren>
         <div
           tabIndex={0}
-          {...containerProps}
+          ref={trap.containerRef}
           role="group"
           aria-label="Deferred-container iframe trap"
           data-testid="deferred-container-trap"

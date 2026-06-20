@@ -5,17 +5,16 @@ import type {
   UseIframeSlotResult,
 } from "../../../src/hooks";
 import { createIframeSlotRegistry } from "../../../src/hooks/iframe-slot-registry";
+import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
-import { useEnterToTrap } from "./use-enter-to-trap";
 
 const CYCLE_ORDER = ["frameA", "frameB"];
 
 export function MultiIframeScenario() {
-  const containerRef = useRef<HTMLElement | null>(null);
   const trapRef = useRef<FocusTrapController | null>(null);
   const registry = useMemo(() => createIframeSlotRegistry(), []);
 
@@ -109,7 +108,9 @@ export function MultiIframeScenario() {
     };
   }, [getElements, slotA.strategyFragment, slotB.strategyFragment]);
 
-  const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
+  // Always-enabled trap: the engine gives Enter-to-enter / Tab-skips-past for
+  // free. (canonical.tsx keeps useEnterToTrap to model CLUE's dormant tile.)
+  const trap = useFocusTrap({ strategy });
   trapRef.current = trap;
   const isTrapped = trap.isTrapped;
 
@@ -158,7 +159,7 @@ export function MultiIframeScenario() {
       />
       <div
         tabIndex={0}
-        {...containerProps}
+        ref={trap.containerRef}
         role="group"
         aria-label="Multi-iframe trap"
         data-testid="multi-container"

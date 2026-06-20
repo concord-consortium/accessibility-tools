@@ -3,19 +3,18 @@ import type {
   FocusTrapController,
   FocusTrapStrategy,
 } from "../../../src/hooks";
+import { useFocusTrap } from "../../../src/hooks/use-focus-trap";
 import { useIframeSlot } from "../../../src/hooks/use-iframe-slot";
 import { crossOriginInnerSrc } from "../../cross-origin";
 import { trapContainerStyle } from "./container-style";
 import { FocusReadout } from "./focus-readout";
 import { SentinelIframe } from "./sentinel-iframe";
-import { useEnterToTrap } from "./use-enter-to-trap";
 
 // The trap's only slot is the iframe — no other focusable slots.
 const CYCLE_ORDER = ["frame"];
 const ENTER_LABEL = "Press Tab to enter the inner page";
 
 export function SoloIframeScenario() {
-  const containerRef = useRef<HTMLElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const beforeRef = useRef<HTMLElement>(null);
@@ -61,7 +60,9 @@ export function SoloIframeScenario() {
     [getElements, slot.strategyFragment],
   );
 
-  const { trap, containerProps } = useEnterToTrap(containerRef, strategy);
+  // Always-enabled trap: the engine gives Enter-to-enter / Tab-skips-past for
+  // free. (canonical.tsx keeps useEnterToTrap to model CLUE's dormant tile.)
+  const trap = useFocusTrap({ strategy });
   trapRef.current = trap;
 
   return (
@@ -80,7 +81,7 @@ export function SoloIframeScenario() {
       />
       <div
         tabIndex={0}
-        {...containerProps}
+        ref={trap.containerRef}
         role="group"
         aria-label="Single iframe trap"
         data-testid="solo-container"

@@ -24,18 +24,26 @@ export interface EnterToTrapResult {
 }
 
 /**
- * Make a demo trap behave like a CLUE tile: dormant until Enter.
+ * Model a CLUE-style "dormant tile" trap, where `enabled` is tied to selection
+ * rather than to trap entry: an unselected tile sits `enabled=false` and routes
+ * Tab to `onTabWhenInactive` for inter-tile navigation.
  *
- * The unified engine (FocusTrapController) implicitly enters a *enabled* trap
- * when Tab is pressed on its focused container. CLUE avoids that by keeping the
- * trap disabled until the tile is selected, routing Tab to `onTabWhenInactive`
- * while disabled, and entering explicitly on Enter. This hook reproduces that
- * for the demo:
+ * Most scenarios don't need this. The unified engine already gives an *enabled*
+ * but not-yet-trapped trap "Enter to enter, Tab skips past" for free (the
+ * not-trapped branch of FocusTrapController.handleKeyDown), so the other
+ * scenarios — like focus-trap.tsx — just call `useFocusTrap({ strategy })`
+ * directly. This hook is kept on the canonical scenario to exercise the one
+ * integration shape that path doesn't cover: a trap driven `enabled=false` while
+ * dormant, the way CLUE drives every unselected tile (docs/trap-composition.md →
+ * "CLUE picked Model B"). It is the demo's only exercise of `onTabWhenInactive`
+ * (which also has a controller unit test).
+ *
+ * What it does:
  * - starts disabled, so Tab on the container skips past the whole trap (the
  *   iframe slot is a nativeTabSlot and stays tabbable, so a plain disable isn't
- *   enough — onTabWhenInactive moves focus out, mirroring the pre-unification
- *   hook's skip-past behavior);
- * - Enter on the container enables + enters;
+ *   enough — onTabWhenInactive actively moves focus out);
+ * - Enter on the container enables + enters (the engine ignores Enter while
+ *   disabled, so the host has to bridge it);
  * - keeps `enabled` mirrored to `isTrapped`, so the trap re-disarms after it
  *   releases (Escape) and stays consistent when the engine enters on a click.
  */
