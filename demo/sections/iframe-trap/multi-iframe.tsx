@@ -77,14 +77,19 @@ export function MultiIframeScenario() {
     return {
       getElements,
       cycleOrder: CYCLE_ORDER,
-      // FocusTrapStrategy supports only ONE contentSlot, but this trap has two
-      // iframe slots. We designate frameA as the content slot so programmatic
-      // entry (enterTrap, and cycleToAdjacentSlot landing on frameA) dispatches
-      // focusContent for it. frameB has no programmatic focusContent dispatch —
-      // it is reachable via native Tab flow between the adjacent iframes, but
-      // programmatic entry directly into frameB (e.g. reverse-wrap) will not run
-      // its focusContent. This is a known single-contentSlot library limitation
-      // that this scenario deliberately exercises.
+      // KNOWN: multi-iframe support is incomplete — this scenario has several
+      // unresolved issues (not all of them deliberate). Not being fixed here;
+      // see the on-page note. Issues observed so far:
+      //  - Single contentSlot: FocusTrapStrategy supports only ONE contentSlot,
+      //    but this trap has two iframe slots. frameA is the content slot, so
+      //    programmatic entry (enterTrap, and cycleToAdjacentSlot landing on
+      //    frameA) dispatches focusContent for it; frameB has no programmatic
+      //    focusContent dispatch. frameB is reachable via native Tab flow between
+      //    the adjacent iframes, but programmatic entry directly into frameB
+      //    (e.g. reverse-wrap) will not run its focusContent.
+      //  - Tabbing forward through frameB leaves the trap instead of wrapping
+      //    back to the start.
+      //  - Other A<->B boundary cases may also misbehave.
       contentSlot: "frameA",
       announceEnter: "Entered multi-iframe trap. Tab cycles iframe A and B.",
       announceExit: "Exited multi-iframe trap",
@@ -153,14 +158,24 @@ export function MultiIframeScenario() {
         the outer edges still bound the trap.
       </p>
       <p style={{ fontSize: 13, color: "#b00020" }}>
-        <strong>⚠ Known limitation (deliberately shown):</strong> a strategy
-        supports only one <code>contentSlot</code>, so only frame A gets a
-        programmatic <code>focusContent</code> dispatch. Native Tab from A into
-        B works, but entering B <em>programmatically</em> — e.g. Shift+Tab
-        wrapping from the start of the trap directly into B — does not run B's{" "}
-        <code>focusContent</code>, so focus lands on B's entry sentinel without
-        its landing hint instead of descending into the iframe.
+        <strong>⚠ Multi-iframe support is incomplete</strong> — this scenario
+        has several known issues and is not fully working:
       </p>
+      <ul style={{ fontSize: 13, color: "#b00020", marginTop: 0 }}>
+        <li>
+          A strategy supports only one <code>contentSlot</code>, so only frame A
+          gets a programmatic <code>focusContent</code> dispatch. Native Tab
+          from A into B works, but entering B <em>programmatically</em> (e.g.
+          Shift+Tab wrapping from the start of the trap directly into B) does
+          not run B's <code>focusContent</code>, so focus lands on B's sentinel
+          without its landing hint.
+        </li>
+        <li>
+          Tabbing forward through frame B leaves the trap instead of wrapping
+          back to the start.
+        </li>
+        <li>Other A↔B boundary cases may also misbehave.</li>
+      </ul>
       <FocusReadout
         label="multi"
         isTrapped={trap.isTrapped}
