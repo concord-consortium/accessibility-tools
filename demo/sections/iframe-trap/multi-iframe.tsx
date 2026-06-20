@@ -152,6 +152,15 @@ export function MultiIframeScenario() {
         flow natively (no sentinel interception between them); the sentinels at
         the outer edges still bound the trap.
       </p>
+      <p style={{ fontSize: 13, color: "#b00020" }}>
+        <strong>⚠ Known limitation (deliberately shown):</strong> a strategy
+        supports only one <code>contentSlot</code>, so only frame A gets a
+        programmatic <code>focusContent</code> dispatch. Native Tab from A into
+        B works, but entering B <em>programmatically</em> — e.g. Shift+Tab
+        wrapping from the start of the trap directly into B — does not run B's{" "}
+        <code>focusContent</code>, so focus lands on B's entry sentinel without
+        its landing hint instead of descending into the iframe.
+      </p>
       <FocusReadout
         label="multi"
         isTrapped={trap.isTrapped}
