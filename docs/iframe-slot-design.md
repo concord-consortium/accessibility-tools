@@ -16,7 +16,7 @@ directly on the slot model described there.
 
 The current trap is single-document. It listens for `keydown` on `document`,
 manages `tabindex` on a container's descendants, and releases via
-`findNextFocusableOutside` ([dom-utils.ts:196](../src/hooks/dom-utils.ts#L196)) —
+`findNextFocusableOutside` ([dom-utils.ts:256](../src/hooks/dom-utils.ts#L256)) —
 all within one document. An iframe is opaque to all of it:
 
 - **Keyboard events inside the iframe never reach the parent.** A capture-phase
@@ -62,8 +62,8 @@ detect when it crosses the boundary.
 - A **`nativeTabSlots` strategy field** and the corresponding reorder of the
   trap's `preventDefault` so a slot can hand off to the browser's native Tab
   traversal.
-- A **programmatic slot-cycling API** (`cycleToAdjacentSlot`) on both
-  `FocusTrapResult` and `FocusTrapController`, so the iframe-slot can drive
+- A **programmatic slot-cycling API** (`cycleToAdjacentSlot`) on
+  `FocusTrapController`, so the iframe-slot can drive
   cycling from a `focusin` or a protocol message rather than from `keydown`.
 - An **abstract transport interface** (`FocusTransport`) and a **self-contained
   focus-message vocabulary** (`FocusMessage`).
@@ -88,11 +88,9 @@ detect when it crosses the boundary.
 
 ### 1. `nativeTabSlots` and the `preventDefault` reorder
 
-Today the trap calls `e.preventDefault()` **before** entering the next slot, in
-every Tab-cycling path — [use-focus-trap.ts:275](../src/hooks/use-focus-trap.ts#L275),
-[use-focus-trap.ts:320](../src/hooks/use-focus-trap.ts#L320), and the controller's
-equivalent at
-[focus-trap-controller.ts:373-401](../src/hooks/focus-trap-controller.ts#L373-L401).
+The trap calls `e.preventDefault()` **before** entering the next slot, in
+every Tab-cycling path — the `Tab` branch of the controller's `handleKeyDown`
+([focus-trap-controller.ts:432-520](../src/hooks/focus-trap-controller.ts#L432-L520)).
 That unconditional `preventDefault` is correct for normal slots (we don't want
 the browser to *also* move focus) but wrong for an iframe-slot, which needs the
 browser's native Tab to run so it descends into the iframe.
@@ -115,8 +113,9 @@ interface FocusTrapStrategy {
 ```
 
 **Trap change:** in each Tab-cycling path, compute the target slot name first;
-if it is in `nativeTabSlots`, call `focusContent` (the positioner) and **skip**
-`preventDefault`; otherwise keep today's `preventDefault`-then-focus behavior.
+if it is in `nativeTabSlots`, position via `focusSlot` (which runs `focusContent`
+when the slot is the `contentSlot`) and **skip** `preventDefault`; otherwise keep
+today's `preventDefault`-then-focus behavior.
 `focusContent`'s return type stays `boolean` — the "don't preventDefault"
 decision is declarative and per-slot, deliberately decoupled from
 `focusContent`'s "did I handle focus" signal.
@@ -379,7 +378,7 @@ a dialog opened by mouse, where a sighted user should not be shown keyboard-only
 jargon. The generic trap does not detect modality; the host (a dialog layer)
 decides and passes `suppressHint`. See the demo's scenario 7
 (`demo/sections/iframe-trap/dialog-open.tsx`) for the canonical pattern, and
-`docs/superpowers/specs/2026-06-15-modality-aware-trap-entry-design.md` for the
+`specs/2026-06-15-modality-aware-trap-entry.md` for the
 rationale.
 
 ### 5. Programmatic slot-cycling API
@@ -389,18 +388,17 @@ message, not from `keydown`. Today slot cycling is internal state
 (`slotIndex` in the controller) with no public entry point beyond
 `isTrapped` / `enterTrap` / `exitTrap`.
 
-> **Note (2026-06-13):** `useFocusTrap` no longer returns a separate
+> **Note:** `useFocusTrap` no longer returns a separate
 > `FocusTrapResult` wrapper — it returns the `FocusTrapController` instance
 > directly, so the consumer-facing surface below *is* the controller's public
-> API. See [the deferred-controller
-> plan](superpowers/plans/2026-06-13-deferred-focus-trap-controller.md).
+> API.
 
 **The consumer-facing surface (on `FocusTrapController`):**
 
 ```ts
 class FocusTrapController {
   get isTrapped(): boolean;
-  enterTrap(): void;
+  enterTrap(options?: { suppressHint?: boolean }): void;
   exitTrap(options?: { refocus?: boolean }): void;
   /**
    * Advance the trap to the next (1) or previous (-1) slot from the
@@ -453,7 +451,7 @@ function useIframeSlot(options: UseIframeSlotOptions): {
   strategyFragment: Partial<FocusTrapStrategy>;
   // strategyFragment also sets contentSlot to the iframe slot's name, because
   // the trap only routes focusContent to its contentSlot
-  // (use-focus-trap.ts:97). For AP's overlays the iframe is the content slot,
+  // (focus-trap-controller.ts:556). For AP's overlays the iframe is the content slot,
   // so this is natural; a trap that needs a non-content iframe-slot would
   // require generalizing focusContent to be per-slot — out of scope here.
   /** Send focusEnter { restore } to a cooperating interactive. */
@@ -485,9 +483,9 @@ not move under React mid-event:
   `tabIndex`, `data-show-hint`, or the toggled aria as props. The library is the
   single imperative writer; a second (React-controlled) writer would clobber it on
   the next re-render and race the in-event `.focus()`.
-- This mirrors the existing trap, which already keeps slot state in refs
-  (`slotIndexRef`) and mutates `tabindex` imperatively
-  ([use-focus-trap.ts:54](../src/hooks/use-focus-trap.ts#L54)) so no focus move
+- This mirrors the existing trap, which already keeps slot state internally
+  (`slotIndex`) and mutates `tabindex` imperatively
+  ([focus-trap-controller.ts:602](../src/hooks/focus-trap-controller.ts#L602)) so no focus move
   depends on a React commit. Attribute changes alone never remount a node, so with
   this contract the node is provably stable across the focus event.
 
@@ -527,7 +525,7 @@ further here.
 
 ### 8. `setChildrenNonTabbable` exclusion and the iframe `tabIndex` policy
 
-`setChildrenNonTabbable` ([use-focus-trap.ts:54](../src/hooks/use-focus-trap.ts#L54))
+`setChildrenNonTabbable` ([focus-trap-controller.ts:602](../src/hooks/focus-trap-controller.ts#L602))
 sweeps everything matching `[tabindex]` to `tabindex=-1` when a trap engages.
 Left alone it would clobber the iframe's host-set `tabIndex` (`0`, or `-1` when
 locked / content-only) and fight the sentinel toggling.
@@ -684,7 +682,7 @@ browser harness here would mostly test the browser, not this library's code.
   the AP/testbed pass.
 - **Interaction with the controller's `focusin` auto-enter.** The controller
   already has a `document` `focusin` handler that can auto-enter the trap
-  ([focus-trap-controller.ts:169](../src/hooks/focus-trap-controller.ts#L169)).
+  ([focus-trap-controller.ts:307](../src/hooks/focus-trap-controller.ts#L307)).
   The iframe-slot's element-level sentinel `focusin` redirect must route through
   `cycleToAdjacentSlot` so the trap's `slotIndex` stays consistent and the two
   handlers don't fight. Verify ordering when both fire.

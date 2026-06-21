@@ -23,8 +23,7 @@ import { SentinelIframe } from "./sentinel-iframe";
 // mount-only effect, so a container that committed after the hook's first render
 // (React portals / effect-gated / deferred children) meant the controller was
 // never built and the trap never engaged. The container-less FocusTrapController
-// + stable containerRef ref-callback (see
-// docs/superpowers/plans/2026-06-13-deferred-focus-trap-controller.md, Tasks 1/2)
+// + stable containerRef ref-callback (see useFocusTrap / FocusTrapController)
 // fixes this: the controller attaches whenever the container commits, even late,
 // so Enter/Tab engage the trap exactly like the canonical scenario. The unit-level
 // regression lives in src/hooks/use-focus-trap.test.tsx (deferred mount + portal).

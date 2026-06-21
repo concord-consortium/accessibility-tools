@@ -1,8 +1,8 @@
 # Modality-aware trap entry (suppressible hint) + dialog demo — Design
 
-**Date:** 2026-06-15
-**Status:** Approved (brainstorm) — ready for implementation plan
-**Branch context:** LARA-215 iframe-slot focus trap work
+**Status**: **Closed**
+**Date**: 2026-06-15
+**Design Doc**: [../docs/iframe-slot-design.md](../docs/iframe-slot-design.md)
 
 ## Problem
 
@@ -24,12 +24,12 @@ The trap cannot tell *how* it was opened: the host decides when to call
 
 ### Root cause (verified)
 
-- AP: [`dialog-overlay.tsx:110-118`](../../../../activity-player/src/components/activity-page/managed-interactive/dialog-overlay.tsx#L110-L118)
+- AP: [`dialog-overlay.tsx:110-118`](../../activity-player/src/components/activity-page/managed-interactive/dialog-overlay.tsx#L110-L118)
   calls `trapRef.current?.enterTrap()` unconditionally on container attach.
-- Library: [`focus-trap-controller.ts:245-254`](../../../src/hooks/focus-trap-controller.ts#L245-L254)
+- Library: [`focus-trap-controller.ts:245-254`](../src/hooks/focus-trap-controller.ts#L245-L254)
   routes `enterTrap()` through `focusEntrySlot(false, "programmatic")`; for the
   content slot this hits the visible-landing branch in
-  [`iframe-slot.ts:292-301`](../../../src/hooks/iframe-slot.ts#L292-L301)
+  [`iframe-slot.ts:292-301`](../src/hooks/iframe-slot.ts#L292-L301)
   (`setAttribute("data-landing")`, sets `aria-label`, focuses the sentinel).
 
 ## Goals
@@ -57,7 +57,7 @@ higher-level Dialog layer — see Design decisions); the AP migration itself
   `aria-modal="true"` + an accessible name — **not** because the container
   specifically is focused. Any focused element inside the labelled dialog triggers
   the "dialog, <name>" announcement.
-- The sentinel CSS ([`demo.css:118-124`](../../../demo/demo.css#L118-L124)) is
+- The sentinel CSS ([`demo.css:118-124`](../demo/demo.css#L118-L124)) is
   `height:0; overflow:hidden` — a **visual clip only** (not `display:none` /
   `visibility:hidden` / `aria-hidden`). Clipped text **stays in the accessibility
   tree**, so a screen reader still reads the sentinel's text content even when the
@@ -162,7 +162,7 @@ suppressHint)` → `focusSlot(slot, reverse, "programmatic", suppressHint)` →
 `focusContent({ entryMode, trigger: "programmatic", suppressHint })`.
 
 In `focusContent` the **non-cooperating programmatic** branch
-([`iframe-slot.ts:292-301`](../../../src/hooks/iframe-slot.ts#L292-L301)) checks
+([`iframe-slot.ts:292-301`](../src/hooks/iframe-slot.ts#L292-L301)) checks
 `suppressHint`:
 
 - `false` → set `data-show-hint` + `aria-label`, focus the sentinel (visible landing).
@@ -224,7 +224,7 @@ Controller / iframe-slot unit tests:
 
 ## Docs
 
-- [`docs/iframe-slot-design.md`](../../iframe-slot-design.md) — update the landing
+- [`docs/iframe-slot-design.md`](../docs/iframe-slot-design.md) — update the landing
   sections to the landing/hint split; document the `suppressHint` option and the
   `data-show-hint` rename.
 - This spec stands as the record of the modality decision and the canonical host
@@ -234,7 +234,7 @@ Controller / iframe-slot unit tests:
 
 AP migration: detect modality at the dialog open site and call
 `enterTrap({ suppressHint: true })` for pointer opens, mirroring the demo pattern
-([`dialog-overlay.tsx:110-118`](../../../../activity-player/src/components/activity-page/managed-interactive/dialog-overlay.tsx#L110-L118)).
+([`dialog-overlay.tsx:110-118`](../../activity-player/src/components/activity-page/managed-interactive/dialog-overlay.tsx#L110-L118)).
 The library change is non-breaking, so AP keeps working until that separate
 session lands.
 
@@ -242,7 +242,7 @@ session lands.
 
 1. Confirm focus resting on the sentinel via `suppressHint` is clean: the
    `focusin` handler must not treat the rest as an exit
-   ([`iframe-slot.ts:226-236`](../../../src/hooks/iframe-slot.ts#L226-L236)), and
+   ([`iframe-slot.ts:226-236`](../src/hooks/iframe-slot.ts#L226-L236)), and
    the next real Tab must still descend.
 2. Confirm with a real screen reader that the clipped sentinel text is announced
    on a `suppressHint` entry (the accessibility-tree reasoning above).

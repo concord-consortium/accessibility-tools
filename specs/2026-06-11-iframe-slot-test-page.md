@@ -1,6 +1,8 @@
 # Non-cooperating iframe focus-trap test page — Design
 
-Date: 2026-06-11
+**Status**: **Closed**
+**Date**: 2026-06-11
+**Design Doc**: [../docs/iframe-slot-design.md](../docs/iframe-slot-design.md)
 
 ## Problem
 
@@ -166,8 +168,7 @@ iframe slot sits between two known-good slots.
   match scenario 1 (manually verified in Chrome: focus exits the iframe and
   cycles to the button instead of sticking on the sentinel). Covered by
   `iframe-slot.test.ts` (`syncListeners rebinding`) and `use-iframe-slot.test.ts`
-  (deferred + re-mount). See
-  `docs/superpowers/plans/2026-06-12-deferred-iframe-slot-fix.md`.
+  (deferred + re-mount).
 
 ### Scenario 6 — Deferred trap CONTAINER (controller attaches late): PENDING manual verification
 The trap-**controller** analogue of Scenario 2. Scenario 2 is the iframe-**slot**
@@ -182,8 +183,7 @@ beside Scenario 2 (both deferred cases), hence its placement here in the doc.
   constructed *with* its container in a mount-only effect, so a container that
   committed after the hook's first render (React portals / effect-gated children /
   Suspense) meant the controller was never built and the trap never engaged. The
-  container-less `FocusTrapController` + stable `containerRef` ref-callback (Tasks
-  1/2 of `docs/superpowers/plans/2026-06-13-deferred-focus-trap-controller.md`)
+  container-less `FocusTrapController` + stable `containerRef` ref-callback
   fixes this: the controller is constructed eagerly and attaches whenever the
   container commits — even late — so Enter/Tab engage the trap exactly like the
   canonical scenario 1. Inside the deferred container the iframe subtree is NOT
