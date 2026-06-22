@@ -58,7 +58,7 @@ A new page entry that mirrors `index.html` → `main.tsx`. Wrapped in
 `AccessibilityProvider`. Hosts the scenarios. Kept off the kitchen-sink page so
 selectors stay clean and stable for automation.
 
-### `demo/sections/iframe-trap/` — the four scenarios
+### `demo/sections/iframe-trap/` — the initial scenarios
 
 1. **`canonical.tsx`** — slot (input) → non-cooperating iframe (content slot) →
    slot (button). The baseline: forward exit, reverse exit, descent into the
@@ -82,10 +82,19 @@ selectors stay clean and stable for automation.
    `data-testid` attributes so the MCP can assert without screenshots and
    without reading into the cross-origin frame.
 
-Two deferred-mount regression scenarios were added later (see the findings
-below): `deferred-children.tsx` defers the iframe SUBTREE (iframe-slot guard),
-and `deferred-container.tsx` defers the WHOLE trap container so the controller's
-`containerRef` attaches late (trap-controller guard).
+**The scenario set grows over time and this doc does not track it exhaustively.**
+The list above is the founding set; more have been added as new nuances and bugs
+surfaced — deferred-mount guards (`deferred-children.tsx` defers the iframe
+SUBTREE, `deferred-container.tsx` defers the WHOLE trap container so the
+controller's `containerRef` attaches late), a solo-iframe trap, and dialog
+open/modality cases. Rather than maintain a numbered catalog here (it would drift
+from the code), treat the **demo page itself as the source of truth**: each
+scenario renders its own on-page description of what it exercises and how to drive
+it — the keyboard steps plus the `data-testid` readout from `focus-readout.tsx` —
+so the page carries enough information to test it without this doc. The working
+pattern is that a newly discovered nuance becomes a new, self-documenting scenario
+on the page, not a new entry here. (Some early scenarios are written up in the
+findings below, which are a point-in-time record, not a maintained index.)
 
 ### `demo/cross-origin.ts`
 `crossOriginInnerSrc()` helper. In dev, swaps `localhost`↔`127.0.0.1` on
@@ -250,13 +259,13 @@ Caveat: cross-origin iframe focus traversal driven by automated key events is
 timing-sensitive; the Scenario 5 escape (finding 3) is worth a manual repro
 before any library fix.
 
-### Library bug found and fixed this session
+### Library bug found and fixed
 Entering a trap via the **Enter key** activated the trap but focused the first
 content slot with the default `sequentialNavigation` (silent positioner)
 trigger, unlike the `enterTrap()` method which uses `programmatic` (landing)
 mode. For a non-cooperating iframe content slot this meant **no `data-landing` /
 landing hint on Enter entry** — focus parked silently on a zero-size sentinel.
 Root cause: the Enter-key handler reimplemented trap entry inline and had drifted
-from `enterTrap()`. Fixed by aligning the trigger (`fa8fbc3`) and then collapsing
-both routes onto a single shared `enterTrap` path so they can't drift again
-(`cf89bb9`). The two genuine **Scenario 5** issues above remain open.
+from `enterTrap()`. Fixed by aligning the trigger and then collapsing both routes
+onto a single shared `enterTrap` path so they can't drift again. The two genuine
+**Scenario 5** issues above remain open.
