@@ -252,7 +252,7 @@ export class FocusTrapController {
     // the invisible sentinel with no hint. Live-Tab engage paths use
     // focusEntrySlot() with the positioner default and are unaffected. A host may
     // pass { suppressHint: true } for a pointer-driven entry: focus still rests on
-    // the sentinel, but no visible hint is shown. See docs/iframe-slot-design.md.
+    // the sentinel, but no visible hint is shown. See specs/2026-06-09-iframe-slot-support.md.
     this.focusEntrySlot(false, "programmatic", options?.suppressHint ?? false);
   }
 

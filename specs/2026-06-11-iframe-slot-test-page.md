@@ -2,7 +2,7 @@
 
 **Status**: **Closed**
 **Date**: 2026-06-11
-**Design Doc**: [../docs/iframe-slot-design.md](../docs/iframe-slot-design.md)
+**Design Doc**: [2026-06-09-iframe-slot-support.md](2026-06-09-iframe-slot-support.md)
 
 ## Problem
 

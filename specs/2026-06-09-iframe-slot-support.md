@@ -8,7 +8,7 @@ Interactives](https://concord-consortium.atlassian.net/browse/AP-108)); the
 strategy-contract extension it describes is tracked under
 [LARA-215](https://concord-consortium.atlassian.net/browse/LARA-215).
 
-Read [trap-composition.md](trap-composition.md) first — this work adds a new
+Read [trap-composition.md](../docs/trap-composition.md) first — this work adds a new
 kind of self-managed slot (an iframe across an origin boundary) and builds
 directly on the slot model described there.
 
@@ -555,14 +555,14 @@ outside the container, and once focus is inside a cross-origin frame the parent
 can't redirect it. Gate the iframe's `tabIndex` on the trap's active state
 (`isTrapped ? 0 : -1`). This is one instance of a requirement that holds for
 every managed slot — see
-[trap-composition.md → Managed slots must be de-tabbed while the trap is inactive](./trap-composition.md#managed-slots-must-be-de-tabbed-while-the-trap-is-inactive).
+[trap-composition.md → Managed slots must be de-tabbed while the trap is inactive](../docs/trap-composition.md#managed-slots-must-be-de-tabbed-while-the-trap-is-inactive).
 
 ### 9. Exit without refocus (host-driven release on outside click)
 
 > **Not iframe-specific.** This is a general trap-lifecycle change that rides
 > along in this PR because the same hosts hit it. Recorded here so the PR is
 > self-documenting; the underlying modality policy lives in
-> [trap-composition.md](trap-composition.md).
+> [trap-composition.md](../docs/trap-composition.md).
 
 `exitTrap()` historically did one thing on release: fire `onExit`, then
 `container.focus()` to pull focus back to the trap container. That is right for a

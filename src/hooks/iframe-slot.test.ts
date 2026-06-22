@@ -164,7 +164,7 @@ describe("IframeSlot native-Tab descent tracking (window blur/focus)", () => {
   // the deferred syncInsideFromActiveElement() clear `inside` BEFORE the
   // after-sentinel focusin arrives — so without tracking the ascent, the exit
   // redirect (onExit) is silently dropped and focus is stranded on the sentinel.
-  // Reproduces an activity-player dialog hang. See docs/iframe-slot-design.md.
+  // Reproduces an activity-player dialog hang. See specs/2026-06-09-iframe-slot-support.md.
   it("after-sentinel focusin still exits when a deferred window-focus sync cleared inside first (Safari ordering)", () => {
     vi.useFakeTimers();
     try {

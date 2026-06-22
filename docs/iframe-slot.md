@@ -5,7 +5,7 @@ focus trap contain an **interactive rendered in an iframe** — including a
 **cross-origin** one that does not cooperate with the parent at all. It describes
 the code as it actually works.
 
-Its companion, [iframe-slot-design.md](iframe-slot-design.md), is the original
+Its companion, [iframe-slot-support](../specs/2026-06-09-iframe-slot-support.md), is the original
 design/spec. You should not need it to understand the system — everything load-
 bearing is here. It is worth opening only to see *why a particular alternative
 was rejected*: where this doc says "we deliberately don't do X," the reasoning
@@ -303,7 +303,7 @@ reads it live), and every slot re-runs `refreshIntercept`.
 > designate only **one** of them for *programmatic* entry; native Tab flow
 > between them works, but a wrap or `enterTrap` can only land on the designated
 > one. Generalizing `focusContent` to be per-slot was left out of scope — see
-> [iframe-slot-design.md](iframe-slot-design.md). The demo's multi-iframe
+> [iframe-slot-support](../specs/2026-06-09-iframe-slot-support.md). The demo's multi-iframe
 > scenario documents the rough edge.
 
 ## 8. Cooperating interactives (the transport)
@@ -421,4 +421,4 @@ is a host keydown to ride.
 For alternatives that were considered and **not** taken — emitting
 `focusEnter { forward | reverse }` on the live-Tab path, building modality
 detection into the generic trap, generalizing `focusContent` to multiple content
-slots — see [iframe-slot-design.md](iframe-slot-design.md).
+slots — see [iframe-slot-support](../specs/2026-06-09-iframe-slot-support.md).

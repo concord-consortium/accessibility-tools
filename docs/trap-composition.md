@@ -165,7 +165,7 @@ handling work, and that sweep would destroy a slot that owns its own
 - **`nativeTabSlots` slots** (the iframe slot) carry a host-owned
   `tabindex` the focus system must never touch — the AP-108 rule that
   the iframe's `tabindex` comes from static host properties, not the
-  trap (see [iframe-slot-design.md §8](./iframe-slot-design.md)). An
+  trap (see [iframe-slot-support §8](../specs/2026-06-09-iframe-slot-support.md)). An
   iframe slot has no `tabHandler` at all, so `nativeTabSlots` is what
   marks it managed.
 
@@ -206,7 +206,7 @@ keep every managed slot's focusables out of the tab order
 applies to any slot whose `tabindex` the library does not manage:
 
 - **iframe slots** (`nativeTabSlots`) — the host owns the iframe's
-  `tabindex` (the AP-108 rule, [iframe-slot-design.md §8](./iframe-slot-design.md)).
+  `tabindex` (the AP-108 rule, [iframe-slot-support §8](../specs/2026-06-09-iframe-slot-support.md)).
   Gate it on the trap's active state, e.g. `tabIndex={isTrapped ? 0 : -1}`,
   not on a static `locked` / `content-only` property alone.
 - **roving-tabindex slots** (`tabHandlers`, e.g. `react-data-grid`) — the

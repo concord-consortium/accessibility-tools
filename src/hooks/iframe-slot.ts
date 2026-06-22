@@ -3,7 +3,7 @@
  *
  * Mirrors the agnostic-core split used by FocusTrapController. The host renders
  * [before-sentinel][iframe][after-sentinel] and supplies accessors; this core
- * owns their behavior. See docs/iframe-slot-design.md.
+ * owns their behavior. See specs/2026-06-09-iframe-slot-support.md.
  */
 
 import type { FocusMessage, FocusTransport } from "./focus-messages";
@@ -54,7 +54,7 @@ export class IframeSlot {
   // document.activeElement and only settles activeElement a tick later, so the
   // sync would otherwise clear `inside` before the sentinel focusin and the exit
   // redirect would be dropped (focus stranded on the sentinel). See § in
-  // docs/iframe-slot-design.md and the IframeSlot Safari-ordering regression test.
+  // specs/2026-06-09-iframe-slot-support.md and the IframeSlot Safari-ordering regression test.
   private leavingIframe = false;
 
   // Elements each set of listeners is currently bound to. syncListeners() rebinds

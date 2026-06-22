@@ -1,6 +1,6 @@
 /**
  * useIframeSlot — thin React hook wiring the agnostic IframeSlot to a focus
- * trap (§5/§6 of iframe-slot-design.md).
+ * trap (§5/§6 of specs/2026-06-09-iframe-slot-support.md).
  *
  * The host renders [before-sentinel][iframe][after-sentinel], spreads the
  * returned *-SentinelProps (ref + key ONLY), maps its content slot's element to

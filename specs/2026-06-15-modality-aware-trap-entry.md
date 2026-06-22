@@ -2,7 +2,7 @@
 
 **Status**: **Closed**
 **Date**: 2026-06-15
-**Design Doc**: [../docs/iframe-slot-design.md](../docs/iframe-slot-design.md)
+**Design Doc**: [2026-06-09-iframe-slot-support.md](2026-06-09-iframe-slot-support.md)
 
 ## Problem
 
@@ -224,7 +224,7 @@ Controller / iframe-slot unit tests:
 
 ## Docs
 
-- [`docs/iframe-slot-design.md`](../docs/iframe-slot-design.md) — update the landing
+- [`specs/2026-06-09-iframe-slot-support.md`](2026-06-09-iframe-slot-support.md) — update the landing
   sections to the landing/hint split; document the `suppressHint` option and the
   `data-show-hint` rename.
 - This spec stands as the record of the modality decision and the canonical host

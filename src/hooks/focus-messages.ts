@@ -1,5 +1,5 @@
 /**
- * Self-contained focus-message vocabulary (§7 of iframe-slot-design.md).
+ * Self-contained focus-message vocabulary (§7 of specs/2026-06-09-iframe-slot-support.md).
  *
  * This is the "trap-action vocabulary." It is intentionally NOT
  * `lara-interactive-api`'s wire types — `accessibility-tools` stays

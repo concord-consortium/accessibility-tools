@@ -21,7 +21,7 @@ export type EscapeHandlerResult = "handled" | "exit";
 
 /**
  * What triggered a focusContent call — the browser-navigation function behind
- * the entry, NOT the literal key. See §3/§4 of iframe-slot-design.md.
+ * the entry, NOT the literal key. See §3/§4 of specs/2026-06-09-iframe-slot-support.md.
  * - "sequentialNavigation": a live sequential-focus-navigation keypress (the
  *   Tab key's browser function) is being processed, so the browser has a
  *   pending native focus advance to descend with ⇒ positioner mode.
