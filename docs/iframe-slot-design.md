@@ -669,8 +669,11 @@ browser harness here would mostly test the browser, not this library's code.
   Edge cases to validate in the AP/testbed pass: focus leaving to another top-level
   window or browser chrome (window `blur` with `activeElement` still the iframe),
   and rapid Tab sequences that fire multiple window events before a tick settles
-  (the timer is debounced, so only the latest read wins). The synchronous
-  sentinel-`focusin` exit path is unaffected — it does not depend on this tracking.
+  (the timer is debounced, so only the latest read wins). The sentinel-`focusin`
+  exit redirect is synchronous, but it is **gated on** this tracking — it fires
+  only while `inside` (or the `leavingIframe` ascent flag) is set — so
+  `leavingIframe` is what keeps it reliable when the deferred read clears `inside`
+  too early (the Safari ordering).
 - **Solo-iframe trap wrap is intentionally asymmetric (accepted).** When the iframe is the trap's only slot, wrapping re-enters it from the opposite end — Tab enters from the start, Shift+Tab from the end — so a reverse wrap rests focus on the (visible) *after*-sentinel. This is a touch surprising but correct and accessible; forcing focus to always rest on the before-sentinel would break reverse native descent (the positioner needs the after-sentinel), so it is left as-is until a real complaint warrants the special case.
 - **Sentinel screen-reader behavior, both modes.** Confirm screen readers do not
   dwell on the zero-size, unnamed sentinels in positioner/exit mode given the
