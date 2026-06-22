@@ -24,8 +24,9 @@ The trap cannot tell *how* it was opened: the host decides when to call
 
 ### Root cause (verified)
 
-- AP: [`dialog-overlay.tsx:110-118`](../../activity-player/src/components/activity-page/managed-interactive/dialog-overlay.tsx#L110-L118)
-  calls `trapRef.current?.enterTrap()` unconditionally on container attach.
+- AP: `DialogOverlay` in `concord-consortium/activity-player`
+  (`src/components/activity-page/managed-interactive/dialog-overlay.tsx`) calls
+  `trapRef.current?.enterTrap()` unconditionally when its trap container attaches.
 - Library: [`focus-trap-controller.ts:245-254`](../src/hooks/focus-trap-controller.ts#L245-L254)
   routes `enterTrap()` through `focusEntrySlot(false, "programmatic")`; for the
   content slot this hits the visible-landing branch in
@@ -234,7 +235,8 @@ Controller / iframe-slot unit tests:
 
 AP migration: detect modality at the dialog open site and call
 `enterTrap({ suppressHint: true })` for pointer opens, mirroring the demo pattern
-([`dialog-overlay.tsx:110-118`](../../activity-player/src/components/activity-page/managed-interactive/dialog-overlay.tsx#L110-L118)).
+(in `concord-consortium/activity-player`'s `DialogOverlay`,
+`src/components/activity-page/managed-interactive/dialog-overlay.tsx`).
 The library change is non-breaking, so AP keeps working until that separate
 session lands.
 
