@@ -178,6 +178,15 @@ export class IframeSlot {
     }
     this.unsubscribeTransport?.();
     this.unsubscribeTransport = null;
+    // Reset inside-state and return the sentinels to neutral. Without this, a
+    // detach while focus was inside the iframe could leave a sentinel a live tab
+    // stop (`tabindex="0"`) with no listeners, or its landing hint visible — and
+    // a later re-attach of this instance would start from a stale `inside`. The
+    // sentinel getters return null once the host unmounts the nodes, so this is a
+    // safe no-op in the normal unmount case.
+    this.inside = false;
+    this.applyTabindex();
+    this.clearHint();
   }
 
   /** Re-apply sentinel tabindex from current inside-state + intercept flags. */

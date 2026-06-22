@@ -54,6 +54,36 @@ describe("IframeSlot focusInsideIframe tracking", () => {
   });
 });
 
+describe("IframeSlot detach teardown", () => {
+  it("detach while focus is inside resets inside and de-tabs the sentinels", () => {
+    const { slot, iframe, before, after } = setup();
+    iframe.dispatchEvent(new FocusEvent("focus"));
+    // Precondition: inside, so both intercepted sentinels are live tab stops.
+    expect(slot.focusInsideIframe).toBe(true);
+    expect(before.getAttribute("tabindex")).toBe("0");
+    expect(after.getAttribute("tabindex")).toBe("0");
+
+    slot.detach();
+
+    expect(slot.focusInsideIframe).toBe(false);
+    expect(before.getAttribute("tabindex")).toBe("-1");
+    expect(after.getAttribute("tabindex")).toBe("-1");
+  });
+
+  it("detach clears a visible landing hint", () => {
+    const { slot, before } = setup({ enterLabel: "Press Tab to enter" });
+    // A programmatic (landing) entry reveals the hint on the directional sentinel.
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(before.hasAttribute("data-show-hint")).toBe(true);
+    expect(before.getAttribute("aria-label")).toBe("Press Tab to enter");
+
+    slot.detach();
+
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
+    expect(before.hasAttribute("aria-label")).toBe(false);
+  });
+});
+
 describe("IframeSlot native-Tab descent tracking (window blur/focus)", () => {
   // Real browsers do NOT dispatch focus/blur on the <iframe> ELEMENT when
   // keyboard Tab moves focus across the frame boundary; the element silently
