@@ -148,26 +148,34 @@ What these buy you:
 
 ### The managed-slot semantic
 
-A slot present in `strategy.tabHandlers` is also implicitly managed for
-`tabindex`. The trap's `setChildrenNonTabbable` skips the slot's element
-and all its descendants. This is necessary because the trap historically
-mutated `tabindex="-1"` on every focusable descendant of its container
-to make out-of-container Tab handling work — but a slot like RDG's body
-maintains its own roving `tabindex="0"`/`"-1"` state for arrow-key
-navigation, and the trap's mutation destroys it.
+A **managed slot** is one the trap leaves alone when it sweeps `tabindex`:
+its element and all descendants are skipped by `setChildrenNonTabbable`.
+A slot is managed if it appears in either of two strategy fields —
+`tabHandlers` **or** `nativeTabSlots` — which `getManagedSlotElements`
+([dom-utils.ts](../src/hooks/dom-utils.ts)) unions together.
 
-The "managed" status is derived from `tabHandlers` rather than declared
-via a separate `managedSlots: string[]` field. Every realistic case
-where a slot wants the trap to leave its `tabindex` alone is a case
-where the slot has its own Tab semantics, and vice versa. A separate
-field would be a second knob to misconfigure.
+The skip is necessary because the trap sweeps `tabindex="-1"` onto every
+focusable descendant of its container to make out-of-container Tab
+handling work, and that sweep would destroy a slot that owns its own
+`tabindex`. The two kinds of managed slot own it for different reasons:
 
-(Since the iframe-slot work, `getManagedSlotElements`
-([dom-utils.ts](../src/hooks/dom-utils.ts)) also treats every
-`nativeTabSlots` entry as managed — an iframe slot has no `tabHandler`
-but still must be off-limits to the sweep. See
-[iframe-slot-design.md §8](./iframe-slot-design.md). So "managed slot"
-below means a slot in `tabHandlers` **or** `nativeTabSlots`.)
+- **`tabHandlers` slots** keep a roving `tabindex="0"`/`"-1"` for their
+  own key navigation. RDG's body grid is the example: the sweep would
+  wipe the roving-cell state that arrow-key navigation depends on.
+- **`nativeTabSlots` slots** (the iframe slot) carry a host-owned
+  `tabindex` the focus system must never touch — the AP-108 rule that
+  the iframe's `tabindex` comes from static host properties, not the
+  trap (see [iframe-slot-design.md §8](./iframe-slot-design.md)). An
+  iframe slot has no `tabHandler` at all, so `nativeTabSlots` is what
+  marks it managed.
+
+Managed status is *derived* from these two existing fields rather than
+declared through a separate `managedSlots: string[]`. Each field already
+says the slot has its own focus/Tab behavior — a `tabHandler` declares
+custom Tab semantics, a `nativeTabSlot` declares a hand-off to native
+traversal — so wanting the trap to leave `tabindex` alone always
+coincides with one of them. A standalone field would just be a third
+knob to misconfigure.
 
 ### Managed slots must be de-tabbed while the trap is inactive
 
