@@ -9,6 +9,22 @@ function makeContainer(): HTMLDivElement {
   return el;
 }
 
+/**
+ * Construct a controller, attach it to `container`, enable it, and enter the
+ * trap — the common "live, entered trap" setup. Returns the controller so the
+ * caller assigns it to the shared `controller` that afterEach destroys.
+ */
+function enterActiveTrap(
+  strategy: FocusTrapStrategy,
+  container: HTMLElement,
+): FocusTrapController {
+  const controller = new FocusTrapController(strategy);
+  controller.containerRef(container);
+  controller.setEnabled(true);
+  controller.enterTrap();
+  return controller;
+}
+
 let activeElementOverridden = false;
 
 function setActiveElement(el: Element) {
@@ -84,10 +100,7 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title, content }),
       cycleOrder: ["title", "content"],
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     expect(title.focus).toHaveBeenCalled();
 
@@ -117,10 +130,7 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title, toolbar, content }),
       cycleOrder: ["title", "toolbar", "content"],
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     // Trap entered at title (slotIndex=0). Without the re-derivation fix, a
     // Tab from a click-focused toolbar button would advance to "toolbar" again
     // (slotIndex 0 -> 1) rather than continuing to "content" (1 -> 2).
@@ -156,10 +166,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["content"],
       tabWithinSlots: ["content"],
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(widget1Inner);
     pressKey("Tab");
@@ -192,10 +199,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabWithinSlots: ["content"],
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     // Enter focuses title first
     expect(title.focus).toHaveBeenCalled();
@@ -229,10 +233,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["toolbar", "content"],
       tabWithinSlots: ["toolbar"],
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     // First slot in cycleOrder is the toolbar (tabWithinSlots), which has
     // only tabindex=-1 buttons. Should still focus btn1 via the fallback.
@@ -262,10 +263,7 @@ describe("FocusTrapController", () => {
       getExternalElements: () => [portalToolbar],
       externalElementsSlot: "toolbar",
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     expect(title.focus).toHaveBeenCalled();
 
     // Focus is in the portal toolbar; Tab should advance toolbar -> content.
@@ -295,10 +293,7 @@ describe("FocusTrapController", () => {
       getExternalElements: () => [portal],
       // externalElementsSlot intentionally omitted
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     // Trap entered at title (slotIndex=0). Without externalElementsSlot, Tab
     // from the portal should treat the slot as still "title" and advance to
     // content, not jump back to title.
@@ -320,10 +315,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title"],
       onExit,
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     expect(controller.isTrapped).toBe(true);
 
     setActiveElement(title);
@@ -345,10 +337,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title"],
       onExit,
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     expect(controller.isTrapped).toBe(true);
 
     // The host releases the trap because focus has legitimately left the
@@ -369,10 +358,7 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title }),
       cycleOrder: ["title"],
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     controller.exitTrap();
     expect(container.focus).toHaveBeenCalled();
   });
@@ -594,10 +580,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     expect(title.focus).toHaveBeenCalled();
 
     setActiveElement(title);
@@ -622,10 +605,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(title);
     const event = pressKey("Tab");
@@ -650,10 +630,7 @@ describe("FocusTrapController", () => {
         /* none for title */
       },
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(title);
     pressKey("Tab");
@@ -674,10 +651,7 @@ describe("FocusTrapController", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(content);
     const event = pressKey("Escape");
@@ -700,10 +674,7 @@ describe("FocusTrapController", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(content);
     const event = pressKey("Escape");
@@ -730,10 +701,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content", "toolbar"],
       focusContent,
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     // Forward entry into content from title:
     setActiveElement(title);
     pressKey("Tab");
@@ -913,10 +881,7 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       focusContent,
       getNativeTabSlotSentinels: () => ({ before, after }),
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap(); // focus title
+    controller = enterActiveTrap(strategy, container); // focus title
 
     setActiveElement(title);
     const e = pressKey("Tab");
@@ -945,10 +910,7 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       focusContent,
       getNativeTabSlotSentinels: () => ({ before, after }),
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     // enterTrap is a programmatic entry (no pending Tab default), so entering a
     // content slot must use landing mode (trigger: "programmatic"), not positioner —
@@ -1007,10 +969,7 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       focusContent: () => true,
       getNativeTabSlotSentinels: () => ({ before, after }),
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(after);
     const e = pressKey("Tab");
@@ -1035,10 +994,7 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       focusContent,
       getNativeTabSlotSentinels: () => ({ before, after }),
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     // Resting on the before-sentinel (the landing), Shift+Tab in a solo trap
     // wraps back into the SAME nativeTabSlot. That must use the positioner and
@@ -1067,10 +1023,7 @@ describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
       getElements: () => ({ title, content }),
       cycleOrder: ["title", "content"],
     };
-    controller = new FocusTrapController(strategy);
-    controller.containerRef(container);
-    controller.setEnabled(true);
-    controller.enterTrap(); // title, index 0
+    controller = enterActiveTrap(strategy, container); // title, index 0
 
     controller.cycleToAdjacentSlot(1);
     expect(content.focus).toHaveBeenCalled();
