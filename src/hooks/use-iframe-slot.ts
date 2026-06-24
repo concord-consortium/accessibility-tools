@@ -133,6 +133,17 @@ export function useIframeSlot(
     return () => slot?.detach();
   }, []);
 
+  // The slot is constructed once, capturing whatever `transport` existed on the
+  // first render — for the dialog that's `undefined`, because its FocusManager
+  // transport is built in a later passive effect and surfaced on a subsequent
+  // render. Forward the current transport so the slot subscribes to it when it
+  // arrives (and re-subscribes if it changes). setTransport is idempotent for an
+  // unchanged value, so the mount-time call with the initial transport is a
+  // no-op.
+  useEffect(() => {
+    slotRef.current?.setTransport(transport);
+  }, [transport]);
+
   // Register with the shared registry (if any) so siblings see this slot, and
   // refresh our own intercept whenever membership / enterable state changes.
   useEffect(() => {

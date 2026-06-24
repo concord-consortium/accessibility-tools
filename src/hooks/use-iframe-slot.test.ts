@@ -159,6 +159,58 @@ describe("useIframeSlot", () => {
   });
 });
 
+describe("useIframeSlot late transport", () => {
+  it("subscribes to a transport that first arrives on a later render", () => {
+    const iframe = document.createElement("iframe");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    document.body.append(before, iframe, after);
+    const onExit = vi.fn();
+
+    let handler: ((m: import("./focus-messages").FocusMessage) => void) | null =
+      null;
+    const transport: FocusTransport = {
+      send: vi.fn(),
+      onMessage: (cb) => {
+        handler = cb;
+        return () => {
+          handler = null;
+        };
+      },
+    };
+
+    const { rerender } = renderHook(
+      ({ transport: t }: { transport?: FocusTransport }) => {
+        const iframeRef = useRef<HTMLIFrameElement | null>(iframe);
+        const beforeRef = useRef<HTMLElement | null>(before);
+        const afterRef = useRef<HTMLElement | null>(after);
+        return useIframeSlot({
+          slotName: "content",
+          iframeRef,
+          beforeSentinelRef: beforeRef,
+          afterSentinelRef: afterRef,
+          cycleOrder: ["content"],
+          getElements: () => ({ content: iframe }),
+          onExit,
+          transport: t,
+        });
+      },
+      {
+        initialProps: { transport: undefined } as {
+          transport?: FocusTransport;
+        },
+      },
+    );
+
+    // First render had no transport (mirrors the dialog before its FocusManager
+    // is built). The transport now arrives.
+    act(() => rerender({ transport }));
+
+    act(() => handler?.({ type: "focusExit", mode: "forward" }));
+    expect(onExit).toHaveBeenCalledWith(1);
+  });
+});
+
 describe("useIframeSlot multi-iframe (registry)", () => {
   function makeWrapper() {
     const wrapper = document.createElement("div");

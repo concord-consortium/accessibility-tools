@@ -46,6 +46,14 @@ export class IframeSlot {
   // which would otherwise wipe a landing hint as we set it (focusing the
   // entering sentinel blurs the leaving one) or mis-read a self-inflicted exit.
   private movingFocus = false;
+  // Set while a non-cooperating landing is resting on a sentinel (focus placed
+  // on the directional sentinel, hint shown, awaiting the user's Tab). If the
+  // cooperating capability arrives AFTER this landing — the dialog opens and the
+  // trap places focus before the interactive's FocusManager transport/capability
+  // is established — we use this to hand focus off to the interactive
+  // (focusEnter) and drop the now-stale sentinel. Cleared by clearHint() (so any
+  // descent / focusout / exit cancels the pending upgrade).
+  private pendingEntryMode: "forward" | "reverse" | "restore" | null = null;
   // Set when the top window regains focus while we still believe focus is inside
   // the iframe — i.e. focus is ascending back OUT of the frame. It lets a
   // sentinel focusin that lands a beat later still be recognized as an exit even
@@ -306,14 +314,46 @@ export class IframeSlot {
     };
   }
 
+  /**
+   * Replace the cooperating-path transport after construction and (re)subscribe.
+   *
+   * The dialog builds its FocusManager transport in a passive effect — after the
+   * slot is already constructed and attached with no transport — and surfaces it
+   * on a later render. useIframeSlot forwards that here so the slot subscribes to
+   * the late transport instead of silently ignoring it. Idempotent for an
+   * unchanged transport.
+   */
+  setTransport(transport: FocusTransport | undefined): void {
+    if (transport === this.options.transport) return;
+    this.unsubscribeTransport?.();
+    this.unsubscribeTransport = null;
+    this.options.transport = transport;
+    if (this.attached && transport) {
+      this.unsubscribeTransport = transport.onMessage((msg) =>
+        this.handleMessage(msg),
+      );
+    }
+  }
+
   /** Mark the cooperating capability (also set by inbound capability message). */
   notifyCapability(focusProtocol: boolean): void {
     this.cooperating = focusProtocol;
+    // Late capability: the trap already landed focus on a sentinel (non-coop
+    // hint) before the interactive reported it cooperates. Hand off to the
+    // interactive now and drop the sentinel, so a cooperating interactive never
+    // leaves the "Press Tab to enter" hint sitting on screen.
+    if (focusProtocol && this.options.transport && this.pendingEntryMode) {
+      const mode = this.pendingEntryMode;
+      this.clearHint(); // also clears pendingEntryMode
+      this.options.transport.send({ type: "focusEnter", mode });
+    }
   }
 
   focusContent(ctx: FocusContentContext): boolean {
     const before = this.options.getBeforeSentinel();
     const after = this.options.getAfterSentinel();
+    // reverse rests on the after-sentinel; forward and restore both rest on the
+    // before-sentinel (restore has no direction, so it lands forward-like).
     const target = ctx.entryMode === "reverse" ? after : before;
 
     if (ctx.trigger === "sequentialNavigation") {
@@ -324,10 +364,10 @@ export class IframeSlot {
     }
 
     // Programmatic entry. Cooperating ⇒ precise placement via the protocol (no
-    // visible hint either way, so suppressHint is moot here).
+    // visible hint either way, so suppressHint is moot here). entryMode passes
+    // straight through, so a restore entry sends focusEnter{restore}.
     if (this.cooperating && this.options.transport) {
-      const mode = ctx.entryMode === "reverse" ? "reverse" : "forward";
-      this.options.transport.send({ type: "focusEnter", mode });
+      this.options.transport.send({ type: "focusEnter", mode: ctx.entryMode });
       return true;
     }
 
@@ -343,12 +383,19 @@ export class IframeSlot {
           target.setAttribute("aria-label", this.options.enterLabel);
         }
       }
+      // Remember this resting landing so a late cooperating capability can hand
+      // off to the interactive with the same intent — including "restore", which
+      // lands forward-like but must hand off as focusEnter{restore}. Set after
+      // clearHint() (which nulls it). Tracked even for suppressHint pointer
+      // entries — focus still rests on the sentinel awaiting entry.
+      this.pendingEntryMode = ctx.entryMode;
       this.focusSentinel(target);
     }
     return true;
   }
 
   private clearHint(): void {
+    this.pendingEntryMode = null;
     for (const el of [
       this.options.getBeforeSentinel(),
       this.options.getAfterSentinel(),
@@ -374,11 +421,9 @@ export class IframeSlot {
   }
 
   requestRestore(): void {
-    if (this.cooperating && this.options.transport) {
-      this.options.transport.send({ type: "focusEnter", mode: "restore" });
-      return;
-    }
-    // Non-cooperating: re-enter via a forward landing hint.
-    this.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    // focusContent handles both paths: cooperating sends focusEnter{restore};
+    // non-cooperating lands a forward-like hint but remembers the restore intent
+    // so a late capability still hands off with focusEnter{restore}.
+    this.focusContent({ entryMode: "restore", trigger: "programmatic" });
   }
 }

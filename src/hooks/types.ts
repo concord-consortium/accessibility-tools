@@ -37,8 +37,13 @@ export type FocusContentContext = {
    * Direction the trap is entering the content slot.
    * - "forward": cycling forward (Tab from previous slot, or initial entry).
    * - "reverse": cycling backward (Shift+Tab from next slot).
+   * - "restore": re-entering to re-focus the last element (no direction). The
+   *   controller only ever passes forward/reverse; restore is driven internally
+   *   by requestRestore(). A non-cooperating slot lands restore forward-like but
+   *   remembers the restore intent so a late cooperating capability hands off
+   *   with focusEnter{restore} rather than {forward}.
    */
-  entryMode: "forward" | "reverse";
+  entryMode: "forward" | "reverse" | "restore";
 
   /**
    * Whether this call rides the browser's pending native focus advance
