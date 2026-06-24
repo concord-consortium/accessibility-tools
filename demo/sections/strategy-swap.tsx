@@ -31,7 +31,6 @@ export function StrategySwapSection() {
   const [preset, setPreset] = useState<StrategyPreset>("full");
   const [log, setLog] = useState<string[]>([]);
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const toolbarRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLTextAreaElement>(null);
@@ -110,7 +109,7 @@ export function StrategySwapSection() {
     }
   }, [preset, addLog]);
 
-  const trap = useFocusTrap({ containerRef, strategy });
+  const trap = useFocusTrap({ strategy });
 
   return (
     <section>
@@ -153,21 +152,21 @@ export function StrategySwapSection() {
       {/* Focus trap container */}
       <h3>Container (Enter to trap, Escape to exit)</h3>
       <div
-        ref={containerRef}
+        ref={trap.containerRef}
         tabIndex={0}
         role="group"
         aria-label="Strategy swap demo"
         style={{
-          border: trap?.isTrapped ? "2px solid #2563eb" : "1px solid #ccc",
+          border: trap.isTrapped ? "2px solid #2563eb" : "1px solid #ccc",
           padding: 12,
           marginTop: 8,
-          background: trap?.isTrapped ? "#eff6ff" : "transparent",
+          background: trap.isTrapped ? "#eff6ff" : "transparent",
           borderRadius: 4,
           outline: "none",
         }}
       >
         <p style={{ margin: "0 0 8px", fontSize: 13 }}>
-          {trap?.isTrapped
+          {trap.isTrapped
             ? `Trapped (${preset}). Tab cycles through slots. Escape exits.`
             : "Focus this container and press Enter to enter the trap."}
         </p>

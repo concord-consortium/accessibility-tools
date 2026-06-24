@@ -9,11 +9,35 @@ function makeContainer(): HTMLDivElement {
   return el;
 }
 
+/**
+ * Construct a controller, attach it to `container`, enable it, and enter the
+ * trap — the common "live, entered trap" setup. Returns the controller so the
+ * caller assigns it to the shared `controller` that afterEach destroys.
+ */
+function enterActiveTrap(
+  strategy: FocusTrapStrategy,
+  container: HTMLElement,
+): FocusTrapController {
+  const controller = new FocusTrapController(strategy);
+  controller.containerRef(container);
+  controller.setEnabled(true);
+  controller.enterTrap();
+  return controller;
+}
+
+let activeElementOverridden = false;
+
 function setActiveElement(el: Element) {
+  // Override the native `document.activeElement` getter with a fixed value so a
+  // test can simulate "focus is on element X" without driving real focus. This
+  // installs an own, configurable property on `document`; afterEach deletes it
+  // to restore jsdom's native getter (otherwise later tests that assert against
+  // *real* focus would still see this stale value).
   Object.defineProperty(document, "activeElement", {
     value: el,
     configurable: true,
   });
+  activeElementOverridden = true;
 }
 
 function pressKey(key: string, opts: Partial<KeyboardEventInit> = {}) {
@@ -33,6 +57,33 @@ afterEach(() => {
   controller?.destroy();
   controller = null;
   document.body.innerHTML = "";
+  if (activeElementOverridden) {
+    // Delete the own property installed by setActiveElement to restore jsdom's
+    // native activeElement getter for the next test. Reflect.deleteProperty
+    // (rather than `delete`) keeps Biome's noDelete rule happy; assigning
+    // `undefined` would NOT work — it leaves a static own property shadowing
+    // the prototype getter.
+    Reflect.deleteProperty(document, "activeElement");
+    activeElementOverridden = false;
+  }
+});
+
+describe("FocusTrapController pre-attach safety", () => {
+  it("constructs without a container; all public methods are safe before attach", () => {
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: ["content"],
+    };
+    const ctrl = new FocusTrapController(strategy);
+    expect(ctrl.isTrapped).toBe(false);
+    expect(() => ctrl.enterTrap()).not.toThrow();
+    expect(ctrl.isTrapped).toBe(false); // no-op, no state change
+    expect(() => ctrl.exitTrap()).not.toThrow();
+    expect(() => ctrl.cycleToAdjacentSlot(1)).not.toThrow();
+    expect(() => ctrl.setEnabled(true)).not.toThrow();
+    expect(() => ctrl.setStrategy(strategy)).not.toThrow();
+    expect(() => ctrl.destroy()).not.toThrow(); // destroy works pre-attach
+  });
 });
 
 describe("FocusTrapController", () => {
@@ -49,9 +100,7 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title, content }),
       cycleOrder: ["title", "content"],
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     expect(title.focus).toHaveBeenCalled();
 
@@ -81,9 +130,7 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title, toolbar, content }),
       cycleOrder: ["title", "toolbar", "content"],
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     // Trap entered at title (slotIndex=0). Without the re-derivation fix, a
     // Tab from a click-focused toolbar button would advance to "toolbar" again
     // (slotIndex 0 -> 1) rather than continuing to "content" (1 -> 2).
@@ -119,9 +166,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["content"],
       tabWithinSlots: ["content"],
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(widget1Inner);
     pressKey("Tab");
@@ -154,9 +199,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabWithinSlots: ["content"],
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     // Enter focuses title first
     expect(title.focus).toHaveBeenCalled();
@@ -190,9 +233,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["toolbar", "content"],
       tabWithinSlots: ["toolbar"],
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     // First slot in cycleOrder is the toolbar (tabWithinSlots), which has
     // only tabindex=-1 buttons. Should still focus btn1 via the fallback.
@@ -222,9 +263,7 @@ describe("FocusTrapController", () => {
       getExternalElements: () => [portalToolbar],
       externalElementsSlot: "toolbar",
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     expect(title.focus).toHaveBeenCalled();
 
     // Focus is in the portal toolbar; Tab should advance toolbar -> content.
@@ -254,9 +293,7 @@ describe("FocusTrapController", () => {
       getExternalElements: () => [portal],
       // externalElementsSlot intentionally omitted
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     // Trap entered at title (slotIndex=0). Without externalElementsSlot, Tab
     // from the portal should treat the slot as still "title" and advance to
     // content, not jump back to title.
@@ -278,9 +315,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title"],
       onExit,
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     expect(controller.isTrapped).toBe(true);
 
     setActiveElement(title);
@@ -288,6 +323,43 @@ describe("FocusTrapController", () => {
 
     expect(controller.isTrapped).toBe(false);
     expect(onExit).toHaveBeenCalledOnce();
+    expect(container.focus).toHaveBeenCalled();
+  });
+
+  it("exitTrap({ refocus: false }) releases without refocusing the container", () => {
+    const container = makeContainer();
+    vi.spyOn(container, "focus");
+    const onExit = vi.fn();
+    const title = document.createElement("input");
+    container.appendChild(title);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      cycleOrder: ["title"],
+      onExit,
+    };
+    controller = enterActiveTrap(strategy, container);
+    expect(controller.isTrapped).toBe(true);
+
+    // The host releases the trap because focus has legitimately left the
+    // container (e.g. user clicked outside) — stealing focus back would be wrong.
+    controller.exitTrap({ refocus: false });
+
+    expect(controller.isTrapped).toBe(false);
+    expect(onExit).toHaveBeenCalledOnce();
+    expect(container.focus).not.toHaveBeenCalled();
+  });
+
+  it("exitTrap() still refocuses the container by default", () => {
+    const container = makeContainer();
+    vi.spyOn(container, "focus");
+    const title = document.createElement("input");
+    container.appendChild(title);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title }),
+      cycleOrder: ["title"],
+    };
+    controller = enterActiveTrap(strategy, container);
+    controller.exitTrap();
     expect(container.focus).toHaveBeenCalled();
   });
 
@@ -301,7 +373,8 @@ describe("FocusTrapController", () => {
       getElements: () => ({ title }),
       cycleOrder: ["title"],
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
 
     // Enabling does not enter the trap, and children stay out of the tab order
@@ -322,7 +395,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title"],
       onEnter,
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(true);
 
     // Tab while focus is on the container: skip past the trap rather than enter.
@@ -341,6 +415,133 @@ describe("FocusTrapController", () => {
     expect(event.defaultPrevented).toBe(true);
   });
 
+  // onTabWhenInactive is the disabled-trap extension point CLUE uses for
+  // inter-tile Tab navigation: while a trap is enabled=false (a deselected
+  // tile), the controller delegates Tab to the strategy instead of cycling
+  // slots. The demo exercises this via use-enter-to-trap.ts.
+  it("disabled trap: Tab on the container delegates to onTabWhenInactive and preventDefaults when handled", () => {
+    const container = makeContainer();
+    const child = document.createElement("input");
+    container.appendChild(child);
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ child }),
+      cycleOrder: ["child"],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+    // enabled defaults to false → dormant; no setEnabled call needed.
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledOnce();
+    // reverse=false for a plain Tab.
+    expect(onTabWhenInactive).toHaveBeenCalledWith(event, false);
+    // Handler returned true ⇒ it owns focus movement, so default Tab is suppressed.
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it("disabled trap: Shift+Tab passes reverse=true to onTabWhenInactive", () => {
+    const container = makeContainer();
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledWith(event, true);
+  });
+
+  it("disabled trap: does not preventDefault when onTabWhenInactive declines (returns false)", () => {
+    const container = makeContainer();
+    const onTabWhenInactive = vi.fn(() => false);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledOnce();
+    // Handler declined ⇒ native Tab proceeds.
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("disabled trap: Tab originating on a child still delegates to onTabWhenInactive", () => {
+    const container = makeContainer();
+    const child = document.createElement("input");
+    container.appendChild(child);
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ child }),
+      cycleOrder: ["child"],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: child });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).toHaveBeenCalledOnce();
+  });
+
+  it("enabled trap: onTabWhenInactive is not called (the enabled path skips past natively)", () => {
+    const container = makeContainer();
+    const onTabWhenInactive = vi.fn(() => true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({}),
+      cycleOrder: [],
+      onTabWhenInactive,
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+    controller.setEnabled(true);
+
+    const event = new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, "target", { value: container });
+    document.dispatchEvent(event);
+
+    expect(onTabWhenInactive).not.toHaveBeenCalled();
+  });
+
   it("destroy removes listeners and cleans up", () => {
     const container = makeContainer();
     const strategy: FocusTrapStrategy = {
@@ -348,7 +549,8 @@ describe("FocusTrapController", () => {
       cycleOrder: [],
     };
     const removeSpy = vi.spyOn(document, "removeEventListener");
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.destroy();
 
     expect(removeSpy).toHaveBeenCalledWith(
@@ -378,9 +580,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     expect(title.focus).toHaveBeenCalled();
 
     setActiveElement(title);
@@ -405,9 +605,7 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { title: handler },
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(title);
     const event = pressKey("Tab");
@@ -432,9 +630,7 @@ describe("FocusTrapController", () => {
         /* none for title */
       },
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(title);
     pressKey("Tab");
@@ -455,9 +651,7 @@ describe("FocusTrapController", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(content);
     const event = pressKey("Escape");
@@ -480,9 +674,7 @@ describe("FocusTrapController", () => {
       escapeHandlers: { content: handler },
       onExit,
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
 
     setActiveElement(content);
     const event = pressKey("Escape");
@@ -509,18 +701,24 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content", "toolbar"],
       focusContent,
     };
-    controller = new FocusTrapController(container, strategy);
-    controller.setEnabled(true);
-    controller.enterTrap();
+    controller = enterActiveTrap(strategy, container);
     // Forward entry into content from title:
     setActiveElement(title);
     pressKey("Tab");
-    expect(focusContent).toHaveBeenLastCalledWith({ entryMode: "forward" });
+    expect(focusContent).toHaveBeenLastCalledWith({
+      entryMode: "forward",
+      trigger: "sequentialNavigation",
+      suppressHint: false,
+    });
 
     // Reverse entry into content from toolbar:
     setActiveElement(toolbar);
     pressKey("Tab", { shiftKey: true });
-    expect(focusContent).toHaveBeenLastCalledWith({ entryMode: "reverse" });
+    expect(focusContent).toHaveBeenLastCalledWith({
+      entryMode: "reverse",
+      trigger: "sequentialNavigation",
+      suppressHint: false,
+    });
   });
 
   it("does not mutate tabindex on a managed slot's element when setChildrenNonTabbable runs", () => {
@@ -537,7 +735,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: handler },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     // setEnabled(false) when not previously enabled triggers setChildrenNonTabbable
     controller.setEnabled(false);
 
@@ -566,7 +765,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(false);
 
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -588,7 +788,8 @@ describe("FocusTrapController", () => {
       // Only `content` is managed; `title` should still be set non-tabbable.
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(false);
 
     expect(titleBtn.getAttribute("tabindex")).toBe("-1");
@@ -607,7 +808,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       // No tabHandlers field at all.
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
     controller.setEnabled(false);
 
     expect(title.getAttribute("tabindex")).toBe("-1");
@@ -631,7 +833,8 @@ describe("FocusTrapController", () => {
       cycleOrder: ["title", "content"],
       tabHandlers: { content: vi.fn().mockReturnValue("exit") },
     };
-    controller = new FocusTrapController(container, strategy);
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
 
     // First call: content slot doesn't exist, so its descendants — none yet —
     // can't be skipped. (No assertion needed here; this just exercises the path.)
@@ -655,5 +858,264 @@ describe("FocusTrapController", () => {
     expect(title.getAttribute("tabindex")).toBe("-1");
     // The newly-mounted managed cell is NOT touched.
     expect(cell.getAttribute("tabindex")).toBe("0");
+  });
+});
+
+describe("FocusTrapController nativeTabSlots / cycleToAdjacentSlot", () => {
+  it("skips preventDefault cycling INTO a nativeTabSlot", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(title, wrap);
+    vi.spyOn(title, "focus");
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content: wrap }),
+      cycleOrder: ["title", "content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = enterActiveTrap(strategy, container); // focus title
+
+    setActiveElement(title);
+    const e = pressKey("Tab");
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      trigger: "sequentialNavigation",
+      suppressHint: false,
+    });
+    expect(e.defaultPrevented).toBe(false);
+  });
+
+  it("enters a content slot in LANDING mode on enterTrap (programmatic, not positioner)", () => {
+    const container = makeContainer();
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = enterActiveTrap(strategy, container);
+
+    // enterTrap is a programmatic entry (no pending Tab default), so entering a
+    // content slot must use landing mode (trigger: "programmatic"), not positioner —
+    // otherwise focus rests silently on the invisible sentinel with no hint.
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      trigger: "programmatic",
+      suppressHint: false,
+    });
+  });
+
+  it("enterTrap({ suppressHint: true }) threads suppressHint to focusContent", () => {
+    const container = makeContainer();
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = new FocusTrapController(strategy);
+    controller.containerRef(container);
+    controller.setEnabled(true);
+    controller.enterTrap({ suppressHint: true });
+
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "forward",
+      trigger: "programmatic",
+      suppressHint: true,
+    });
+  });
+
+  it("resting-sentinel: forward Tab on after-sentinel cycles", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap, title);
+    vi.spyOn(title, "focus");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap, title }),
+      cycleOrder: ["content", "title"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent: () => true,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = enterActiveTrap(strategy, container);
+
+    setActiveElement(after);
+    const e = pressKey("Tab");
+    expect(e.defaultPrevented).toBe(true);
+    expect(title.focus).toHaveBeenCalled();
+  });
+
+  it("resting-sentinel: reverse Tab on before-sentinel of a SOLO trap re-enters the iframe via native descent (no preventDefault)", () => {
+    const container = makeContainer();
+    const wrap = document.createElement("div");
+    const before = document.createElement("div");
+    const after = document.createElement("div");
+    wrap.append(before, after);
+    container.append(wrap);
+
+    const focusContent = vi.fn().mockReturnValue(true);
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ content: wrap }),
+      cycleOrder: ["content"],
+      contentSlot: "content",
+      nativeTabSlots: ["content"],
+      focusContent,
+      getNativeTabSlotSentinels: () => ({ before, after }),
+    };
+    controller = enterActiveTrap(strategy, container);
+
+    // Resting on the before-sentinel (the landing), Shift+Tab in a solo trap
+    // wraps back into the SAME nativeTabSlot. That must use the positioner and
+    // let the native Shift+Tab descend into the iframe — so the default must NOT
+    // be prevented (otherwise focus is stranded on the invisible after-sentinel).
+    focusContent.mockClear();
+    setActiveElement(before);
+    const e = pressKey("Tab", { shiftKey: true });
+    expect(e.defaultPrevented).toBe(false);
+    expect(focusContent).toHaveBeenCalledWith({
+      entryMode: "reverse",
+      trigger: "sequentialNavigation",
+      suppressHint: false,
+    });
+  });
+
+  it("cycleToAdjacentSlot advances and wraps like a Tab cycle", () => {
+    const container = makeContainer();
+    const title = document.createElement("input");
+    const content = document.createElement("textarea");
+    container.append(title, content);
+    vi.spyOn(title, "focus");
+    vi.spyOn(content, "focus");
+
+    const strategy: FocusTrapStrategy = {
+      getElements: () => ({ title, content }),
+      cycleOrder: ["title", "content"],
+    };
+    controller = enterActiveTrap(strategy, container); // title, index 0
+
+    controller.cycleToAdjacentSlot(1);
+    expect(content.focus).toHaveBeenCalled();
+
+    (title.focus as ReturnType<typeof vi.fn>).mockClear();
+    controller.cycleToAdjacentSlot(1); // wrap to title
+    expect(title.focus).toHaveBeenCalled();
+  });
+});
+
+describe("FocusTrapController containerRef lifecycle", () => {
+  it("engages when the container arrives after construction", () => {
+    const container = document.createElement("div");
+    container.tabIndex = -1;
+    const slot = document.createElement("button");
+    container.appendChild(slot);
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slot }),
+      cycleOrder: ["content"],
+    });
+    controller.setEnabled(true);
+    controller.enterTrap(); // pre-attach: no-op
+    expect(controller.isTrapped).toBe(false);
+    document.body.appendChild(container);
+    controller.containerRef(container); // container mounts
+    controller.enterTrap();
+    expect(controller.isTrapped).toBe(true);
+    expect(document.activeElement).toBe(slot);
+  });
+
+  it("containerRef(null) tears down silently — no onExit", () => {
+    const container = document.createElement("div");
+    container.tabIndex = -1;
+    const slot = document.createElement("button");
+    container.appendChild(slot);
+    document.body.appendChild(container);
+    const onExit = vi.fn();
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slot }),
+      cycleOrder: ["content"],
+      onExit,
+    });
+    controller.setEnabled(true);
+    controller.containerRef(container);
+    controller.enterTrap();
+    expect(controller.isTrapped).toBe(true);
+    controller.containerRef(null); // unmount
+    expect(controller.isTrapped).toBe(false); // state accurate
+    expect(onExit).not.toHaveBeenCalled(); // but NO onExit on unmount
+  });
+
+  it("swaps cleanly from one container to another", () => {
+    const a = document.createElement("div");
+    a.tabIndex = -1;
+    const b = document.createElement("div");
+    b.tabIndex = -1;
+    const slotA = document.createElement("button");
+    a.appendChild(slotA);
+    const slotB = document.createElement("button");
+    b.appendChild(slotB);
+    document.body.append(a, b);
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slotA }),
+      cycleOrder: ["content"],
+    });
+    controller.setEnabled(true);
+    controller.containerRef(a);
+    controller.enterTrap();
+    expect(document.activeElement).toBe(slotA);
+    controller.containerRef(b); // detach A, attach B
+    controller.setStrategy({
+      getElements: () => ({ content: slotB }),
+      cycleOrder: ["content"],
+    });
+    controller.enterTrap();
+    expect(document.activeElement).toBe(slotB);
+  });
+
+  it("methods survive destructuring (bound)", () => {
+    const container = document.createElement("div");
+    container.tabIndex = -1;
+    const slot = document.createElement("button");
+    container.appendChild(slot);
+    document.body.appendChild(container);
+    controller = new FocusTrapController({
+      getElements: () => ({ content: slot }),
+      cycleOrder: ["content"],
+    });
+    controller.setEnabled(true);
+    controller.containerRef(container);
+    const { enterTrap } = controller; // destructured
+    expect(() => enterTrap()).not.toThrow();
+    expect(controller.isTrapped).toBe(true);
   });
 });

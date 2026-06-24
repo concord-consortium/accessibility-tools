@@ -2,9 +2,33 @@
  * useFocusTrap hook.
  *
  * A thin React wrapper over {@link FocusTrapController}. The controller is the
- * single focus-trap engine; this hook owns its lifecycle (create on mount,
- * destroy on unmount), mirrors `isTrapped` into React state, and forwards
- * trap events to the debug context.
+ * single focus-trap engine; this hook owns its lifecycle (construct on first
+ * render, destroy on unmount) and forwards trap events to the debug context.
+ *
+ * The hook RETURNS the controller instance directly. Wire its `containerRef`
+ * onto the trap's root element:
+ *
+ *   const trap = useFocusTrap({ strategy });
+ *   return <div ref={trap.containerRef}>…</div>;
+ *
+ * **Portal- and defer-safe.** The controller is container-less at construction
+ * and attaches its DOM listeners only when `containerRef` receives a non-null
+ * element. Because `containerRef` is a stable bound arrow-field, React invokes
+ * it exactly when the container node commits — even if that commit is deferred
+ * (mounted in a later effect) or happens inside a `ReactDOM.createPortal`. No
+ * "first commit" timing assumptions are baked in.
+ *
+ * **Re-render on trapped change.** The controller instance is stable across
+ * renders, so a render-time read of `controller.isTrapped` would otherwise go
+ * stale. The hook subscribes to the controller's `onTrappedChange` and bumps a
+ * tick of local state, forcing a re-render so consumers that read
+ * `controller.isTrapped` during render always see the current value.
+ *
+ * **Ownership.** `setEnabled`, `setStrategy`, and `destroy` are hook-owned —
+ * the hook drives them from `config.enabled` / `config.strategy` and the
+ * unmount cleanup. Consumers MUST NOT call them on the returned controller; the
+ * consumer-facing surface is `containerRef`, `isTrapped`, `enterTrap`,
+ * `exitTrap`, and `cycleToAdjacentSlot`.
  *
  * Behavior is whatever the controller does:
  * - When enabled but not trapped: children are non-tabbable, so Tab/Shift+Tab
@@ -18,75 +42,69 @@
 import { useEffect, useRef, useState } from "react";
 import { FocusTrapController } from "./focus-trap-controller";
 import { useAccessibilityContext } from "./provider";
-import type { FocusTrapConfig, FocusTrapResult } from "./types";
+import type { FocusTrapConfig } from "./types";
 import { useStableId } from "./use-stable-id";
 
 export function useFocusTrap(
   config: FocusTrapConfig | undefined,
-): FocusTrapResult | null {
-  const [isTrapped, setIsTrapped] = useState(false);
+): FocusTrapController {
   const instanceId = useStableId();
   const debugCtx = useAccessibilityContext();
-  const containerRef = config?.containerRef;
   const strategy = config?.strategy;
   const enabled = config?.enabled ?? true;
 
-  const controllerRef = useRef<FocusTrapController | null>(null);
-
-  // Latest strategy/debug context, read by the create-once effect without
-  // forcing it to re-run (and tear the controller down) on every change.
-  const strategyRef = useRef(strategy);
-  strategyRef.current = strategy;
   const debugCtxRef = useRef(debugCtx);
   debugCtxRef.current = debugCtx;
 
-  // Create the controller once and tear it down on unmount. Idempotent across
-  // StrictMode's double-mount (the controller guards its own `destroyed` flag).
-  useEffect(() => {
-    const container = containerRef?.current;
-    const initialStrategy = strategyRef.current;
-    if (!container || !initialStrategy) return;
+  // Force a re-render when `trapped` flips so a render-time read of
+  // controller.isTrapped is always current (the controller instance is stable,
+  // so without this the value would go stale).
+  const [, setTrappedTick] = useState(false);
 
-    const controller = new FocusTrapController(container, initialStrategy, {
-      onTrappedChange: setIsTrapped,
+  const [controller] = useState(() => {
+    const c = new FocusTrapController(strategy ?? { getElements: () => ({}) }, {
+      onTrappedChange: (t) => setTrappedTick(t),
       onEvent: (event) =>
         debugCtxRef.current?.reportFocusTrapEvent(instanceId, event),
+      onContainerChange: (el) =>
+        debugCtxRef.current?.registerInstance(instanceId, {
+          hookType: "focusTrap",
+          // Re-register overwrites by id → keeps the inspector live.
+          containerElement: el,
+        }),
     });
-    controllerRef.current = controller;
-
-    return () => {
-      controller.destroy();
-      controllerRef.current = null;
-    };
-  }, [containerRef, instanceId]);
+    // Seed `enabled` eagerly (pre-attach, a safe no-op on DOM) so a ref
+    // callback that runs during the very first commit — before the
+    // setEnabled effect below fires — sees the correct enabled state and an
+    // enterTrap() in that callback engages. The effect keeps it in sync after.
+    c.setEnabled(enabled);
+    return c;
+  });
 
   // Keep the controller's strategy in sync.
   useEffect(() => {
-    if (strategy) controllerRef.current?.setStrategy(strategy);
-  }, [strategy]);
+    if (strategy) controller.setStrategy(strategy);
+  }, [strategy, controller]);
 
   // Keep the controller's enabled state in sync.
   useEffect(() => {
-    controllerRef.current?.setEnabled(enabled);
-  }, [enabled]);
+    controller.setEnabled(enabled);
+  }, [enabled, controller]);
 
-  // Register with the debug context for the sidebar inspector.
+  // Initial debug registration (containerElement filled in by onContainerChange).
   useEffect(() => {
     if (!config || !debugCtx) return;
     debugCtx.registerInstance(instanceId, {
       hookType: "focusTrap",
-      containerElement: containerRef?.current,
+      containerElement: null,
     });
-    return () => {
-      debugCtx.unregisterInstance(instanceId);
-    };
-  }, [config, debugCtx, instanceId, containerRef]);
+    return () => debugCtx.unregisterInstance(instanceId);
+  }, [config, debugCtx, instanceId]);
 
-  if (!config) return null;
+  // Tear the controller down on unmount. destroy() is idempotent, so a
+  // StrictMode double-invoke is harmless; the discarded lazy-init controller
+  // has no listeners (container-less) and is GC'd.
+  useEffect(() => () => controller.destroy(), [controller]);
 
-  return {
-    isTrapped,
-    enterTrap: () => controllerRef.current?.enterTrap(),
-    exitTrap: () => controllerRef.current?.exitTrap(),
-  };
+  return controller;
 }

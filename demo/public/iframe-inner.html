@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Non-cooperating iframe content</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 12px;
+      background: #fffbeb;
+      color: #1a1a1a;
+    }
+    h2 { font-size: 14px; margin: 0 0 8px; }
+    p { font-size: 12px; margin: 0 0 8px; color: #555; }
+    .controls > * { margin-right: 8px; }
+    :focus-visible { outline: 3px solid #d97706; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <h2>Inner page (non-cooperating)</h2>
+  <p>Plain HTML, cross-origin, no library. The parent cannot read into this frame.</p>
+  <div class="controls">
+    <input type="text" aria-label="Inner text field" placeholder="Inner field" />
+    <button type="button">Inner button</button>
+    <a href="#inner">Inner link</a>
+  </div>
+</body>
+</html>

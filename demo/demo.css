@@ -110,3 +110,20 @@ body {
 .kitchen-sink p.bad {
   color: #dc2626;
 }
+
+/* Iframe focus-trap test page: each sentinel carries its own "press Tab to
+   enter" hint text. A sentinel collapses to zero height until the library marks
+   it with data-show-hint (focus resting on it with the hint shown), when it
+   expands in place to reveal the hint. */
+.iframe-sentinel {
+  display: block;
+  height: 0;
+  overflow: hidden;
+  font: 12px system-ui;
+  color: #b45309;
+}
+.iframe-sentinel[data-show-hint] {
+  height: auto;
+  overflow: visible;
+  padding: 4px 0;
+}

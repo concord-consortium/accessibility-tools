@@ -7,6 +7,7 @@
  */
 
 import type { RefObject } from "react";
+import type { FocusTrapController } from "./focus-trap-controller";
 
 // ---------------------------------------------------------------------------
 // Focus Trap Strategy (provided by consuming apps)
@@ -18,18 +19,46 @@ export type TabHandlerResult = "handled" | "exit";
 // future handler types diverge. Can be unified if a third clone appears.
 export type EscapeHandlerResult = "handled" | "exit";
 
+/**
+ * What triggered a focusContent call — the browser-navigation function behind
+ * the entry, NOT the literal key. See §3/§4 of specs/2026-06-09-iframe-slot-support.md.
+ * - "sequentialNavigation": a live sequential-focus-navigation keypress (the
+ *   Tab key's browser function) is being processed, so the browser has a
+ *   pending native focus advance to descend with ⇒ positioner mode.
+ * - "programmatic": entry with no pending native focus advance — enterTrap,
+ *   cycleToAdjacentSlot (wrap-around), or restore ⇒ landing mode. (Note an
+ *   Enter/click that engages the trap is a keydown but is still "programmatic"
+ *   here, because it carries no pending focus advance.)
+ */
+export type FocusContentTrigger = "sequentialNavigation" | "programmatic";
+
 export type FocusContentContext = {
   /**
-   * How the trap is entering the content slot.
+   * Direction the trap is entering the content slot.
    * - "forward": cycling forward (Tab from previous slot, or initial entry).
    * - "reverse": cycling backward (Shift+Tab from next slot).
-   *
-   * Additional values (e.g. "restore" for re-entering the last-focused
-   * element when the trap is re-engaged) may be added in the future.
-   * Clients using exhaustive switches over this union will see a type
-   * error and need to add a case.
    */
   entryMode: "forward" | "reverse";
+
+  /**
+   * Whether this call rides the browser's pending native focus advance
+   * ("sequentialNavigation" ⇒ positioner: focus the sentinel silently so the
+   * pending Tab default descends) or is a programmatic entry with no such
+   * advance ("programmatic" ⇒ landing: place a visible, labeled
+   * "Press Tab to enter …" hint (non-cooperating) or send focusEnter
+   * (cooperating)).
+   */
+  trigger: FocusContentTrigger;
+
+  /**
+   * Suppress the *visible* hint for this entry (default false). When true, a slot
+   * that would otherwise show a hint (a non-cooperating iframe) focuses its
+   * sentinel quietly: focus still rests there and a screen reader still reads the
+   * sentinel text, but no visible "Press Tab …" affordance appears. Used by a host
+   * for pointer-driven entries (e.g. a mouse-opened dialog). Cooperating slots and
+   * normal focusable slots are unaffected.
+   */
+  suppressHint?: boolean;
 };
 
 export interface FocusTrapStrategy {
@@ -60,6 +89,26 @@ export interface FocusTrapStrategy {
   /** Slots where Tab navigates through focusable children before cycling to the next slot.
    *  Slots not listed cycle immediately on Tab. Default: [] (all slots cycle immediately). */
   tabWithinSlots?: string[];
+
+  /**
+   * Slot names whose entry hands off to the browser's native Tab traversal
+   * (§1). When the trap cycles INTO one of these slots it calls focusContent
+   * (the positioner) but does NOT call preventDefault, so the browser's
+   * default Tab action runs from the now-focused sentinel and descends into
+   * the iframe. Default: [].
+   */
+  nativeTabSlots?: string[];
+
+  /**
+   * For a slot in `nativeTabSlots`: the slot's before/after sentinel elements
+   * (§3). When a Tab keydown fires while the current slot is this slot, focus
+   * is resting on one of these sentinels; the trap uses these to resolve the
+   * "Tab from a resting sentinel" four cases. Returns nulls for unknown slots.
+   */
+  getNativeTabSlotSentinels?: (slotName: string) => {
+    before: HTMLElement | null;
+    after: HTMLElement | null;
+  };
 
   /** Elements outside the container DOM that are part of the trap (e.g., portaled toolbars). */
   getExternalElements?: () => HTMLElement[];
@@ -111,7 +160,6 @@ export interface FocusTrapStrategy {
 // ---------------------------------------------------------------------------
 
 export interface FocusTrapConfig {
-  containerRef: RefObject<HTMLElement | null>;
   strategy: FocusTrapStrategy;
   /** When false, the trap is dormant — no Tab interception, no Enter activation.
    *  When true, Tab cycles within slots and Enter on the container enters the trap.
@@ -176,16 +224,10 @@ export interface ResizableResult {
   resizeHandleProps: Record<string, unknown>;
 }
 
-export interface FocusTrapResult {
-  isTrapped: boolean;
-  enterTrap: () => void;
-  exitTrap: () => void;
-}
-
 export interface AccessibilityResult {
   navigation: NavigationResult | null;
   resizable: ResizableResult | null;
-  focusTrap: FocusTrapResult | null;
+  focusTrap: FocusTrapController | null;
   debug: AccessibilityDebugHandle | null;
 }
 
