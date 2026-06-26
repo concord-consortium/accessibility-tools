@@ -327,6 +327,14 @@ export class IframeSlot {
     if (transport === this.options.transport) return;
     this.unsubscribeTransport?.();
     this.unsubscribeTransport = null;
+    // `cooperating` means "the peer on the current transport advertised the
+    // focus protocol" — it is bound to the peer, not the slot. Swapping in a
+    // different transport invalidates that: the new peer hasn't said anything
+    // yet. Leaving it stale would make the next programmatic entry send
+    // focusEnter to the new peer and skip the sentinel/hint fallback, losing
+    // focus if the new peer is non-cooperating. A genuinely cooperating new
+    // peer re-advertises capability on load, which sets the flag again.
+    this.cooperating = false;
     this.options.transport = transport;
     if (this.attached && transport) {
       this.unsubscribeTransport = transport.onMessage((msg) =>

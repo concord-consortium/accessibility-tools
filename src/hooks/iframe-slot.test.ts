@@ -617,6 +617,24 @@ describe("IframeSlot late transport (setTransport)", () => {
     expect(first.isSubscribed()).toBe(false);
     expect(second.isSubscribed()).toBe(true);
   });
+
+  it("resets cooperating when swapping transports so a new non-cooperating peer falls back to the sentinel", () => {
+    // The first peer advertised the focus protocol (cooperating = true). Swapping
+    // in a different transport whose peer has NOT advertised capability must clear
+    // that flag — otherwise the next programmatic entry sends focusEnter to the
+    // new peer and skips the sentinel/hint fallback, losing focus entirely.
+    const first = lateTransport();
+    const second = lateTransport();
+    const { slot, before } = setup();
+    slot.setTransport(first.transport);
+    first.emit({ type: "capability", focusProtocol: true });
+    slot.setTransport(second.transport);
+    vi.spyOn(before, "focus");
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(second.send).not.toHaveBeenCalled();
+    expect(before.focus).toHaveBeenCalled();
+    expect(before.getAttribute("data-show-hint")).toBe("");
+  });
 });
 
 describe("IframeSlot late-capability upgrade", () => {
