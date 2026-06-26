@@ -574,3 +574,132 @@ describe("IframeSlot transport translation", () => {
     expect(before.focus).toHaveBeenCalled();
   });
 });
+
+describe("IframeSlot late transport (setTransport)", () => {
+  function lateTransport() {
+    let handler: ((m: import("./focus-messages").FocusMessage) => void) | null =
+      null;
+    const send = vi.fn();
+    const transport = {
+      send,
+      onMessage: (cb: (m: import("./focus-messages").FocusMessage) => void) => {
+        handler = cb;
+        return () => {
+          handler = null;
+        };
+      },
+    };
+    return {
+      transport,
+      send,
+      emit: (m: import("./focus-messages").FocusMessage) => handler?.(m),
+      isSubscribed: () => handler !== null,
+    };
+  }
+
+  it("subscribes to a transport supplied after attach", () => {
+    // The dialog builds its FocusManager transport in a passive effect, AFTER
+    // the slot is constructed/attached. The slot must subscribe to it late.
+    const { transport, emit } = lateTransport();
+    const { slot, onExit } = setup(); // constructed/attached with NO transport
+    slot.setTransport(transport);
+    emit({ type: "focusExit", mode: "forward" });
+    expect(onExit).toHaveBeenCalledWith(1);
+  });
+
+  it("unsubscribes the previous transport when a new one is set", () => {
+    const first = lateTransport();
+    const second = lateTransport();
+    const { slot } = setup();
+    slot.setTransport(first.transport);
+    expect(first.isSubscribed()).toBe(true);
+    slot.setTransport(second.transport);
+    expect(first.isSubscribed()).toBe(false);
+    expect(second.isSubscribed()).toBe(true);
+  });
+
+  it("resets cooperating when swapping transports so a new non-cooperating peer falls back to the sentinel", () => {
+    // The first peer advertised the focus protocol (cooperating = true). Swapping
+    // in a different transport whose peer has NOT advertised capability must clear
+    // that flag — otherwise the next programmatic entry sends focusEnter to the
+    // new peer and skips the sentinel/hint fallback, losing focus entirely.
+    const first = lateTransport();
+    const second = lateTransport();
+    const { slot, before } = setup();
+    slot.setTransport(first.transport);
+    first.emit({ type: "capability", focusProtocol: true });
+    slot.setTransport(second.transport);
+    vi.spyOn(before, "focus");
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(second.send).not.toHaveBeenCalled();
+    expect(before.focus).toHaveBeenCalled();
+    expect(before.getAttribute("data-show-hint")).toBe("");
+  });
+});
+
+describe("IframeSlot late-capability upgrade", () => {
+  it("upgrades a resting non-cooperating landing to a cooperative entry when capability arrives late", () => {
+    // Dialog open: the trap lands focus on the sentinel with a visible hint
+    // because the cooperating capability has not arrived yet. When it does, the
+    // slot should hand off to the interactive (focusEnter) and drop the hint —
+    // otherwise the sentinel stays visible for a cooperating interactive.
+    const send = vi.fn();
+    const transport = { send, onMessage: () => () => {} };
+    const { slot, before } = setup({ transport });
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    expect(before.getAttribute("data-show-hint")).toBe(""); // non-coop hint shown
+
+    slot.notifyCapability(true); // capability arrives late
+
+    expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "forward" });
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
+  });
+
+  it("preserves reverse direction when upgrading a late capability", () => {
+    const send = vi.fn();
+    const transport = { send, onMessage: () => () => {} };
+    const { slot, after } = setup({ transport });
+    slot.focusContent({ entryMode: "reverse", trigger: "programmatic" });
+    expect(after.getAttribute("data-show-hint")).toBe("");
+
+    slot.notifyCapability(true);
+
+    expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "reverse" });
+  });
+
+  it("preserves restore intent when upgrading a late capability", () => {
+    // A non-cooperating restore lands a forward-like hint but must remember that
+    // the intent was restore, so a late capability hands off with focusEnter
+    // {restore} — re-focusing the interactive's last element — not {forward},
+    // which would focus its first element.
+    const send = vi.fn();
+    const transport = { send, onMessage: () => () => {} };
+    const { slot, before } = setup({ transport });
+    slot.requestRestore(); // non-cooperating: forward landing, restore intent
+    expect(before.getAttribute("data-show-hint")).toBe("");
+
+    slot.notifyCapability(true); // capability arrives late
+
+    expect(send).toHaveBeenCalledWith({ type: "focusEnter", mode: "restore" });
+    expect(before.hasAttribute("data-show-hint")).toBe(false);
+  });
+
+  it("does not send focusEnter on capability when no landing is resting", () => {
+    const send = vi.fn();
+    const transport = { send, onMessage: () => () => {} };
+    const { slot } = setup({ transport });
+    slot.notifyCapability(true);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it("does not upgrade after focus has already left the sentinel", () => {
+    const send = vi.fn();
+    const transport = { send, onMessage: () => () => {} };
+    const { slot, before } = setup({ transport });
+    slot.focusContent({ entryMode: "forward", trigger: "programmatic" });
+    // User dismisses / focus leaves the sentinel before capability arrives.
+    before.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    slot.notifyCapability(true);
+    expect(send).not.toHaveBeenCalled();
+  });
+});
